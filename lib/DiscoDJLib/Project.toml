@@ -1,0 +1,13 @@
+name = "DiscoDJLib"
+uuid = "5afedbe5-b79e-4f2e-a3b9-6aaab87d91a7"
+authors = ["Tom Abel <tabel@stanford.edu>"]
+version = "0.1.0"
+
+[deps]
+PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
