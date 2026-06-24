@@ -79,13 +79,16 @@ lpt.psi1 isa HalfField          # per-component f32 mean + f16 residual
 psi = evaluate_lpt_psi_at_a(lpt, c, 0.02)   # transparently expands to f32
 ```
 
-`store=:f16` packs each ψ as it is computed and frees the f32 source, so the held
-displacement memory halves. `pack_half`/`expand_half` expose the conversion; the
-evaluators (`evaluate_lpt_*`) accept packed results transparently.
+`store=:f16` builds each ψ **directly as a `HalfField`** — every component is
+packed to f16 (minus its mean) as soon as it is computed, reusing one f32 scratch,
+so the full f32 `(res,res,res,3)` ψ is *never* materialised. That lowers the
+displacement *compute* peak (not just the stored size), and the evaluators
+(`evaluate_lpt_*`) accept packed results transparently (`pack_half`/`expand_half`
+expose the conversion).
 
-This directly doubles how large a field you can **hold/output** on the GPU, and
-near-doubles the box for transient-light orders (1LPT/Zel'dovich), and stacks on
-top of the memory-lean source construction below.
+This is what lets **2LPT@1024³ fit on the 48 GB A6000** (≈26 GiB working set; the
+f32 path OOMs there). The displacement footprint halves (6 vs 12 bytes/cell) at
+~3e-4 round-off.
 
 ## Performance (RTX A6000 vs dual EPYC 7763, 2LPT, Float32)
 
@@ -125,7 +128,8 @@ smooth sizes (2ᵃ·3ᵇ·5ᶜ), large for big factors (e.g. 896 = 2⁷·7, 832 
 **Crossover:** with these reductions 2LPT fits to ~896³ and 3LPT to ~768³ on the
 A6000 (vs ~768³/~640³ before); the exact edge near 44 GiB is set by the cuFFT
 workspace, so a non-smooth size can OOM below a larger smooth one. Larger boxes
-use the CPU / 2 TB RAM. `store=:f16` stacks on top for output-dominated cases.
+use the CPU / 2 TB RAM. With `store=:f16` (incremental packing) **2LPT reaches
+1024³** on the A6000.
 
 ## Benchmarks & tests
 

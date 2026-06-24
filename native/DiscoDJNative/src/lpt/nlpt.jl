@@ -46,15 +46,6 @@ struct LPTResult{T}
     boxsize::T
 end
 
-# Optionally pack a freshly-computed f32 displacement into compact f16 storage,
-# eagerly freeing the f32 source so the GPU peak drops (see `store` in compute_lpt).
-function _maybe_pack(psi, store::Symbol)
-    store === :f16 || return psi
-    h = pack_half(psi)
-    _free!(psi)
-    return h
-end
-
 # ── Kernel dispatch ───────────────────────────────────────────────────────────
 
 function _inv_laplace!(out, f, k2; backend)
@@ -82,27 +73,46 @@ function _sd_into!(buf, fd, ki, kj, fphi, grid)
     return buf
 end
 
-# ψ_d = irfft(i·k_d·φ) for d=x,y,z, written into `psi[:,:,:,d]`, reusing the real
-# buffer `rbuf` and complex scratch `fd` (no per-component allocation).
-function _grad_to_psi!(psi, fphi, grid, rbuf, fd; backend)
-    for (d, kc) in enumerate(grid.k_vecs)
-        _grad_multiply!(fd, fphi, kc; backend)
-        mul!(rbuf, grid.plan_inv, fd)
-        @views psi[:, :, :, d] .= rbuf
+# Build the displacement ψ_d = irfft(i·k_d·φ) for d=x,y,z, reusing the real
+# scratch `rbuf` and complex scratch `fd` (no per-component allocation).
+#   store=:f32 → a real (res,res,res,3) array.
+#   store=:f16 → a HalfField built in place: pack each component to f16 minus its
+#   mean as it is computed, so the full f32 (res,res,res,3) ψ is never
+#   materialised — which is the displacement peak at large res.
+function _make_psi(fphi, grid, fd, rbuf, store; backend)
+    res = grid.res
+    R   = real(eltype(fphi))
+    if store === :f16
+        dev = similar(fphi, Float16, res, res, res, 3)
+        means = ntuple(3) do d
+            _grad_multiply!(fd, fphi, grid.k_vecs[d]; backend)
+            mul!(rbuf, grid.plan_inv, fd)
+            m = R(sum(rbuf) / length(rbuf))
+            @views dev[:, :, :, d] .= Float16.(rbuf .- m)
+            Float32(m)
+        end
+        return HalfField(dev, means)
+    else
+        psi = similar(fphi, R, res, res, res, 3)
+        for (d, kc) in enumerate(grid.k_vecs)
+            _grad_multiply!(fd, fphi, kc; backend)
+            mul!(rbuf, grid.plan_inv, fd)
+            @views psi[:, :, :, d] .= rbuf
+        end
+        return psi
     end
-    return psi
 end
 
 # ── 1LPT ─────────────────────────────────────────────────────────────────────
 
 function _compute_1lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T};
-                       backend=:ka) where T
+                       backend=:ka, store::Symbol=:f32) where T
     res = grid.res
     fphi1 = fphi_ini    # already φ₁(k)=δ/k² from generate_grf (Poisson pre-solved)
-    psi1 = similar(fphi1, T, res, res, res, 3)
     fd   = similar(fphi1)
     rbuf = similar(fphi1, T, res, res, res)
-    _grad_to_psi!(psi1, fphi1, grid, rbuf, fd; backend)
+    psi1 = _make_psi(fphi1, grid, fd, rbuf, store; backend)
+    _free!(rbuf); _free!(fd)
     return psi1, fphi1
 end
 
@@ -114,7 +124,7 @@ end
 # (t = trace→S₂, q = tr(H²), tmp = current d_ij) instead of materialising all six.
 
 function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
-                       backend=:ka) where T
+                       backend=:ka, store::Symbol=:f32) where T
     kx, ky, kz = grid.k_vecs
     k2 = grid.k2
     res = grid.res
@@ -138,8 +148,9 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     _inv_laplace!(fphi2, fd, k2; backend)
     fphi2 .*= T(-3/7)
 
-    psi2 = similar(fphi1, T, res, res, res, 3)
-    _grad_to_psi!(psi2, fphi2, grid, t, fd; backend)       # reuse t (real), fd (complex)
+    _free!(q); _free!(tmp)                      # spent: drop before the ψ step
+    psi2 = _make_psi(fphi2, grid, fd, t, store; backend)   # reuse t (real), fd (complex)
+    _free!(t); _free!(fd)
     return psi2, fphi2
 end
 
@@ -152,7 +163,7 @@ end
 # six d2 one at a time: 8 real buffers instead of 14.
 
 function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Complex{T}},
-                       grid::FourierGrid{T}; backend=:ka) where T
+                       grid::FourierGrid{T}; backend=:ka, store::Symbol=:f32) where T
     kx, ky, kz = grid.k_vecs
     k2 = grid.k2
     res = grid.res
@@ -186,8 +197,10 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
     _inv_laplace!(fphi3, fd, k2; backend)
     fphi3 .*= T(-1)
 
-    psi3 = similar(fphi1, T, res, res, res, 3)
-    _grad_to_psi!(psi3, fphi3, grid, tmp, fd; backend)     # reuse tmp (real), fd (complex)
+    # spent: drop the six d1 and S3 before the ψ step (reuse tmp as the real scratch)
+    _free!(d11); _free!(d22); _free!(d33); _free!(d12); _free!(d13); _free!(d23); _free!(S3)
+    psi3 = _make_psi(fphi3, grid, fd, tmp, store; backend) # reuse tmp (real), fd (complex)
+    _free!(tmp); _free!(fd); _free!(fphi3)
     return psi3
 end
 
@@ -220,18 +233,15 @@ function compute_lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     store in (:f32, :f16) || error("store must be :f32 or :f16")
     res = grid.res
 
-    psi1, fphi1 = _compute_1lpt(fphi_ini, grid; backend)
-    psi1 = _maybe_pack(psi1, store)
+    psi1, fphi1 = _compute_1lpt(fphi_ini, grid; backend, store)
     psi2 = nothing; fphi2 = nothing
     psi3 = nothing
 
     if n_order >= 2
-        psi2, fphi2 = _compute_2lpt(fphi1, grid; backend)
-        psi2 = _maybe_pack(psi2, store)
+        psi2, fphi2 = _compute_2lpt(fphi1, grid; backend, store)
     end
     if n_order >= 3
-        psi3 = _compute_3lpt(fphi1, fphi2, grid; backend)
-        psi3 = _maybe_pack(psi3, store)
+        psi3 = _compute_3lpt(fphi1, fphi2, grid; backend, store)
     end
 
     return LPTResult{T}(psi1, psi2, psi3, n_order, res, grid.boxsize)
