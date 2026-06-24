@@ -53,6 +53,7 @@ include("lpt/kernels_threads.jl")
 include("lpt/nlpt.jl")
 include("lpt/evaluate.jl")
 include("lpt/nlpt_ad.jl")        # differentiable (AD-traceable) nLPT path
+include("lpt/nlpt_core.jl")      # faithful general-order nLPT port (parity reference)
 
 # ── Lightcone ────────────────────────────────────────────────────────────────
 include("lightcone/shells.jl")

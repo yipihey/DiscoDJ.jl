@@ -151,7 +151,7 @@ function _gadget_velocity(lpt, cosmo, psi1_flat, psi2_flat, pid, a)
     H  = E * H0
     v  = f1 * D1 * H .* psi1_flat[pid, :]
     if psi2_flat !== nothing
-        D2 = growth_D2(cosmo, a) * D1^2
+        D2 = D1^2   # ψ₂ carries EdS -3/7 → growth D₁²
         v .+= 2f1 * D2 * H .* psi2_flat[pid, :]
     end
     return v .* (100 / a^1.5)   # Gadget convention

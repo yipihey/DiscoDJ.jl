@@ -31,9 +31,12 @@ Base.@kwdef struct Cosmology{T<:AbstractFloat}
     # timetable fields (populated by compute_timetables)
     _a_table::Vector{T}   = T[]
     _chi_table::Vector{T} = T[]
-    _D1_table::Vector{T}  = T[]
-    _D2_table::Vector{T}  = T[]
-    _f1_table::Vector{T}  = T[]
+    _D1_table::Vector{T}  = T[]   # Dplus
+    _D2_table::Vector{T}  = T[]   # D2plus (~ -3/7 D1²)
+    _f1_table::Vector{T}  = T[]   # growth rate f = d ln D1 / d ln a
+    _D3a_table::Vector{T} = T[]   # D3plusa (~ +1/3 D1³)
+    _D3b_table::Vector{T} = T[]   # D3plusb (~ -10/21 D1³)
+    _D3c_table::Vector{T} = T[]   # D3plusc (transverse, ~ +1/7 D1³)
 end
 
 Omega_m(c::Cosmology) = c.Omega_c + c.Omega_b
@@ -75,14 +78,15 @@ end
 
 Precompute chi(a) on a grid and return a new Cosmology with interpolation tables.
 """
-function compute_timetables(c::Cosmology{T}; n_pts::Int=1000, a_ini::T=T(1e-4)) where T
-    a_table = collect(LinRange(a_ini, T(1.0), n_pts))
-    # Forward integration: chi_fwd[i] = ∫_{a_ini}^{a[i]} dchi/da da
+function compute_timetables(c::Cosmology{T}; n_pts::Int=2500, a_ini::T=T(1e-10)) where T
+    # Log-spaced (geomspace) a-grid from a_ini to 1, matching DISCO-DJ's timetable.
+    a_table = exp10.(collect(LinRange(log10(a_ini), T(0.0), n_pts)))
+    # Forward χ integration with variable step (RK4 over each [a_{i-1}, a_i]).
     chi_fwd = Vector{T}(undef, n_pts)
     chi_fwd[1] = T(0)
-    da = (T(1) - a_ini) / (n_pts - 1)
     for i in 2:n_pts
-        a = a_table[i-1]
+        a  = a_table[i-1]
+        da = a_table[i] - a_table[i-1]
         k1 = _dchi_da(c, a)
         k2 = _dchi_da(c, a + da/2)
         k3 = _dchi_da(c, a + da/2)
@@ -91,14 +95,15 @@ function compute_timetables(c::Cosmology{T}; n_pts::Int=1000, a_ini::T=T(1e-4)) 
     end
     # Physical chi(a) = chi_total - chi_fwd(a): chi(a=1)=0, chi(a_ini)=max
     chi_table = chi_fwd[end] .- chi_fwd
-    # Growth factors (populated by growth.jl after include)
-    D1, D2, f1 = _compute_growth_tables(c, a_table)
+    # Growth factors via the DISCO-DJ ODE system (growth.jl)
+    D1, D2, D3a, D3b, D3c, f1 = _compute_growth_tables(c, a_table)
     return Cosmology{T}(
         Omega_c = c.Omega_c, Omega_b = c.Omega_b, h = c.h,
         sigma8 = c.sigma8, n_s = c.n_s, Omega_k = c.Omega_k,
         w0 = c.w0, wa = c.wa,
         _a_table = a_table, _chi_table = chi_table,
         _D1_table = D1, _D2_table = D2, _f1_table = f1,
+        _D3a_table = D3a, _D3b_table = D3b, _D3c_table = D3c,
     )
 end
 

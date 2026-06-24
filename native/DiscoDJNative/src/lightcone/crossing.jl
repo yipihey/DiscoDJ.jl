@@ -24,7 +24,7 @@ function _trajectory(q::AbstractVector, psi1_flat::AbstractMatrix,
     D1 = growth_D1(cosmo, a)
     x  = q .+ D1 .* psi1_flat[pid, :]
     if psi2_flat !== nothing
-        D2 = growth_D2(cosmo, a) * D1^2
+        D2 = D1^2   # legacy ψ₂ carries the EdS -3/7 coefficient (see evaluate.jl)
         x .+= D2 .* psi2_flat[pid, :]
     end
     return x
@@ -41,9 +41,8 @@ function _trajectory_dot(psi1_flat::AbstractMatrix,
     dD1 = (growth_D1(cosmo, a*(1+eps)) - growth_D1(cosmo, a*(1-eps))) / (2*a*eps)
     v  = dD1 .* psi1_flat[pid, :]
     if psi2_flat !== nothing
-        D2  = growth_D2(cosmo, a) * D1^2
-        dD2 = (growth_D2(cosmo, a*(1+eps)) * (growth_D1(cosmo, a*(1+eps)))^2 -
-               growth_D2(cosmo, a*(1-eps)) * (growth_D1(cosmo, a*(1-eps)))^2) / (2*a*eps)
+        dD2 = ((growth_D1(cosmo, a*(1+eps)))^2 -
+               (growth_D1(cosmo, a*(1-eps)))^2) / (2*a*eps)   # d(D₁²)/da
         v .+= dD2 .* psi2_flat[pid, :]
     end
     return v

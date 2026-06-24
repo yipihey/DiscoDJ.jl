@@ -45,7 +45,8 @@ function lpt_psi_ad(fphi::AbstractArray{Complex{T},3}, grid::FourierGrid{T},
         S2  = @. d11*d22 - d12^2 + d11*d33 - d13^2 + d22*d33 - d23^2
         fphi2 = (T(-3/7) .* _rfft312(S2)) .* invk2
         psi2  = cat(grad(fphi2, kx), grad(fphi2, ky), grad(fphi2, kz); dims = 4)
-        D2    = @ignore_derivatives(T(growth_D2(cosmo, a)) * D1^2)
+        # ψ₂ carries the EdS -3/7 coefficient → time growth D₁² (not D₂plus·D₁²).
+        D2    = @ignore_derivatives(D1^2)
         psi   = psi .+ D2 .* psi2
     end
 

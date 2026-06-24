@@ -1,6 +1,7 @@
 using Test
 using DiscoDJNative
 using Random: MersenneTwister
+using FFTW: rfft
 
 mean(x) = sum(x) / length(x)
 
@@ -40,6 +41,16 @@ mean(x) = sum(x) / length(x)
 
         # Growth rate f ≈ 1 deep in matter domination
         @test abs(growth_f1(c, 0.02) - 1.0) < 0.05
+
+        # Higher-order growth factors (D₂plus, D₃plusa/b/c) — exact-growth nLPT.
+        # Validated to machine precision vs JAX; here check the EdS limits at high z:
+        # D₂plus → -3/7 D₁², D₃plusa → 1/3 D₁³, D₃plusb → -10/21 D₁³, D₃plusc → 1/7 D₁³.
+        a = 0.01; D1 = growth_D1(c, a)
+        @test isapprox(growth_D2(c, a),  -3/7  * D1^2; rtol=2e-2)
+        @test isapprox(growth_D3a(c, a),  1/3  * D1^3; rtol=2e-2)
+        @test isapprox(growth_D3b(c, a), -10/21 * D1^3; rtol=2e-2)
+        @test isapprox(growth_D3c(c, a),  1/7  * D1^3; rtol=2e-2)
+        @test growth_D2(c, 1.0) < 0          # D₂plus is negative at a=1
     end
 
     @testset "Transfer functions" begin
@@ -290,6 +301,50 @@ mean(x) = sum(x) / length(x)
         end
     else
         @info "Zygote/FiniteDifferences not available — skipping differentiability tests"
+    end
+
+    # ── Faithful general-order nLPT (the line-for-line JAX `compute_core` port) ──
+    # No JAX dependency in CI: validated here via cosmology-independent algebraic
+    # identities that the de-aliased recursion must satisfy exactly, plus a
+    # finite-difference gradient check through the full transverse 3LPT engine.
+    @testset "Faithful nLPT core (compute_core / compute_core_exact)" begin
+        rel(x, y) = maximum(abs.(x .- y)) / max(maximum(abs.(y)), eps())
+        res = 12; L = 500.0
+        white = randn(MersenneTwister(7), res, res, res)
+        fphi  = rfft(white, [3, 1, 2])
+        K     = nlpt_kernels(res, L)
+        eds = compute_core(fphi, K; n_order=3)
+        exa = compute_core_exact(fphi, K; n_order=3)
+
+        @test size(eds["psi_1"]) == (res, res, res, 3)
+        @test haskey(exa, "psi_3c_ex")               # transverse 3LPT mode present
+
+        # EdS reconstruction identities: the exact-growth shape fields combined with
+        # the EdS-limit growth ratios must equal the EdS-recursion shapes.  These are
+        # algebraic identities (no cosmology) → hold to machine precision.
+        @test rel(eds["psi_2"], (-3/7) .* exa["psi_2_ex"]) < 1e-12
+        recon3 = (1/3) .* exa["psi_3a_ex"] .+ (-10/21) .* exa["psi_3b_ex"] .+ (1/7) .* exa["psi_3c_ex"]
+        @test rel(eds["psi_3"], recon3) < 1e-12
+
+        # general order: order 4 runs and is finite
+        @test all(isfinite, compute_core(fphi, K; n_order=4)["psi_4"])
+
+        # evaluate_core: exact-growth & EdS displacement converge in the high-z limit
+        c = Cosmology("Planck18EEBAOSN")
+        ψ_eds = lpt_displacement(fphi, K, c, 0.01; n_order=3, exact_growth=false)
+        ψ_exa = lpt_displacement(fphi, K, c, 0.01; n_order=3, exact_growth=true)
+        @test rel(ψ_exa, ψ_eds) < 1e-2
+
+        if ad_ok
+            # ∂/∂ω through the de-aliased pad/crop/conv2 + transverse-curl engine
+            lossc(w) = sum(abs2, compute_core_exact(rfft(w, [3, 1, 2]), K; n_order=3)["psi_3c_ex"])
+            gc = Zygote.gradient(lossc, white)[1]
+            fdm = central_fdm(5, 1)
+            for i in rand(MersenneTwister(5), 1:length(white), 4)
+                gfd = FiniteDifferences.grad(fdm, t -> (w = copy(white); w[i] = t; lossc(w)), white[i])[1]
+                @test isapprox(gc[i], gfd; rtol=1e-4, atol=1e-20)
+            end
+        end
     end
 
 end

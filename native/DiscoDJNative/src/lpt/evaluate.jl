@@ -46,7 +46,10 @@ function _psi_at_a(lpt::LPTResult{T}, cosmo::Cosmology, a::Real) where T
     psi = D1 .* _expand(lpt.psi1)
 
     if lpt.n_order >= 2 && lpt.psi2 !== nothing
-        D2 = T(growth_D2(cosmo, a)) * D1^2
+        # `compute_lpt`'s ψ₂ already carries the EdS -3/7 spatial coefficient, so
+        # its time growth is D₁² (the faithful exact-growth path uses D₂plus·ψ₂ₑₓ
+        # instead — see `evaluate_core` in nlpt_core.jl).
+        D2 = D1^2
         psi .+= D2 .* _expand(lpt.psi2)
     end
 
@@ -117,9 +120,9 @@ function evaluate_lpt_psi_dot_at_a(lpt::LPTResult{T}, cosmo::Cosmology, a::Real;
     vel = f1 * D1 * E * H0 * _expand(lpt.psi1)
 
     if effective >= 2 && lpt.psi2 !== nothing
-        # f₂ ≈ 2f₁ in EdS
+        # f₂ ≈ 2f₁ in EdS; ψ₂ carries the -3/7 coefficient so its growth is D₁²
         f2 = T(2) * f1
-        D2 = T(growth_D2(cosmo, a)) * D1^2
+        D2 = D1^2
         vel .+= f2 * D2 * E * H0 * _expand(lpt.psi2)
     end
     return vel

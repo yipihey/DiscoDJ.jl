@@ -125,7 +125,7 @@ function write_lightcone_hdf5(path::String, crossings::NamedTuple,
         v_vec = f1 * D1 * H * psi1_flat[pid, :]
         if psi2_flat !== nothing
             f2 = 2 * f1
-            D2 = growth_D2(cosmo, a) * D1^2
+            D2 = D1^2   # ψ₂ carries EdS -3/7 → growth D₁²
             v_vec .+= f2 * D2 * H .* psi2_flat[pid, :]
         end
         # Gadget convention: v_g = v · (100 / a^1.5)

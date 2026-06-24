@@ -69,7 +69,7 @@ function _newton_1d(q, rep_off, psi1_p, psi2_p, cosmo, a0, observer; n_iters)
     for _ in 1:n_iters
         D1    = T(growth_D1(cosmo, a))
         x     = qr .+ D1 .* p1
-        p2 !== nothing && (x .+= T(growth_D2(cosmo, a)) * D1^2 .* p2)
+        p2 !== nothing && (x .+= D1^2 .* p2)   # ψ₂ carries EdS -3/7 → growth D₁²
         dist  = norm(x .- obs)
         chi   = T(comoving_distance(cosmo, a))
         resid = dist - chi
@@ -79,7 +79,7 @@ function _newton_1d(q, rep_off, psi1_p, psi2_p, cosmo, a0, observer; n_iters)
         a2  = min(a + da, T(1.0))
         D1p = T(growth_D1(cosmo, a2))
         xp  = qr .+ D1p .* p1
-        p2 !== nothing && (xp .+= T(growth_D2(cosmo, a2)) * D1p^2 .* p2)
+        p2 !== nothing && (xp .+= D1p^2 .* p2)
         dr_da = ((norm(xp .- obs) - T(comoving_distance(cosmo, a2))) - resid) / (a2 - a)
 
         abs(dr_da) < T(1e-30) && break
@@ -95,7 +95,7 @@ function _gadget_velocity_flat(psi1, psi2, cosmo, pid, a)
     D1 = growth_D1(cosmo, a)
     v  = f1 * D1 * E * H0 .* psi1[pid, :]
     if psi2 !== nothing
-        D2 = growth_D2(cosmo, a) * D1^2
+        D2 = D1^2   # ψ₂ carries EdS -3/7 → growth D₁²
         v .+= 2f1 * D2 * E * H0 .* psi2[pid, :]
     end
     return v .* (100 / a^1.5)
@@ -160,7 +160,7 @@ function refresh_lightcone_arrays(particle_idx::AbstractVector{Int32},
             D1 = growth_D1(cosmo, a_cross)
             x  = q .+ T(D1) .* psi1_p
             if psi2_flat !== nothing
-                D2 = growth_D2(cosmo, a_cross) * D1^2
+                D2 = D1^2   # ψ₂ carries EdS -3/7 → growth D₁²
                 x .+= T(D2) .* psi2_p
             end
             x .+= rep_off
