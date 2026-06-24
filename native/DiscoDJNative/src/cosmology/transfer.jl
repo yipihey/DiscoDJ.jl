@@ -22,56 +22,56 @@ Eisenstein & Hu (1998) fitting formula including baryon acoustic effects.
 k in h/Mpc.  Returns the transfer function T(k) (dimensionless, T→1 as k→0).
 """
 function eisenstein_hu(c::Cosmology{CT}, k::AbstractArray{T}; Tcmb::Float64=2.72548) where {CT, T}
-    Om_m  = Omega_m(c)
-    Om_b  = c.Omega_b
-    h     = c.h
-    ombh2 = Om_b  * h^2
-    ommh2 = Om_m  * h^2
-    Θ     = Tcmb / 2.7    # CMB temperature ratio
+    # Ported line-for-line from DISCO-DJ's eisenstein_hu (full EH98 with baryons,
+    # arXiv:astro-ph/9709112) so the Julia transfer matches the JAX reference.
+    θ   = Tcmb / 2.7
+    θ2  = θ^2
+    θ4  = θ2^2
+    omh2 = Omega_m(c) * c.h^2            # Ω0 h²
+    f_b  = c.Omega_b / Omega_m(c)        # baryon fraction
+    obh2 = omh2 * f_b                    # Ωb h²
 
-    # Redshift of equality and drag epoch
-    z_eq  = 2.5e4 * ommh2 * Θ^(-4)
-    k_eq  = 7.46e-2 * ommh2 * Θ^(-2)   # h/Mpc
-    b1    = 0.313 * ommh2^(-0.419) * (1 + 0.607 * ommh2^0.674)
-    b2    = 0.238 * ommh2^0.223
-    z_d   = 1291 * ommh2^0.251 / (1 + 0.659 * ommh2^0.828) * (1 + b1 * ombh2^b2)
+    z_eq = 2.50e4 * omh2 / θ4                 # Eq. 2
+    k_eq = 0.0746 * omh2 / θ2 / c.h           # Eq. 3 (h/Mpc) — NOTE the /h
 
-    # Sound horizon at drag epoch
-    R_eq  = 31.5e3 * ombh2 * Θ^(-4) / z_eq   # baryon-photon ratio at equality
-    R_d   = 31.5e3 * ombh2 * Θ^(-4) / z_d    # baryon-photon ratio at drag epoch
-    s     = 2/(3*k_eq) * sqrt(6/R_eq) * log((sqrt(1+R_d) + sqrt(R_d + R_eq)) / (1 + sqrt(R_eq)))
+    z_d1 = 0.313 * omh2^(-0.419) * (1 + 0.607*omh2^0.674)
+    z_d2 = 0.238 * omh2^0.223
+    z_d  = 1291.0 * omh2^0.251 / (1 + 0.659*omh2^0.828) * (1 + z_d1*obh2^z_d2)   # Eq. 4
 
-    k_silk = 1.6 * ombh2^0.52 * ommh2^0.01 * (1 + (5.2*ommh2)^(-0.62))^(-1/4)  # not standard, using common approx
-    # Silk damping k: Eq 15
-    k_silk = 1.6 * (ombh2^0.52) * (ommh2^0.38) * (1 + (5.2 * ommh2)^(-0.62))^(-1/4)
+    R_d  = 31.5 * obh2 / θ4 * (1000/(1 + z_d))    # Eq. 5
+    R_eq = 31.5 * obh2 / θ4 * (1000/z_eq)         # Eq. 5
+    s    = 2/3/k_eq * sqrt(6/R_eq) *
+           log((sqrt(1+R_d) + sqrt(R_d+R_eq)) / (1 + sqrt(R_eq)))                # Eq. 6
+    k_silk = 1.6 * obh2^0.52 * omh2^0.73 * (1 + (10.4*omh2)^(-0.95)) / c.h       # Eq. 7
 
-    f_baryon = Om_b / Om_m
-    f_cdm    = 1 - f_baryon
+    a1 = (46.9*omh2)^0.670 * (1 + (32.1*omh2)^(-0.532))                          # Eq. 11
+    a2 = (12.0*omh2)^0.424 * (1 + (45.0*omh2)^(-0.582))
+    α_c = a1^(-f_b) * a2^(-f_b^3)
+    b1 = 0.944 / (1 + (458*omh2)^(-0.708))                                       # Eq. 12
+    b2 = (0.395*omh2)^(-0.0266)
+    β_c = 1 / (1 + b1*((1 - f_b)^b2 - 1))
+
+    yG = (1 + z_eq) / (1 + z_d)
+    Gy = yG * (-6*sqrt(1+yG) + (2 + 3yG)*log((sqrt(1+yG)+1)/(sqrt(1+yG)-1)))
+    α_b = 2.07 * k_eq * s * (1+R_d)^(-0.75) * Gy
+    β_b = 0.5 + f_b + (3 - 2*f_b)*sqrt((17.2*omh2)^2 + 1)                        # Eq. 24
+    β_node = 8.41 * omh2^0.435                                                   # Eq. 23
 
     T_arr = similar(k, Float64)
     @inbounds for idx in eachindex(k)
-        kh = k[idx]   # k in h/Mpc
-
-        # CDM transfer function
-        q = kh / (13.41 * k_eq)
-        C0 = 14.2 + 386/(1 + 69.9*q^1.08)
-        T0 = log(exp(1) + 1.8*q) / (log(exp(1) + 1.8*q) + C0 * q^2)
-
-        # Baryon transfer function
-        y = z_eq / (1 + z_d)
-        G = y * (-6*sqrt(1+y) + (2+3y)*log((sqrt(1+y)+1)/(sqrt(1+y)-1)))
-        alpha_b = 2.07 * k_eq * s * (1+R_d)^(-3/4) * G
-        beta_b  = 0.5 + f_baryon + (3 - 2*f_baryon) * sqrt((17.2*ommh2)^2 + 1)
-        beta_node = 8.41 * ommh2^0.435
-
-        s_tilde = s / (1 + (beta_node / (kh*s))^3)^(1/3)
-        j0_ks   = sinc(kh * s_tilde / π)   # Julia sinc is normalised
-
-        C_b     = 14.2/alpha_b + 386/(1 + 69.9*q^1.08)
-        T_b_tilde = log(exp(1) + 1.8*alpha_b*q) / (log(exp(1) + 1.8*alpha_b*q) + C_b * q^2)
-        T_b  = (T_b_tilde / (1 + (kh*s/5.2)^2) + alpha_b/(1 + (beta_b/(kh*s))^3) * exp(-(kh/k_silk)^1.4)) * j0_ks
-
-        T_arr[idx] = f_baryon * T_b + f_cdm * T0
+        kk = Float64(k[idx])             # k in h/Mpc
+        q  = kk / (13.41 * k_eq)         # Eq. 10
+        ks = kk * s
+        Cf(ac)     = 14.2/ac + 386/(1 + 69.9*q^1.08)                # Eq. 20
+        lt(b)      = log(exp(1) + 1.8*b*q)                          # Eq. 19
+        T0t(ac,bc) = lt(bc) / (lt(bc) + Cf(ac)*q^2)                 # Eq. 19
+        f   = 1 / (1 + (ks/5.4)^4)                                  # Eq. 18
+        T_c = f*T0t(1.0, β_c) + (1-f)*T0t(α_c, β_c)                 # Eq. 17
+        s_tilde = s / (1 + (β_node/ks)^3)^(1/3)                     # Eq. 22
+        Tb1 = T0t(1.0, 1.0) / (1 + (ks/5.2)^2)
+        Tb2 = α_b / (1 + (β_b/ks)^3) * exp(-(kk/k_silk)^1.4)
+        T_b = sinc(kk*s_tilde/π) * (Tb1 + Tb2)                      # Eq. 21 (sinc normalised)
+        T_arr[idx] = f_b*T_b + (1 - f_b)*T_c                        # Eq. 8
     end
     return T_arr
 end
@@ -120,24 +120,19 @@ function linear_power_spectrum(c::Cosmology{CT}, k::AbstractArray;
     haskey(TRANSFER_REGISTRY, transfer) || error("Unknown transfer function: $transfer")
     Tk = TRANSFER_REGISTRY[transfer](c, k)
 
-    # Primordial spectrum: P_prim(k) ∝ k^n_s (Harrison-Zel'dovich-Peebles)
-    # Use pivot k₀ = 0.05 Mpc⁻¹; we work in h/Mpc so k₀ → 0.05/h
-    k0 = 0.05 / c.h
-    Pk = @. k^(c.n_s) * Tk^2   # proportional; normalise via σ₈
+    # Primordial spectrum P_prim(k) = k^n_s (DISCO-DJ's compute_primordial_ps,
+    # normalization=1), then × T²(k); σ₈-normalised below (as JAX does for EH).
+    Pk = @. k^(c.n_s) * Tk^2
 
-    # σ₈ normalisation via spherical top-hat window integral
-    # W(x) = 3(sin x - x cos x)/x³, R8 = 8 Mpc/h
-    R8 = 8.0  # Mpc/h
-    kR = k .* R8
-    W  = @. 3(sin(kR) - kR*cos(kR)) / kR^3
-    W[kR .< 1e-3] .= 1.0
-
-    # Integrate sigma8² = (1/2π²) ∫ k² P(k) W²(kR8) dk
-    dk = diff(k)
-    integrand = @. k^2 * Pk * W^2 / (2π^2)
-    sigma8_unnorm = sqrt(sum(0.5*(integrand[1:end-1] .+ integrand[2:end]) .* dk))
-    A = (c.sigma8 / sigma8_unnorm)^2
-    Pk .*= A
+    # σ₈ from P(k) exactly as DISCO-DJ's get_sigma8_squared_from_Pk:
+    #   σ8² = (1/2π²) ∫ k³ P(k) W²(kR) d(ln k),  R = 8 Mpc/h,  trapezoid in ln k.
+    R8 = 8.0
+    x  = k .* R8
+    W  = @. 3 * (sin(x) - x*cos(x)) / x^3
+    integrand = @. k^3 * Pk * W^2
+    logk = log.(k)
+    sigma8_sq = sum(0.5 .* (integrand[1:end-1] .+ integrand[2:end]) .* diff(logk)) / (2π^2)
+    Pk = Pk .* (c.sigma8^2 / sigma8_sq)
 
     return Dict("k" => collect(Float64, k), "Pk" => collect(Float64, Pk))
 end

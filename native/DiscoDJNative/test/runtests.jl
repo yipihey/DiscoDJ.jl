@@ -8,8 +8,8 @@ mean(x) = sum(x) / length(x)
 
     @testset "Cosmology" begin
         c = Cosmology("Planck18EEBAOSN")
-        @test abs(Omega_m(c) - 0.3075) < 1e-3
-        @test abs(c.h - 0.6774) < 1e-6
+        @test abs(Omega_m(c) - 0.3085131) < 1e-6   # Planck18EEBAOSN (matches DISCO-DJ)
+        @test abs(c.h - 0.67742) < 1e-6
         @test abs(hubble_E(c, 1.0) - 1.0) < 1e-10   # E(1) = 1 by definition
         @test hubble_E(c, 0.5) > 1.0                  # H increases at high z
 

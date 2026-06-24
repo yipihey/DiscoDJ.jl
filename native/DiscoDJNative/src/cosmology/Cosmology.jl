@@ -20,11 +20,11 @@ Eight-parameter cosmology matching DISCO-DJ's Cosmology class.
 After construction call `compute_timetables` to enable chi/a interpolation.
 """
 Base.@kwdef struct Cosmology{T<:AbstractFloat}
-    Omega_c::T  = T(0.2589)
-    Omega_b::T  = T(0.0486)
-    h::T        = T(0.6774)
-    sigma8::T   = T(0.8159)
-    n_s::T      = T(0.9667)
+    Omega_c::T  = T(0.259622)    # Planck18EEBAOSN, matching DISCO-DJ's predefined values
+    Omega_b::T  = T(0.0488911)
+    h::T        = T(0.67742)
+    sigma8::T   = T(0.8105)
+    n_s::T      = T(0.96822)
     Omega_k::T  = T(0.0)
     w0::T       = T(-1.0)
     wa::T       = T(0.0)
@@ -131,7 +131,7 @@ end
 # ── Predefined cosmologies ───────────────────────────────────────────────────
 
 const PREDEFINED_COSMOLOGIES = Dict{String, NamedTuple}(
-    "Planck18EEBAOSN" => (Omega_c=0.2589, Omega_b=0.0486, h=0.6774, sigma8=0.8159, n_s=0.9667, Omega_k=0.0, w0=-1.0, wa=0.0),
+    "Planck18EEBAOSN" => (Omega_c=0.259622, Omega_b=0.0488911, h=0.67742, sigma8=0.8105, n_s=0.96822, Omega_k=0.0, w0=-1.0, wa=0.0),
     "Planck15"        => (Omega_c=0.2589, Omega_b=0.0486, h=0.6774, sigma8=0.8159, n_s=0.9667, Omega_k=0.0, w0=-1.0, wa=0.0),
     "Quijote"         => (Omega_c=0.3175, Omega_b=0.049,  h=0.6711, sigma8=0.834,  n_s=0.9624, Omega_k=0.0, w0=-1.0, wa=0.0),
     "CamelsCV"        => (Omega_c=0.2514, Omega_b=0.049,  h=0.6711, sigma8=0.818,  n_s=0.9624, Omega_k=0.0, w0=-1.0, wa=0.0),
