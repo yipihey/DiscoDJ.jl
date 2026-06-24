@@ -106,9 +106,18 @@ needed for `det(H₁)` but streams the six `d2` cross-terms (**8** real buffers,
 15). Measured device working sets: 2LPT@832³ ≈ 27 GiB, 3LPT@768³ ≈ 34 GiB — both
 fit the 48 GB A6000, where the un-streamed 3LPT@768³ did not.
 
-**Crossover:** 2LPT fits to ~896³ and 3LPT to ~768³ on the A6000 (the exact edge
-near 44 GiB is sensitive to cuFFT plan workspace); larger boxes use the CPU / 2 TB
-RAM. `store=:f16` stacks on top (e.g. 3LPT@704³: 34 → 26 GiB).
+**cuFFT memory.** `to_gpu(grid)` frees the r2c plan's preservation buffer — one
+complex half-spectrum (0.5 GiB at 512³, 2.7 GiB at 896³) that CUDA.jl allocates
+but the forward-only `mul!` path never uses. What remains of the per-grid cuFFT
+cost is the **internal workspace** (not exposed by CUDA.jl), which scales with the
+resolution's prime factorisation: it is small for smooth sizes (2ᵃ·3ᵇ·5ᶜ) and
+large for ones with big factors (e.g. 896 = 2⁷·7, 832 = 2⁶·13). **Prefer smooth
+resolutions** — they cut both the workspace and the FFT time.
+
+**Crossover:** 2LPT fits to ~896³ and 3LPT to ~768³ on the A6000 at smooth sizes;
+the exact edge near 44 GiB is set by that cuFFT workspace, so a non-smooth size
+can OOM below a larger smooth one. Larger boxes use the CPU / 2 TB RAM.
+`store=:f16` stacks on top (e.g. 3LPT@704³: 34 → 26 GiB).
 
 ## Benchmarks & tests
 

@@ -39,6 +39,22 @@ function DiscoDJNative.to_gpu(f::AbstractArray{Complex{T},3}) where {T}
     return CuArray(permutedims(fcanon, (3, 1, 2)))
 end
 
+# CUDA.jl attaches a preservation buffer (one complex half-spectrum — 2.9 GiB at
+# 896³) to every r2c plan, but it is only used on the inverse/ldiv! path.  The LPT
+# pipeline only ever runs `plan_fwd` forward via `mul!`, so the buffer is dead
+# weight: free it and leave an empty same-type stub so the plan's finalizer (which
+# frees `buffer`) stays valid.
+function _free_fwd_buffer!(p)
+    if hasproperty(p, :buffer) && getfield(p, :buffer) !== nothing
+        b = p.buffer
+        if length(b) > 0
+            p.buffer = similar(b, ntuple(_ -> 0, ndims(b)))
+            CUDA.unsafe_free!(b)
+        end
+    end
+    return p
+end
+
 """
     to_gpu(grid::FourierGrid) -> FourierGrid
 
@@ -51,7 +67,7 @@ function DiscoDJNative.to_gpu(grid::FourierGrid{T}) where {T}
     kx, ky, kz = grid.k_vecs
     kg  = (perm(kx), perm(ky), perm(kz))
     k2g = perm(grid.k2)
-    plan_fwd = plan_rfft(CUDA.zeros(T, res, res, res), [1, 2, 3])
+    plan_fwd = _free_fwd_buffer!(plan_rfft(CUDA.zeros(T, res, res, res), [1, 2, 3]))
     plan_inv = plan_irfft(CUDA.zeros(Complex{T}, res ÷ 2 + 1, res, res), res, [1, 2, 3])
     return FourierGrid{T}(grid.dim, res, grid.boxsize, kg, k2g, plan_fwd, plan_inv)
 end
