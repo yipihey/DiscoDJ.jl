@@ -9,6 +9,11 @@ Entry point: `compute_lpt(fphi_ini, grid; n_order=2, backend=:ka)`
 Returns a Dict with keys :psi1, :psi2, :psi3 — each a (res,res,res,3)
 real array of displacement vectors in Mpc/h (un-normalised; apply D(a)·ψ
 to get physical displacements at scale factor a).
+
+FFT convention: arrays are (res, res, res÷2+1) in full 3D Fourier space with
+the half-complex axis last. Use rfft(x, [3,1,2]) / irfft(x, res, [3,1,2]).
+generate_grf returns the potential φ(k) = δ(k)/k² directly; LPT uses it
+without another Poisson solve.
 """
 
 export compute_lpt, LPTResult
@@ -65,20 +70,17 @@ end
 function _compute_1lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T};
                        backend=:ka) where T
     kx, ky, kz = grid.k_vecs
-    k2 = grid.k2
     res = grid.res
 
-    # φ₁(k) = fphi_ini / k² (Poisson)
-    fphi1 = similar(fphi_ini)
-    _inv_laplace!(fphi1, fphi_ini, k2; backend)
+    # fphi_ini is already φ₁(k) = δ(k)/k² from generate_grf (Poisson already solved)
+    fphi1 = fphi_ini
 
     # ψ¹_d(k) = i·k_d·φ₁(k) for d = x,y,z
     psi1 = Array{T}(undef, res, res, res, 3)
     tmp  = similar(fphi1)
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi1, kcomp; backend)
-        real_field = irfft(tmp, res)
-        psi1[:, :, :, d] .= real_field
+        psi1[:, :, :, d] .= irfft(tmp, res, [3, 1, 2])
     end
     return psi1, fphi1
 end
@@ -102,7 +104,7 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
         @inbounds for idx in eachindex(fd)
             fd[idx] = -ki[idx] * kj[idx] * fphi1[idx]
         end
-        irfft(fd, res)
+        irfft(fd, res, [3, 1, 2])
     end
 
     d11 = _second_deriv(kx, kx)
@@ -116,11 +118,11 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     S2_real = @. d11*d22 - d12^2 + d11*d33 - d13^2 + d22*d33 - d23^2
 
     # Fourier transform S₂, then Poisson solve → φ₂
-    fS2   = rfft(S2_real)
+    fS2   = rfft(S2_real, [3, 1, 2])
     fphi2 = similar(fS2)
     _inv_laplace!(fphi2, fS2, k2; backend)
 
-    # Prefactor: 5/7 for 2LPT (exact for EdS)
+    # Prefactor: -3/7 for 2LPT (exact for EdS)
     fphi2 .*= T(-3/7)
 
     # ψ²_d = i·k_d·φ₂
@@ -128,7 +130,7 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     tmp  = similar(fphi2)
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi2, kcomp; backend)
-        psi2[:, :, :, d] .= irfft(tmp, res)
+        psi2[:, :, :, d] .= irfft(tmp, res, [3, 1, 2])
     end
     return psi2, fphi2
 end
@@ -151,7 +153,7 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
         @inbounds for idx in eachindex(fd)
             fd[idx] = -ki[idx] * kj[idx] * fphi[idx]
         end
-        irfft(fd, res)
+        irfft(fd, res, [3, 1, 2])
     end
 
     # First-order second derivatives
@@ -173,7 +175,7 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
 
     S3_real = @. T(10/21) * S3a + T(1/3) * S3b
 
-    fS3   = rfft(S3_real)
+    fS3   = rfft(S3_real, [3, 1, 2])
     fphi3 = similar(fS3)
     _inv_laplace!(fphi3, fS3, k2; backend)
     fphi3 .*= T(-1)
@@ -182,7 +184,7 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
     tmp  = similar(fphi3)
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi3, kcomp; backend)
-        psi3[:, :, :, d] .= irfft(tmp, res)
+        psi3[:, :, :, d] .= irfft(tmp, res, [3, 1, 2])
     end
     return psi3
 end
@@ -195,7 +197,7 @@ end
 Compute nLPT displacement fields from the initial Fourier-space potential.
 
 `fphi_ini` — complex rfft array of shape (res, res, res÷2+1), the Gaussian
-             random potential field (from `generate_grf`).
+             random potential field φ(k) = δ(k)/k² (from `generate_grf`).
 `grid`     — FourierGrid for the simulation box.
 `n_order`  — LPT order: 1 (Zel'dovich), 2, or 3.
 `backend`  — `:ka` (KernelAbstractions) or `:threads` (Threads.@threads).

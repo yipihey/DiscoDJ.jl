@@ -7,7 +7,7 @@ Parameters match the Python DISCO-DJ Cosmology class exactly.
 
 export Cosmology, PREDEFINED_COSMOLOGIES
 export hubble_E, hubble_H, comoving_distance, scale_factor_from_chi
-export compute_timetables, growth_rate
+export compute_timetables, growth_rate, Omega_m
 
 using Interpolations: LinearInterpolation
 
@@ -77,18 +77,20 @@ Precompute chi(a) on a grid and return a new Cosmology with interpolation tables
 """
 function compute_timetables(c::Cosmology{T}; n_pts::Int=1000, a_ini::T=T(1e-4)) where T
     a_table = collect(LinRange(a_ini, T(1.0), n_pts))
-    chi_table = Vector{T}(undef, n_pts)
-    chi_table[1] = T(0)
+    # Forward integration: chi_fwd[i] = ∫_{a_ini}^{a[i]} dchi/da da
+    chi_fwd = Vector{T}(undef, n_pts)
+    chi_fwd[1] = T(0)
     da = (T(1) - a_ini) / (n_pts - 1)
     for i in 2:n_pts
         a = a_table[i-1]
-        # RK4 integration
         k1 = _dchi_da(c, a)
         k2 = _dchi_da(c, a + da/2)
         k3 = _dchi_da(c, a + da/2)
         k4 = _dchi_da(c, a + da)
-        chi_table[i] = chi_table[i-1] + da * (k1 + 2k2 + 2k3 + k4) / 6
+        chi_fwd[i] = chi_fwd[i-1] + da * (k1 + 2k2 + 2k3 + k4) / 6
     end
+    # Physical chi(a) = chi_total - chi_fwd(a): chi(a=1)=0, chi(a_ini)=max
+    chi_table = chi_fwd[end] .- chi_fwd
     # Growth factors (populated by growth.jl after include)
     D1, D2, f1 = _compute_growth_tables(c, a_table)
     return Cosmology{T}(
@@ -118,11 +120,12 @@ Inverse of chi(a) via bisection on the timetable.
 """
 function scale_factor_from_chi(c::Cosmology{T}, chi::T) where T
     isempty(c._a_table) && error("Call compute_timetables first")
-    chi_max = c._chi_table[end]
+    chi_max = c._chi_table[1]   # chi_table[1] = chi(a_ini) = maximum distance
     chi <= 0 && return T(1)
     chi >= chi_max && return c._a_table[1]
+    # chi_table is monotonically decreasing → reverse for increasing knots
     itp = LinearInterpolation(reverse(c._chi_table), reverse(c._a_table))
-    itp(clamp(chi, c._chi_table[1], chi_max))
+    itp(clamp(chi, T(0), chi_max))
 end
 
 # ── Predefined cosmologies ───────────────────────────────────────────────────

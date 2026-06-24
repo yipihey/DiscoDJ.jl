@@ -37,8 +37,8 @@ function eisenstein_hu(c::Cosmology{CT}, k::AbstractArray{T}; Tcmb::Float64=2.72
     z_d   = 1291 * ommh2^0.251 / (1 + 0.659 * ommh2^0.828) * (1 + b1 * ombh2^b2)
 
     # Sound horizon at drag epoch
-    R_eq  = 31.5e3 * ombh2 * Θ^(-4) * (1000/z_eq)
-    R_d   = 31.5e3 * ombh2 * Θ^(-4) * (1000/z_d)
+    R_eq  = 31.5e3 * ombh2 * Θ^(-4) / z_eq   # baryon-photon ratio at equality
+    R_d   = 31.5e3 * ombh2 * Θ^(-4) / z_d    # baryon-photon ratio at drag epoch
     s     = 2/(3*k_eq) * sqrt(6/R_eq) * log((sqrt(1+R_d) + sqrt(R_d + R_eq)) / (1 + sqrt(R_eq)))
 
     k_silk = 1.6 * ombh2^0.52 * ommh2^0.01 * (1 + (5.2*ommh2)^(-0.62))^(-1/4)  # not standard, using common approx

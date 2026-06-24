@@ -77,7 +77,7 @@ function _grf_real(dim, res, boxsize, Pk_interp, seed, dtype, dtype_c)
     rng = MersenneTwister(seed)
     shape = ntuple(_ -> res, dim)
     white = randn(rng, dtype, shape)
-    fwhite = rfft(white)
+    fwhite = rfft(white, [dim; collect(1:dim-1)])  # full n-D rfft, half-complex last
     norm_fac = (res / boxsize)^dim
     @inbounds for i in eachindex(fwhite)
         fwhite[i] *= sqrt(Pk_interp[i] * norm_fac)

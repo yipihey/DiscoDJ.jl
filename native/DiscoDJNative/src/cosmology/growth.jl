@@ -21,7 +21,7 @@ function _growth_rhs1(c::Cosmology{T}, a, D, Dp) where T
     # dE/da by finite difference (cheap and accurate enough)
     dE = (hubble_E(c, a * (1 + T(1e-5))) - hubble_E(c, a * (1 - T(1e-5)))) / (2a * T(1e-5))
     Om = Omega_m(c)
-    alpha = -(2/a + dE/E)
+    alpha = -(3/a + dE/E)
     beta  = T(1.5) * Om / (a^3 * E^2 * a^2)
     return alpha * Dp + beta * D
 end

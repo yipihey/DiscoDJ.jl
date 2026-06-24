@@ -1,6 +1,8 @@
 using Test
 using DiscoDJNative
 
+mean(x) = sum(x) / length(x)
+
 @testset "DiscoDJNative" begin
 
     @testset "Cosmology" begin
@@ -193,5 +195,3 @@ using DiscoDJNative
     end
 
 end
-
-mean(x) = sum(x) / length(x)

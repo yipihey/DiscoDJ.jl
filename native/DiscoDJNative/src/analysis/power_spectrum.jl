@@ -31,8 +31,8 @@ function evaluate_power_spectrum(field::AbstractArray{T,3}, boxsize::Real;
     dk   = 2π / boxsize
     k_ny = π * res / boxsize
 
-    # FFT
-    fft_field = rfft(field)
+    # Full 3D rfft with half-complex axis last → shape (res, res, res÷2+1)
+    fft_field = rfft(field, [3, 1, 2])
     # Normalise: |δ(k)|² * V / N²
     fft_norm  = abs2.(fft_field) .* (V / res^6)
 
@@ -91,8 +91,8 @@ function evaluate_cross_power_spectrum(field1::AbstractArray{T,3},
     dk  = 2π / boxsize
     k_ny = π * res / boxsize
 
-    f1 = rfft(field1)
-    f2 = rfft(field2)
+    f1 = rfft(field1, [3, 1, 2])
+    f2 = rfft(field2, [3, 1, 2])
     cross = real.(conj.(f1) .* f2) .* (V / res^6)
 
     kfull = [i <= res÷2 ? i : i - res for i in 0:res-1] .* dk
