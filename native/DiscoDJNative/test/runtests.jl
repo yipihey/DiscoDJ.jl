@@ -2,6 +2,7 @@ using Test
 using DiscoDJNative
 using Random: MersenneTwister
 using FFTW: rfft
+using LinearAlgebra: norm
 
 mean(x) = sum(x) / length(x)
 
@@ -172,12 +173,16 @@ mean(x) = sum(x) / length(x)
 
     @testset "Power spectrum" begin
         res = 32; boxsize = 100.0
-        # White noise field → P(k) ≈ constant (shot noise P = V/N)
+        # White noise field → P(k) ≈ constant shot noise P = V/N (the correct
+        # normalisation; guards against a spurious extra factor of V).
         field = randn(res, res, res)
         ps = evaluate_power_spectrum(field, boxsize; bins=10)
         @test length(ps.k) == 10
         @test all(ps.Pk .>= 0)
         @test all(diff(ps.k) .> 0)  # k bins are ordered
+        Vn = boxsize^3 / res^3                          # shot noise V/N
+        nz = ps.Pk[ps.Pk .> 0]
+        @test 0.5 * Vn < sum(nz)/length(nz) < 2.0 * Vn  # amplitude ~ V/N, not V²/N
     end
 
     @testset "HEALPix ang2pix_ring" begin
@@ -213,10 +218,14 @@ mean(x) = sum(x) / length(x)
         bs = evaluate_bispectrum_equilateral(rng_field, boxsize; bins=5)
         @test length(bs.k) == 5
         @test all(diff(bs.k) .> 0)   # k bins ordered
-        # B(k) for white noise should be small relative to P(k)²
+        # White noise has no connected 3-pt signal, so |B|/P² ≪ 1 at well-sampled
+        # (high-k, many-triangle) bins.  Low-k bins are estimator-noise dominated
+        # (few triangles), so we test the two best-sampled bins.  (NB: the |δ|²-FFT
+        # estimator here is internally consistent with the V/N² P(k) normalisation
+        # but is NOT the same estimator as JAX's triangle enumeration.)
         ps = evaluate_power_spectrum(rng_field, boxsize; bins=5)
-        # |B| / P² ≪ 1 for white noise (no signal)
-        @test all(abs.(bs.Bk) ./ (ps.Pk .^ 2 .+ 1e-30) .< 1.0)
+        rB = abs.(bs.Bk) ./ (ps.Pk .^ 2 .+ 1e-30)
+        @test all(rB[end-1:end] .< 1.0)
     end
 
     # ── GPU backend (runs only when CUDA is available) ───────────────────────
@@ -264,9 +273,10 @@ mean(x) = sum(x) / length(x)
     end
 
     # ── Differentiability (runs only if Zygote + FiniteDifferences are available) ──
-    # The functional `lpt_psi_ad` reproduces compute_lpt+evaluate exactly and is
-    # differentiable w.r.t. the initial white-noise field ω (the property that makes
-    # DISCO-DJ "Done with Jax" — needed for field-level IC inference).
+    # `lpt_psi_ad` is the faithful de-aliased engine (nlpt_core) and is differentiable
+    # w.r.t. the white-noise field ω — the property that makes DISCO-DJ "Done with Jax"
+    # (needed for field-level IC inference).  The IC map `white_noise_to_fphi` uses the
+    # JAX −1/k² gauge and reproduces JAX's `generate_grf("real")` to machine precision.
     ad_ok = false
     try
         @eval using Zygote, FiniteDifferences
@@ -283,14 +293,18 @@ mean(x) = sum(x) / length(x)
             op   = ic_operator(res, L, pk; T=T)
             ω    = randn(MersenneTwister(7), T, res, res, res)
             fphi = white_noise_to_fphi(op, ω)
-            # ω → φ(k) reproduces generate_grf(:real)
-            @test relerr2(generate_grf(:real, 3, pk, res, L, 7; dtype=T, dtype_c=Complex{T}),
-                          white_noise_to_fphi(op, randn(MersenneTwister(7), T, res, res, res))) < 1e-12
+            # The faithful IC map (JAX −1/k² gauge) is the exact negative of the legacy
+            # (+1/k²) generate_grf map at the same white noise.
+            @test relerr2(generate_grf(:real, 3, pk, res, L, 7; dtype=T, dtype_c=Complex{T},
+                                       white_noise=randn(MersenneTwister(7), T, res, res, res)),
+                          -white_noise_to_fphi(op, randn(MersenneTwister(7), T, res, res, res))) < 1e-12
+            # lpt_psi_ad delegates to the faithful nlpt_core engine
+            K = nlpt_kernels(res, L)
             for n in (1, 2, 3)
-                psi_ad  = lpt_psi_ad(fphi, grid, c, a; n_order=n)
-                psi_ref = evaluate_lpt_psi_at_a(compute_lpt(fphi, grid; n_order=n, backend=:threads), c, a)
-                @test relerr2(psi_ref, psi_ad) < 1e-10                       # forward parity
+                @test relerr2(lpt_psi_ad(fphi, grid, c, a; n_order=n),
+                              lpt_displacement(fphi, K, c, a; n_order=n)) < 1e-12
             end
+            # ∂/∂ω vs finite differences (the defining property)
             loss(w) = sum(abs2, lpt_psi_ad(white_noise_to_fphi(op, w), grid, c, a; n_order=2))
             g = Zygote.gradient(loss, ω)[1]
             fdm = central_fdm(5, 1)
@@ -345,6 +359,30 @@ mean(x) = sum(x) / length(x)
                 @test isapprox(gc[i], gfd; rtol=1e-4, atol=1e-20)
             end
         end
+    end
+
+    # ── Lightcone crossing (Newton root-find of |x(a)-obs| = χ(a)) ──────────────
+    # Regression for the dχ/da sign + the robust bracketing seed: every reported
+    # crossing must satisfy the lightcone condition to ~machine precision.
+    @testset "Lightcone crossing" begin
+        c = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c)
+        res = 16; L = 200.0
+        fphi = generate_grf(:ngenic, 3, pk, res, L, 42; dtype=Float64, dtype_c=ComplexF64)
+        grid = get_fourier_grid(res, L; T=Float64)
+        lpt  = compute_lpt(fphi, grid; n_order=2, backend=:threads)
+        obs  = [L/2, L/2, L/2]; reps = reshape(Int[0, 0, 0], 1, 3)
+
+        # dχ/da < 0 (χ decreases with a) — the bug that inverted the Newton step
+        @test DiscoDJNative._dchi_da_at(c, 0.5) < 0
+
+        # Bracketing seed alone (n_newton_iters=0) lands on the lightcone
+        cr = find_lightcone_crossings(lpt, c, collect(range(0.3, 1.0; length=6)), obs, reps;
+                                      n_newton_iters=0, radial_residual_tol=0.1)
+        @test length(cr.a_cross) > 0
+        maxres = maximum(abs(norm(cr.x[i, :] .- obs) - comoving_distance(c, cr.a_cross[i]))
+                         for i in eachindex(cr.a_cross))
+        @test maxres < 1e-6                     # |x-obs| = χ(a) to ~machine precision
+        @test all(0.3 .<= cr.a_cross .<= 1.0)   # all within the shell range
     end
 
 end

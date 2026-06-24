@@ -84,12 +84,16 @@ end
 BBKS fitting formula. k in h/Mpc.
 """
 function bbks(c::Cosmology{CT}, k::AbstractArray{T}; Neff::Float64=3.046) where {CT, T}
-    Om_m = Omega_m(c)
-    h    = c.h
-    Γ    = Om_m * h * exp(-c.Omega_b * (1 + sqrt(2h)/Om_m))   # shape parameter
+    # Ported line-for-line from DISCO-DJ's `bbks` (BBKS 1986): shape
+    #   q = k·√θ / ((Ωm − Ωb) h²),  θ = (1 + Neff·7/8·(4/11)^(4/3)) / 1.68.
+    # (The earlier Julia version used the Sugiyama-1995 Γ form — ~10 % different.)
+    rhor_over_rhogamma = 1.0 + Neff * (7.0 / 8.0) * (4.0 / 11.0)^(4.0 / 3.0)
+    θ    = rhor_over_rhogamma / 1.68
+    omh2 = Omega_m(c) * c.h^2
+    obh2 = c.Omega_b * c.h^2
     T_arr = similar(k, Float64)
     @inbounds for idx in eachindex(k)
-        q = k[idx] / Γ   # k in h/Mpc, q in Mpc
+        q = Float64(k[idx]) * sqrt(θ) / (omh2 - obh2)   # k in h/Mpc
         T_arr[idx] = log(1 + 2.34q) / (2.34q) *
                      (1 + 3.89q + (16.1q)^2 + (5.46q)^3 + (6.71q)^4)^(-1/4)
     end

@@ -69,7 +69,8 @@ function evaluate_power_spectrum(field::AbstractArray{T,3}, boxsize::Real;
             N_modes[b] = 0
         else
             k_cen[b]  = sum(k_arr[mask]) / n_k
-            Pk_out[b]  = sum(fft_norm[mask] .* w[mask]) / sum(w[mask]) * V
+            # P(k) = ⟨|δ(k)|²⟩·V/N²  (fft_norm already carries V/N²; no extra V).
+            Pk_out[b]  = sum(fft_norm[mask] .* w[mask]) / sum(w[mask])
             N_modes[b] = n_k
         end
     end
@@ -114,7 +115,8 @@ function evaluate_cross_power_spectrum(field1::AbstractArray{T,3},
         mask = (k_arr .>= edges[b]) .& (k_arr .< edges[b+1])
         n_k  = sum(mask)
         k_cen[b] = n_k > 0 ? sum(k_arr[mask]) / n_k : sqrt(edges[b]*edges[b+1])
-        Pk12[b]  = n_k > 0 ? sum(cross[mask]) / n_k * V : 0.0
+        # cross already carries V/N² (matches evaluate_power_spectrum); no extra V.
+        Pk12[b]  = n_k > 0 ? sum(cross[mask]) / n_k : 0.0
     end
 
     return (k=k_cen, Pk12=Pk12)

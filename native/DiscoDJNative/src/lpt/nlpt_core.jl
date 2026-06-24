@@ -25,6 +25,8 @@ component axis: `(res, res, res÷2+1, 3)`.
 export NLPTKernels, nlpt_kernels, compute_core, compute_core_exact,
        evaluate_core, lpt_displacement
 
+using ChainRulesCore: @ignore_derivatives   # growth factors are constants in ω
+
 # ── rfft/irfft in the pipeline's [3,1,2] convention ───────────────────────────
 _rfftn(x) = rfft(x, [3, 1, 2])
 _irfftn(f, n::Int) = irfft(f, n, [3, 1, 2])
@@ -268,8 +270,8 @@ function compute_core(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernels{T};
     res, ext = K.res, K.ext
     # JAX zeros φ's DC mode here; redundant — every use of φ multiplies by a
     # gradient kernel (DC = 0), so we pass fphi_ini through untouched.
-    psi = Vector{Array{Complex{T},4}}()               # psi[i] = ψ_i in Fourier
-    push!(psi, _psi1_fourier(K, fphi_ini))
+    # ψ_i in Fourier, accumulated in a tuple (no in-place `push!` → Zygote-traceable)
+    psi = (_psi1_fourier(K, fphi_ini),)
 
     for i in 2:n_order
         fL = zeros(Complex{T}, res, res, res ÷ 2 + 1)
@@ -304,7 +306,7 @@ function compute_core(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernels{T};
             end
         end
 
-        push!(psi, _assemble_psi(K, fL, no_transverse ? nothing : fT))
+        psi = (psi..., _assemble_psi(K, fL, no_transverse ? nothing : fT))
     end
 
     out = Dict{String,Array{T,4}}()
@@ -366,22 +368,30 @@ Combine the nLPT shape fields with the growth factors, exactly as DISCO-DJ's
 """
 function evaluate_core(shapes::Dict{String,Array{T,4}}, cosmo::Cosmology, a::Real;
                        n_order::Int, exact_growth::Bool) where {T}
+    # Growth factors depend only on (cosmo, a), not on ω/φ — keep them off the AD
+    # tape (Zygote tracing the growth-table interpolation otherwise segfaults).
     if exact_growth
-        psi = T(growth_D1(cosmo, a)) .* shapes["psi_1"]
+        D1  = @ignore_derivatives T(growth_D1(cosmo, a))
+        psi = D1 .* shapes["psi_1"]
         if n_order >= 2
-            psi = psi .+ T(growth_D2(cosmo, a)) .* shapes["psi_2_ex"]
+            D2 = @ignore_derivatives T(growth_D2(cosmo, a))
+            psi = psi .+ D2 .* shapes["psi_2_ex"]
         end
         if n_order >= 3
-            psi = psi .+ T(growth_D3a(cosmo, a)) .* shapes["psi_3a_ex"] .+
-                         T(growth_D3b(cosmo, a)) .* shapes["psi_3b_ex"] .+
-                         T(growth_D3c(cosmo, a)) .* shapes["psi_3c_ex"]
+            D3a = @ignore_derivatives T(growth_D3a(cosmo, a))
+            D3b = @ignore_derivatives T(growth_D3b(cosmo, a))
+            D3c = @ignore_derivatives T(growth_D3c(cosmo, a))
+            psi = psi .+ D3a .* shapes["psi_3a_ex"] .+
+                         D3b .* shapes["psi_3b_ex"] .+
+                         D3c .* shapes["psi_3c_ex"]
         end
         return psi
     else
-        D1  = T(growth_D1(cosmo, a))
+        D1  = @ignore_derivatives T(growth_D1(cosmo, a))
         psi = D1 .* shapes["psi_1"]
         for n in 2:n_order
-            psi = psi .+ D1^n .* shapes["psi_$n"]
+            Dn = @ignore_derivatives D1^n
+            psi = psi .+ Dn .* shapes["psi_$n"]
         end
         return psi
     end

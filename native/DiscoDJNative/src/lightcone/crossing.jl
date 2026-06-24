@@ -49,9 +49,13 @@ function _trajectory_dot(psi1_flat::AbstractMatrix,
 end
 
 # ── dchi/da for Newton step on the χ(a) side ──────────────────────────────────
+# χ(a) is the comoving distance to scale factor a, which DECREASES with a, so
+# dχ/da = −(c/H₀)/(a²E) < 0 (matches JAX `dchi_da = -c_over_H0 / (a**2 * E_a)`).
+# (The previous +(c/H₀)/(a²E) was d(χ_fwd)/da — the wrong sign — which inverted the
+# χ-term of dF/da and made the Newton step move away from the crossing.)
 
 function _dchi_da_at(cosmo::Cosmology, a::Real)
-    return 2997.92458 / (a^2 * hubble_E(cosmo, a))
+    return -2997.92458 / (a^2 * hubble_E(cosmo, a))
 end
 
 # ── Newton iteration for one particle × replica ───────────────────────────────
@@ -79,6 +83,41 @@ function _newton_crossing(q::AbstractVector, replica_offset::AbstractVector,
         a = a_new
     end
     return a
+end
+
+# ── Robust crossing seed: bracket the root of F(a)=|x(a)-obs|-χ(a), then bisect ─
+# Mirrors JAX's secant/bracket seed (shells act as brackets): scan F over
+# [a_far, a_near], take the first sign change, and bisect to a tight seed — robust
+# regardless of `n_newton_iters` (Newton then only polishes).  Returns NaN when the
+# trajectory never crosses the shell in [a_far, a_near].
+function _bracket_seed(q::AbstractVector, rep_offset::AbstractVector,
+                       psi1_flat::AbstractMatrix, psi2_flat::Union{AbstractMatrix,Nothing},
+                       cosmo::Cosmology, a_far::Real, a_near::Real,
+                       observer::AbstractVector, pid::Int; n_scan::Int=16, n_bisect::Int=40)
+    Fa(a) = norm(_trajectory(q, psi1_flat, psi2_flat, cosmo, a, pid) .+ rep_offset .- observer) -
+            comoving_distance(cosmo, a)
+    a_prev = a_far; F_prev = Fa(a_far)
+    F_prev == 0 && return oftype(a_far, a_far)
+    for s in 1:n_scan
+        a_cur = a_far + (a_near - a_far) * s / n_scan
+        F_cur = Fa(a_cur)
+        if (F_prev < 0) != (F_cur < 0)              # sign change ⇒ bracket [a_prev, a_cur]
+            lo, hi, Flo = a_prev, a_cur, F_prev
+            for _ in 1:n_bisect
+                mid  = (lo + hi) / 2
+                Fmid = Fa(mid)
+                Fmid == 0 && return mid
+                if (Fmid < 0) == (Flo < 0)
+                    lo = mid; Flo = Fmid
+                else
+                    hi = mid
+                end
+            end
+            return (lo + hi) / 2
+        end
+        a_prev = a_cur; F_prev = F_cur
+    end
+    return oftype(a_far, NaN)                         # no crossing
 end
 
 # ── Main function: find all crossings for all particles × replicas ────────────
@@ -133,29 +172,17 @@ function find_lightcone_crossings(lpt::LPTResult{T}, cosmo::Cosmology{CT},
         for pid in 1:N
             q = SVector{3,T}(q_grid[pid, 1], q_grid[pid, 2], q_grid[pid, 3])
 
-            # Seed: find shell where particle's distance bracket straddles χ(a_shell)
-            # Use midpoint of a range as initial guess
-            a0 = sqrt(a_far * a_near)
+            # Robust seed: bracket the root of F(a)=|x(a)-obs|-χ(a) and bisect.
+            # NaN ⇒ trajectory never crosses the shell (the correct rejection).
+            a_seed = _bracket_seed(q, rep_offset, psi1_flat, psi2_flat,
+                                   cosmo, a_far, a_near, observer, pid)
+            isnan(a_seed) && continue
 
-            # Check if this particle is in the lightcone ball at all
-            x_far  = _trajectory(q, psi1_flat, psi2_flat, cosmo, a_far, pid) .+ rep_offset
-            x_near = _trajectory(q, psi1_flat, psi2_flat, cosmo, a_near, pid) .+ rep_offset
-            d_far  = norm(x_far  .- observer)
-            d_near = norm(x_near .- observer)
-            chi_far  = comoving_distance(cosmo, a_far)
-            chi_near = comoving_distance(cosmo, a_near)
-
-            # Quick rejection: particle never in lightcone shell
-            if d_far > chi_far * (1 + radial_residual_tol/chi_far) &&
-               d_near < chi_near * (1 - radial_residual_tol/chi_near)
-                continue
-            end
-
-            # Find which shell the particle crosses via linear seed
-            # bisect a to find crossing bracket
-            a_cross = _newton_crossing(q, rep_offset, psi1_flat, psi2_flat,
-                                       cosmo, a0, observer, pid;
-                                       n_iters=n_newton_iters)
+            # Optional Newton polish (the bracketed seed is already tight)
+            a_cross = n_newton_iters > 0 ?
+                _newton_crossing(q, rep_offset, psi1_flat, psi2_flat,
+                                 cosmo, a_seed, observer, pid; n_iters=n_newton_iters) :
+                a_seed
 
             # Validity checks
             a_cross < a_far  && continue

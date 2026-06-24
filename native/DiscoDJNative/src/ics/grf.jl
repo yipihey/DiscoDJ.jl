@@ -52,18 +52,19 @@ function generate_grf(sampling_space::Symbol, dim::Int, pk_table::Dict,
                       dtype::Type=Float32, dtype_c::Type=ComplexF32,
                       white_noise::Union{Nothing,AbstractArray}=nothing)
 
-    # Explicit real-space white-noise field (the differentiable inference route):
-    # route through the linear ω → φ(k) map, bypassing the RNG draw.
-    if white_noise !== nothing
-        dim == 3 || error("explicit white_noise only supported for dim=3")
-        op = ic_operator(res, boxsize, pk_table; T=dtype)
-        return convert.(dtype_c, white_noise_to_fphi(op, convert.(dtype, white_noise)))
-    end
-
     k_grid, k2_grid = _rfft_k_grid(dim, res, boxsize, dtype)
     Pk_interp = _interpolate_pk(pk_table, k_grid, dtype)
 
-    fphi = if sampling_space == :real
+    fphi = if white_noise !== nothing
+        # Explicit real-space white-noise field, applied through the *legacy* (+1/k²)
+        # map so it stays consistent with this function's other modes and the
+        # optimised `compute_lpt`.  (For the differentiable/faithful path use
+        # `ic_operator` + `nlpt_core`, which uses the JAX −1/k² gauge instead.)
+        dim == 3 || error("explicit white_noise only supported for dim=3")
+        norm_fac = (res / boxsize)^dim
+        fw = rfft(convert.(dtype, white_noise), [3, 1, 2])
+        convert.(dtype_c, fw .* sqrt.(Pk_interp .* norm_fac))
+    elseif sampling_space == :real
         _grf_real(dim, res, boxsize, Pk_interp, seed, dtype, dtype_c)
     elseif sampling_space == :fourier
         _grf_fourier(dim, res, boxsize, Pk_interp, seed, dtype, dtype_c)
@@ -81,13 +82,19 @@ function generate_grf(sampling_space::Symbol, dim::Int, pk_table::Dict,
     return fphi
 end
 
-# ── Differentiable IC map  ω → φ(k)  ──────────────────────────────────────────
+# ── Differentiable IC map  ω → φ(k)  (faithful, JAX convention) ───────────────
 # The map from a real-space unit white-noise field ω (res,res,res) to the initial
-# Fourier potential  φ(k) = rfft(ω)·√(P(k)·norm)/k²  (DC=0) is *linear* in ω, hence
-# fully differentiable with no custom adjoint: `rfft` has an AbstractFFTs ChainRule
-# and the rest is a broadcast by a precomputed real `scale`.  This is the field
-# inference optimises over (matches JAX's white_noise_space="real"); the result is a
-# drop-in `fphi_ini` for `compute_lpt`, identical to `generate_grf(:real, …)`.
+# Fourier potential  φ(k) = rfft(ω)·√(P(k)·norm)·(−1/k²)  (DC=0) is *linear* in ω,
+# hence fully differentiable with no custom adjoint: `rfft` carries an AbstractFFTs
+# ChainRule and the rest is a broadcast by a precomputed real `scale`.
+#
+# This reproduces JAX `generate_grf(white_noise_space="real")` *exactly* (the −1/k²
+# inverse-Laplacian sign and the linear P(k) interpolation), so it is the IC map for
+# the faithful path:  `lpt_displacement(white_noise_to_fphi(op, ω), K, …)` matches
+# JAX end-to-end.  NOTE the −1/k² sign: this is the JAX/physical gauge (ψ₁ = −∇φ
+# gives infall into overdensities) and pairs with `nlpt_core`/`lpt_displacement`.
+# The legacy optimised `compute_lpt` uses the opposite (+1/k²) gauge throughout and
+# is fed by `generate_grf` (below) — do not cross the two.
 
 """
     ICOperator{T}
@@ -113,8 +120,9 @@ function ic_operator(res::Int, boxsize::Real, pk_table::Dict; T::Type{<:Abstract
     Pk  = _interpolate_pk(pk_table, kgrid, T)
     nrm = T((res / boxsize)^3)
     scale = similar(k2, T)
+    # −1/k² (JAX inv_laplace_kernel sign), so φ(k) = rfft(ω)·√(P·norm)·(−1/k²).
     @inbounds for i in eachindex(k2)
-        scale[i] = k2[i] == 0 ? zero(T) : sqrt(Pk[i] * nrm) / k2[i]
+        scale[i] = k2[i] == 0 ? zero(T) : -sqrt(Pk[i] * nrm) / k2[i]
     end
     return ICOperator{T, typeof(scale)}(scale, res, T(boxsize))
 end
@@ -208,27 +216,24 @@ function _rfft_k_grid(dim, res, boxsize, dtype)
 end
 
 function _interpolate_pk(pk_table::Dict, k_grid, dtype)
+    # Linear interpolation in linear (k, P) space, matching JAX's
+    # `np.interp(k, pk_table["k"], pk_table["Pk"])` exactly (incl. edge clamping:
+    # k below/above the table → first/last P).  The earlier log-log scheme was a
+    # ~1e-5-level departure from the reference.
     k_tab  = pk_table["k"]
     Pk_tab = pk_table["Pk"]
-    # Linear interpolation on log-log scale
-    log_k  = log.(k_tab)
-    log_Pk = log.(max.(Pk_tab, 1e-300))
+    n = length(k_tab)
     Pk_out = similar(k_grid, dtype)
     @inbounds for i in eachindex(k_grid)
         kval = Float64(k_grid[i])
-        if kval <= 0
-            Pk_out[i] = dtype(0)
+        if kval <= k_tab[1]
+            Pk_out[i] = dtype(Pk_tab[1])
+        elseif kval >= k_tab[end]
+            Pk_out[i] = dtype(Pk_tab[end])
         else
-            lk = log(kval)
-            j  = searchsortedfirst(log_k, lk)
-            if j <= 1
-                Pk_out[i] = dtype(exp(log_Pk[1]))
-            elseif j > length(log_k)
-                Pk_out[i] = dtype(exp(log_Pk[end]))
-            else
-                t = (lk - log_k[j-1]) / (log_k[j] - log_k[j-1])
-                Pk_out[i] = dtype(exp(log_Pk[j-1] * (1-t) + log_Pk[j] * t))
-            end
+            j = searchsortedfirst(k_tab, kval)   # k_tab[j-1] < kval <= k_tab[j]
+            t = (kval - k_tab[j-1]) / (k_tab[j] - k_tab[j-1])
+            Pk_out[i] = dtype(Pk_tab[j-1] * (1 - t) + Pk_tab[j] * t)
         end
     end
     return Pk_out

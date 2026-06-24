@@ -1,15 +1,23 @@
 """
-NGenIC-compatible white noise generator.
+N-GenIC-style white noise generator.
 
-Ports the C++ `rng_ngenic` from discodj_native: Knuth lagged-Fibonacci
-generator (additive), seeded per Fourier-plane, producing the same
-3D complex white noise field as GADGET2/N-GenIC/DISCO-DJ.
+⚠️ FIDELITY NOTE — this does **NOT** reproduce DISCO-DJ's `rng_ngenic` bit-for-bit.
+The reference (`discodj_native/grf_generators.cc`) builds its per-plane seed table
+and draws amplitudes/phases from **GSL's `ranlxd1`** (RANLUX) generator; this Julia
+version uses a Knuth lagged-Fibonacci RNG with a simplified per-plane seeding, so the
+phases differ entirely (verified: the fields are uncorrelated with the reference).
+Matching the reference exactly would require porting GSL `ranlxd1` and the exact
+`SeedTable_` spiral + Hermitian fill from grf_generators.cc.
+
+This only matters for *reproducing a specific N-GenIC/GADGET seed's phases*.  The
+faithful, differentiable inference path does not use it — it takes an explicit
+white-noise field through `ic_operator`/`white_noise_to_fphi` (JAX −1/k² gauge),
+which **does** match JAX to machine precision.
+
+The generator produces a Hermitian Fourier-space field of shape (res, res, res÷2+1)
+(complex128) so that the inverse FFT gives a real field.
 
 Reference: Springel (2005) N-GenIC; List et al. (2023) DISCO-DJ.
-
-The generator produces a Fourier-space field with Hermitian symmetry so
-that the inverse FFT gives a real field. The returned array has shape
-(res, res, res÷2+1) in complex128 matching Julia's rfft convention.
 """
 
 export ngenic_white_noise, ngenic_wnoise_3d
@@ -72,8 +80,9 @@ end
 """
     ngenic_white_noise(seed, res) -> Array{ComplexF64, 3}
 
-Generate the N-GenIC white noise Fourier field of shape (res, res, res÷2+1).
-Matches `rng_ngenic(seed, res).get_field()` from discodj_native.
+Generate an N-GenIC-style white noise Fourier field of shape (res, res, res÷2+1).
+⚠️ Does NOT reproduce `rng_ngenic(seed, res).get_field()` bit-for-bit (different RNG
+— see the module note above).
 
 The field is normalised so that IFFT * res^(3/2) gives a unit-variance
 real-space field (the same convention as DISCO-DJ).
