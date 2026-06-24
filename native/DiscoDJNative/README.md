@@ -84,10 +84,8 @@ displacement memory halves. `pack_half`/`expand_half` expose the conversion; the
 evaluators (`evaluate_lpt_*`) accept packed results transparently.
 
 This directly doubles how large a field you can **hold/output** on the GPU, and
-near-doubles the box for transient-light orders (1LPT/Zel'dovich). For 2LPT/3LPT
-the *compute* peak is bounded by the Float32 transient working set (FFTs + the
-six second-derivative arrays), so the compute ceiling gains there are modest —
-reducing those transients (in-place FFTs, buffer reuse) is the next lever.
+near-doubles the box for transient-light orders (1LPT/Zel'dovich), and stacks on
+top of the memory-lean source construction below.
 
 ## Performance (RTX A6000 vs dual EPYC 7763, 2LPT, Float32)
 
@@ -98,13 +96,19 @@ reducing those transients (in-place FFTs, buffer reuse) is the next lever.
 | 512³ | 11.4 s    |  181 ms  |   63×   |  742 Mcell/s   |
 
 The GPU sustains ~700-740 Mcell/s (memory-bandwidth + cuFFT bound) vs the CPU's
-~10-12 Mcell/s. **Crossover:** the 48 GB A6000 fits 2LPT up to **~896³** from a
-fresh allocation; ≥960³ must run on the CPU / 2 TB RAM. The 2LPT *compute* peak is
-set by the Float32 transient working set (out-of-place FFTs + the six
-second-derivative arrays), so `store=:f16` (which halves the *output* fields)
-extends output storage and the transient-light 1LPT ceiling but moves the 2LPT
-ceiling only modestly; fusing/reusing the transient buffers is what would push it
-toward 1024³.
+~10-12 Mcell/s.
+
+**Memory-lean source construction.** The 2LPT/3LPT sources are built by streaming
+the second derivatives through reused buffers (`mul!`, no per-FFT allocation):
+2LPT via the trace identity `S₂ = ½[(tr H)² − tr(H²)]` accumulates from one
+derivative at a time (**3** real buffers, was 7), and 3LPT holds the six `d1`
+needed for `det(H₁)` but streams the six `d2` cross-terms (**8** real buffers, was
+15). Measured device working sets: 2LPT@832³ ≈ 27 GiB, 3LPT@768³ ≈ 34 GiB — both
+fit the 48 GB A6000, where the un-streamed 3LPT@768³ did not.
+
+**Crossover:** 2LPT fits to ~896³ and 3LPT to ~768³ on the A6000 (the exact edge
+near 44 GiB is sensitive to cuFFT plan workspace); larger boxes use the CPU / 2 TB
+RAM. `store=:f16` stacks on top (e.g. 3LPT@704³: 34 → 26 GiB).
 
 ## Benchmarks & tests
 

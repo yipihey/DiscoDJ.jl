@@ -19,6 +19,7 @@ without another Poisson solve.
 export compute_lpt, LPTResult
 
 using FFTW
+using LinearAlgebra: mul!
 
 # ── Portable Fourier-space second derivative  fd = -k_i k_j φ ──────────────────
 # Built O(10) times per nLPT call, so it is a real cost at large res.  Multiple
@@ -87,31 +88,47 @@ function _fmu2!(out, f1, f2; backend)
     end
 end
 
+# ── shared building blocks (buffer-reusing) ───────────────────────────────────
+
+# Second derivative φ,ij in real space, written into the preallocated real `buf`
+# using the complex scratch `fd`: fd = -kᵢkⱼ·φ, buf = irfft(fd).  `mul!` keeps the
+# transform out of the allocator; the c2r destroys fd, which is rebuilt each call.
+function _sd_into!(buf, fd, ki, kj, fphi, grid)
+    _build_second_deriv!(fd, ki, kj, fphi)
+    mul!(buf, grid.plan_inv, fd)
+    return buf
+end
+
+# ψ_d = irfft(i·k_d·φ) for d=x,y,z, written into `psi[:,:,:,d]`, reusing the real
+# buffer `rbuf` and complex scratch `fd` (no per-component allocation).
+function _grad_to_psi!(psi, fphi, grid, rbuf, fd; backend)
+    for (d, kc) in enumerate(grid.k_vecs)
+        _grad_multiply!(fd, fphi, kc; backend)
+        mul!(rbuf, grid.plan_inv, fd)
+        @views psi[:, :, :, d] .= rbuf
+    end
+    return psi
+end
+
 # ── 1LPT ─────────────────────────────────────────────────────────────────────
 
 function _compute_1lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T};
                        backend=:ka) where T
-    kx, ky, kz = grid.k_vecs
     res = grid.res
-
-    # fphi_ini is already φ₁(k) = δ(k)/k² from generate_grf (Poisson already solved)
-    fphi1 = fphi_ini
-
-    # ψ¹_d(k) = i·k_d·φ₁(k) for d = x,y,z
-    psi1 = similar(fphi1, T, res, res, res, 3)   # device-aware (Array on CPU, CuArray on GPU)
-    tmp  = similar(fphi1)   # complex scratch; destroyed by plan_inv each iteration
-    for (d, kcomp) in enumerate((kx, ky, kz))
-        _grad_multiply!(tmp, fphi1, kcomp; backend)
-        psi1[:, :, :, d] .= grid.plan_inv * tmp   # plan_inv destroys tmp (c2r)
-    end
+    fphi1 = fphi_ini    # already φ₁(k)=δ/k² from generate_grf (Poisson pre-solved)
+    psi1 = similar(fphi1, T, res, res, res, 3)
+    fd   = similar(fphi1)
+    rbuf = similar(fphi1, T, res, res, res)
+    _grad_to_psi!(psi1, fphi1, grid, rbuf, fd; backend)
     return psi1, fphi1
 end
 
 # ── 2LPT ─────────────────────────────────────────────────────────────────────
 #
-# The 2LPT source term is: S₂ = Σ_{i<j} (φ₁,ii φ₁,jj - φ₁,ij²)
-# In Fourier space, each derivative φ₁,ij is just multiplied by i·ki·i·kj = -ki·kj.
-# So the source is built from real-space products of second derivatives.
+# S₂ = Σ_{i<j}(φ,ii φ,jj − φ,ij²).  Using the trace identity
+#   S₂ = ½[(tr H)² − tr(H²)],  tr H = Σ d_ii,  tr(H²) = Σ d_ii² + 2 Σ_{i<j} d_ij²,
+# the source accumulates from one second-derivative at a time — 3 real buffers
+# (t = trace→S₂, q = tr(H²), tmp = current d_ij) instead of materialising all six.
 
 function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
                        backend=:ka) where T
@@ -119,44 +136,37 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     k2 = grid.k2
     res = grid.res
 
-    # One shared complex scratch buffer for all six _second_deriv calls.
-    # Each call overwrites fd entirely before passing it to plan_inv, which
-    # destroys the contents (c2r transform).  Net allocations: 1 instead of 6.
-    fd = similar(fphi1)
-    function _second_deriv(ki, kj)
-        _build_second_deriv!(fd, ki, kj, fphi1)
-        grid.plan_inv * fd   # fd destroyed; returns Array{T,3}
-    end
+    fd  = similar(fphi1)                       # complex scratch (also reused as fS2)
+    t   = similar(fphi1, T, res, res, res)     # Σ d_ii   → overwritten with S₂
+    q   = similar(t)                           # tr(H²)
+    tmp = similar(t)                           # one d_ij at a time
+    sd!(ki, kj) = _sd_into!(tmp, fd, ki, kj, fphi1, grid)
 
-    d11 = _second_deriv(kx, kx)
-    d22 = _second_deriv(ky, ky)
-    d33 = _second_deriv(kz, kz)
-    d12 = _second_deriv(kx, ky)
-    d13 = _second_deriv(kx, kz)
-    d23 = _second_deriv(ky, kz)
+    sd!(kx, kx); @. t  = tmp;          @. q  = tmp*tmp     # d11
+    sd!(ky, ky); @. t += tmp;          @. q += tmp*tmp     # d22
+    sd!(kz, kz); @. t += tmp;          @. q += tmp*tmp     # d33
+    sd!(kx, ky); @. q += T(2)*tmp*tmp                      # d12
+    sd!(kx, kz); @. q += T(2)*tmp*tmp                      # d13
+    sd!(ky, kz); @. q += T(2)*tmp*tmp                      # d23
+    @. t = T(0.5) * (t*t - q)                              # S₂ = ½[(trH)² − tr(H²)]
 
-    S2_real = @. d11*d22 - d12^2 + d11*d33 - d13^2 + d22*d33 - d23^2
-
-    fS2   = grid.plan_fwd * S2_real   # rfft via cached plan
-    fphi2 = similar(fS2)
-    _inv_laplace!(fphi2, fS2, k2; backend)
+    mul!(fd, grid.plan_fwd, t)                 # fS2 = rfft(S₂) into reused scratch
+    fphi2 = similar(fphi1)
+    _inv_laplace!(fphi2, fd, k2; backend)
     fphi2 .*= T(-3/7)
 
-    psi2 = similar(fphi1, T, res, res, res, 3)   # device-aware
-    tmp  = similar(fphi2)   # complex scratch; destroyed by plan_inv each iteration
-    for (d, kcomp) in enumerate((kx, ky, kz))
-        _grad_multiply!(tmp, fphi2, kcomp; backend)
-        psi2[:, :, :, d] .= grid.plan_inv * tmp
-    end
+    psi2 = similar(fphi1, T, res, res, res, 3)
+    _grad_to_psi!(psi2, fphi2, grid, t, fd; backend)       # reuse t (real), fd (complex)
     return psi2, fphi2
 end
 
 # ── 3LPT ─────────────────────────────────────────────────────────────────────
 #
-# The 3LPT source has two parts:
-#   S₃ᵃ = det(φ₁,ij)   (three-way product of first-order second derivatives)
-#   S₃ᵇ = Σ φ₂,ii φ₁,jj - φ₂,ij φ₁,ji   (cross term)
-# ψ³ = ∇φ₃, where ∇²φ₃ = (10/21)S₃ᵃ + S₃ᵇ/3
+# ∇²φ₃ = (10/21)·S₃ᵃ + (1/3)·S₃ᵇ,  S₃ᵃ = det(φ₁,ij),
+#   S₃ᵇ = Σ φ₂,ii φ₁,jj − 2 Σ_{i<j} φ₂,ij φ₁,ij.
+# det needs all six first-order second derivatives at once, but each second-order
+# derivative φ₂,ij enters S₃ᵇ exactly once — so we hold the six d1 and stream the
+# six d2 one at a time: 8 real buffers instead of 14.
 
 function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Complex{T}},
                        grid::FourierGrid{T}; backend=:ka) where T
@@ -164,40 +174,37 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
     k2 = grid.k2
     res = grid.res
 
-    # One shared scratch buffer for all twelve _sd calls (fphi1 and fphi2 have
-    # the same shape).  Each call fills fd from scratch before plan_inv destroys it.
     fd = similar(fphi1)
-    function _sd(ki, kj, fphi)
-        _build_second_deriv!(fd, ki, kj, fphi)
-        grid.plan_inv * fd   # fd destroyed; returns Array{T,3}
-    end
+    mk() = similar(fphi1, T, res, res, res)
+    d11, d22, d33 = mk(), mk(), mk()
+    d12, d13, d23 = mk(), mk(), mk()
+    S3, tmp = mk(), mk()
 
-    d1_11 = _sd(kx, kx, fphi1); d1_22 = _sd(ky, ky, fphi1); d1_33 = _sd(kz, kz, fphi1)
-    d1_12 = _sd(kx, ky, fphi1); d1_13 = _sd(kx, kz, fphi1); d1_23 = _sd(ky, kz, fphi1)
+    _sd_into!(d11, fd, kx, kx, fphi1, grid); _sd_into!(d22, fd, ky, ky, fphi1, grid)
+    _sd_into!(d33, fd, kz, kz, fphi1, grid); _sd_into!(d12, fd, kx, ky, fphi1, grid)
+    _sd_into!(d13, fd, kx, kz, fphi1, grid); _sd_into!(d23, fd, ky, kz, fphi1, grid)
 
-    S3a = @. d1_11*(d1_22*d1_33 - d1_23^2) -
-             d1_12*(d1_12*d1_33 - d1_23*d1_13) +
-             d1_13*(d1_12*d1_23 - d1_22*d1_13)
+    # S₃ = (10/21)·det(H₁)
+    @. S3 = T(10/21) * (d11*(d22*d33 - d23*d23) -
+                        d12*(d12*d33 - d23*d13) +
+                        d13*(d12*d23 - d22*d13))
 
-    d2_11 = _sd(kx, kx, fphi2); d2_22 = _sd(ky, ky, fphi2); d2_33 = _sd(kz, kz, fphi2)
-    d2_12 = _sd(kx, ky, fphi2); d2_13 = _sd(kx, kz, fphi2); d2_23 = _sd(ky, kz, fphi2)
+    # + (1/3)·S₃ᵇ, streaming one d2 at a time into tmp
+    sd2!(ki, kj) = _sd_into!(tmp, fd, ki, kj, fphi2, grid)
+    sd2!(kx, kx); @. S3 += T(1/3)*tmp*(d22 + d33)     # φ₂,11
+    sd2!(ky, ky); @. S3 += T(1/3)*tmp*(d11 + d33)     # φ₂,22
+    sd2!(kz, kz); @. S3 += T(1/3)*tmp*(d11 + d22)     # φ₂,33
+    sd2!(kx, ky); @. S3 -= T(2/3)*tmp*d12             # φ₂,12
+    sd2!(kx, kz); @. S3 -= T(2/3)*tmp*d13             # φ₂,13
+    sd2!(ky, kz); @. S3 -= T(2/3)*tmp*d23             # φ₂,23
 
-    S3b = @. d2_11*(d1_22 + d1_33) + d2_22*(d1_11 + d1_33) + d2_33*(d1_11 + d1_22) -
-             2*(d2_12*d1_12 + d2_13*d1_13 + d2_23*d1_23)
-
-    S3_real = @. T(10/21) * S3a + T(1/3) * S3b
-
-    fS3   = grid.plan_fwd * S3_real   # rfft via cached plan
-    fphi3 = similar(fS3)
-    _inv_laplace!(fphi3, fS3, k2; backend)
+    mul!(fd, grid.plan_fwd, S3)                # fS3 into reused scratch
+    fphi3 = similar(fphi1)
+    _inv_laplace!(fphi3, fd, k2; backend)
     fphi3 .*= T(-1)
 
-    psi3 = similar(fphi1, T, res, res, res, 3)   # device-aware
-    tmp  = similar(fphi3)   # complex scratch; destroyed by plan_inv each iteration
-    for (d, kcomp) in enumerate((kx, ky, kz))
-        _grad_multiply!(tmp, fphi3, kcomp; backend)
-        psi3[:, :, :, d] .= grid.plan_inv * tmp
-    end
+    psi3 = similar(fphi1, T, res, res, res, 3)
+    _grad_to_psi!(psi3, fphi3, grid, tmp, fd; backend)     # reuse tmp (real), fd (complex)
     return psi3
 end
 
