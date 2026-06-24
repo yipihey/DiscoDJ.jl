@@ -31,7 +31,7 @@ Compute out[i] = f[i] / k2[i]  (zeros at k=0).
 Solves the Poisson equation:  φ(k) = δ(k)/k².
 """
 function inv_laplace_ka!(out::AbstractArray{T}, f::AbstractArray{T},
-                         k2::AbstractArray; backend=CPU()) where T
+                         k2::AbstractArray; backend=get_backend(out)) where T
     kernel = _inv_laplace_kernel!(backend)
     kernel(out, f, k2, ndrange=length(out))
     KernelAbstractions.synchronize(backend)
@@ -52,7 +52,7 @@ Compute out[i] = i * kcomp[i] * fphi[i].
 Used to take the Fourier-space gradient: ψ_d(k) = i·k_d·φ(k).
 """
 function grad_multiply_ka!(out::AbstractArray{Complex{T}}, fphi::AbstractArray{Complex{T}},
-                           kcomp::AbstractArray; backend=CPU()) where T
+                           kcomp::AbstractArray; backend=get_backend(out)) where T
     kernel = _grad_kernel!(backend)
     kernel(out, fphi, kcomp, ndrange=length(out))
     KernelAbstractions.synchronize(backend)
@@ -78,7 +78,7 @@ Used to build the 2LPT source term from products of ψ¹ derivatives.
 function fmu2_elementwise_ka!(out::AbstractArray{Complex{T}},
                               f1::AbstractArray{Complex{T}},
                               f2::AbstractArray{Complex{T}};
-                              backend=CPU()) where T
+                              backend=get_backend(out)) where T
     kernel = _fmu2_kernel!(backend)
     kernel(out, f1, f2, ndrange=length(out))
     KernelAbstractions.synchronize(backend)
@@ -98,7 +98,7 @@ end
 Compute out[i] += scale * f[i].
 """
 function field_add_ka!(out::AbstractArray{T}, f::AbstractArray{T},
-                       scale::Number; backend=CPU()) where T
+                       scale::Number; backend=get_backend(out)) where T
     kernel = _field_add_kernel!(backend)
     kernel(out, f, T(scale), ndrange=length(out))
     KernelAbstractions.synchronize(backend)
@@ -121,7 +121,7 @@ Combine first- and second-order displacements at given growth factors:
 """
 function apply_growth_ka!(psi::AbstractArray{T}, psi1::AbstractArray{T},
                           psi2::AbstractArray{T}, D1::Number, D2::Number;
-                          backend=CPU()) where T
+                          backend=get_backend(psi)) where T
     kernel = _apply_growth_kernel!(backend)
     kernel(psi, psi1, psi2, T(D1), T(D2), ndrange=length(psi))
     KernelAbstractions.synchronize(backend)

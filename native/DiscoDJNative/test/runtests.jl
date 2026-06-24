@@ -207,4 +207,43 @@ mean(x) = sum(x) / length(x)
         @test all(abs.(bs.Bk) ./ (ps.Pk .^ 2 .+ 1e-30) .< 1.0)
     end
 
+    # ── GPU backend (runs only when CUDA is available) ───────────────────────
+    # The :ka backend runs unchanged on the GPU through the CUDA extension; the
+    # KA kernels infer their device from the arrays and the FFTs use cuFFT.  The
+    # shared GRF is canonicalised so both backends see identical input (cuFFT's
+    # C2R is stricter than FFTW's about the non-canonical DC/Nyquist modes that
+    # generate_grf produces).  At res ≤ 64 the agreement is fp32 round-off; at
+    # larger res a ~1e-3 residual remains from the Nyquist-derivative convention
+    # difference (physically negligible — Nyquist modes carry vanishing power).
+    cuda_ok = false
+    try
+        @eval using CUDA
+        cuda_ok = CUDA.functional()
+    catch
+        cuda_ok = false
+    end
+    if cuda_ok
+        @testset "GPU (CUDA) ≈ CPU" begin
+            relerr(a, b) = maximum(abs.(a .- b)) / (maximum(abs.(a)) + eps(Float32))
+            c  = Cosmology("Planck18EEBAOSN")
+            pk = linear_power_spectrum(c)
+            for res in (32, 64)
+                T = Float32; L = 1000.0
+                grid  = get_fourier_grid(res, L; T=T)
+                fphi  = generate_grf(:ngenic, 3, pk, res, L, 42; dtype=T, dtype_c=Complex{T})
+                fc    = canonicalize_hermitian(fphi, grid)
+                gridg = to_gpu(grid); fphig = to_gpu(fphi)
+                for n in (1, 2, 3)
+                    cpu = compute_lpt(fc,    grid;  n_order=n, backend=:ka)
+                    gpu = compute_lpt(fphig, gridg; n_order=n, backend=:ka)
+                    @test relerr(cpu.psi1, to_host(gpu.psi1)) < 1e-4
+                    n >= 2 && @test relerr(cpu.psi2, to_host(gpu.psi2)) < 1e-4
+                    n >= 3 && @test relerr(cpu.psi3, to_host(gpu.psi3)) < 1e-4
+                end
+            end
+        end
+    else
+        @info "CUDA not functional — skipping GPU backend tests"
+    end
+
 end

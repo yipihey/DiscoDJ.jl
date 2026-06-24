@@ -21,6 +21,17 @@ function __init__()
     FFTW.set_num_threads(Threads.nthreads())
 end
 
+# ── GPU interface ─────────────────────────────────────────────────────────────
+# Implemented by the CUDA package extension (ext/DiscoDJNativeCUDAExt.jl); call
+# `using CUDA` to enable.  `to_gpu` moves a FourierGrid (k-grids + cuFFT plans)
+# or a Fourier-space field onto the device, applying the (3,1,2) layout swap that
+# puts the rfft half-axis on dim 1 — cuFFT requires the reduced axis first, while
+# CPU code keeps it on dim 3.  `to_host` brings displacement fields back and
+# undoes that swap.  Both error helpfully until `using CUDA`.
+to_gpu(::Any) = error("to_gpu requires the CUDA extension — run `using CUDA` first.")
+to_host(x) = x                      # no-op on host; CUDA ext adds CuArray methods
+export to_gpu, to_host
+
 # ── Cosmology ────────────────────────────────────────────────────────────────
 include("cosmology/Cosmology.jl")
 include("cosmology/transfer.jl")

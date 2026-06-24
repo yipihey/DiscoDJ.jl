@@ -20,6 +20,19 @@ export compute_lpt, LPTResult
 
 using FFTW
 
+# ── Portable Fourier-space second derivative  fd = -k_i k_j φ ──────────────────
+# Built O(10) times per nLPT call, so it is a real cost at large res.  Multiple
+# dispatch keeps one source of truth across backends: a threaded loop on host
+# Arrays, and a fused broadcast (a single GPU kernel) on device arrays — so the
+# unmodified nLPT code below runs on both CPU and GPU.
+@inline function _build_second_deriv!(fd::Array, ki, kj, fphi)
+    Threads.@threads for idx in eachindex(fd)
+        @inbounds fd[idx] = -ki[idx] * kj[idx] * fphi[idx]
+    end
+    return fd
+end
+@inline _build_second_deriv!(fd::AbstractArray, ki, kj, fphi) = (@. fd = -ki * kj * fphi)
+
 # ── Result type ───────────────────────────────────────────────────────────────
 
 """
@@ -31,9 +44,9 @@ Holds displacement fields from nLPT computation.
 - `psi3`: 3LPT correction                 (res,res,res,3)  [Mpc/h], or nothing
 """
 struct LPTResult{T}
-    psi1::Array{T, 4}
-    psi2::Union{Array{T, 4}, Nothing}
-    psi3::Union{Array{T, 4}, Nothing}
+    psi1::AbstractArray{T, 4}                       # Array on CPU, CuArray on GPU
+    psi2::Union{AbstractArray{T, 4}, Nothing}
+    psi3::Union{AbstractArray{T, 4}, Nothing}
     n_order::Int
     res::Int
     boxsize::T
@@ -76,7 +89,7 @@ function _compute_1lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T}
     fphi1 = fphi_ini
 
     # ψ¹_d(k) = i·k_d·φ₁(k) for d = x,y,z
-    psi1 = Array{T}(undef, res, res, res, 3)
+    psi1 = similar(fphi1, T, res, res, res, 3)   # device-aware (Array on CPU, CuArray on GPU)
     tmp  = similar(fphi1)   # complex scratch; destroyed by plan_inv each iteration
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi1, kcomp; backend)
@@ -102,9 +115,7 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     # destroys the contents (c2r transform).  Net allocations: 1 instead of 6.
     fd = similar(fphi1)
     function _second_deriv(ki, kj)
-        @inbounds for idx in eachindex(fd)
-            fd[idx] = -ki[idx] * kj[idx] * fphi1[idx]
-        end
+        _build_second_deriv!(fd, ki, kj, fphi1)
         grid.plan_inv * fd   # fd destroyed; returns Array{T,3}
     end
 
@@ -122,7 +133,7 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     _inv_laplace!(fphi2, fS2, k2; backend)
     fphi2 .*= T(-3/7)
 
-    psi2 = Array{T}(undef, res, res, res, 3)
+    psi2 = similar(fphi1, T, res, res, res, 3)   # device-aware
     tmp  = similar(fphi2)   # complex scratch; destroyed by plan_inv each iteration
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi2, kcomp; backend)
@@ -148,9 +159,7 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
     # the same shape).  Each call fills fd from scratch before plan_inv destroys it.
     fd = similar(fphi1)
     function _sd(ki, kj, fphi)
-        @inbounds for idx in eachindex(fd)
-            fd[idx] = -ki[idx] * kj[idx] * fphi[idx]
-        end
+        _build_second_deriv!(fd, ki, kj, fphi)
         grid.plan_inv * fd   # fd destroyed; returns Array{T,3}
     end
 
@@ -174,7 +183,7 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
     _inv_laplace!(fphi3, fS3, k2; backend)
     fphi3 .*= T(-1)
 
-    psi3 = Array{T}(undef, res, res, res, 3)
+    psi3 = similar(fphi1, T, res, res, res, 3)   # device-aware
     tmp  = similar(fphi3)   # complex scratch; destroyed by plan_inv each iteration
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi3, kcomp; backend)
