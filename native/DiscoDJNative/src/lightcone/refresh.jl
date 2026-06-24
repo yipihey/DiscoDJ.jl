@@ -136,9 +136,9 @@ function refresh_lightcone_arrays(particle_idx::AbstractVector{Int32},
     a_cross_out  = Vector{T}(undef, M)
     v_radial_out = Vector{T}(undef, M)
     shell_out    = Vector{Int16}(undef, M)
-    valid_out    = BitVector(undef, M)
+    valid_out    = Vector{Bool}(undef, M)   # Bool not BitVector: bit-packing races with @threads
 
-    for i in 1:M
+    Threads.@threads for i in 1:M
         pid   = Int(particle_idx[i]) + 1   # 1-based
         rep_i = Int(replica_idx[i]) + 1
         a0    = T(a_cross_seed[i])

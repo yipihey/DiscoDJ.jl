@@ -117,11 +117,11 @@ function evaluate_lpt_lightcone(scene::DiscoDJScene{T};
     v_radial_vec = Vector{T}(undef, M)
     v_full_mat   = v_mode == :full ? Matrix{T}(undef, M, 3) : nothing
 
-    for i in 1:M
+    Threads.@threads for i in 1:M
         pid = Int(crossings.particle_idx[i]) + 1
         a   = crossings.a_cross[i]
         v   = _gadget_velocity(scene.lpt, scene.cosmo, psi1_flat, psi2_flat, pid, a)
-        x   = crossings.x[i, :]
+        x   = @view crossings.x[i, :]
         n̂   = (x .- obs) ./ max(norm(x .- obs), T(1e-10))
         v_radial_vec[i] = dot(v, n̂)
         v_mode == :full && (v_full_mat[i, :] = v)

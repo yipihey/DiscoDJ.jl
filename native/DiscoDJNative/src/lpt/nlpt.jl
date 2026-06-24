@@ -77,10 +77,10 @@ function _compute_1lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T}
 
     # ψ¹_d(k) = i·k_d·φ₁(k) for d = x,y,z
     psi1 = Array{T}(undef, res, res, res, 3)
-    tmp  = similar(fphi1)
+    tmp  = similar(fphi1)   # complex scratch; destroyed by plan_inv each iteration
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi1, kcomp; backend)
-        psi1[:, :, :, d] .= irfft(tmp, res, [3, 1, 2])
+        psi1[:, :, :, d] .= grid.plan_inv * tmp   # plan_inv destroys tmp (c2r)
     end
     return psi1, fphi1
 end
@@ -97,14 +97,15 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     k2 = grid.k2
     res = grid.res
 
-    # Compute second derivatives in real space
-    # φ₁,ij(k) = -ki·kj·φ₁(k)
+    # One shared complex scratch buffer for all six _second_deriv calls.
+    # Each call overwrites fd entirely before passing it to plan_inv, which
+    # destroys the contents (c2r transform).  Net allocations: 1 instead of 6.
+    fd = similar(fphi1)
     function _second_deriv(ki, kj)
-        fd = similar(fphi1)
         @inbounds for idx in eachindex(fd)
             fd[idx] = -ki[idx] * kj[idx] * fphi1[idx]
         end
-        irfft(fd, res, [3, 1, 2])
+        grid.plan_inv * fd   # fd destroyed; returns Array{T,3}
     end
 
     d11 = _second_deriv(kx, kx)
@@ -114,23 +115,18 @@ function _compute_2lpt(fphi1::AbstractArray{Complex{T}}, grid::FourierGrid{T};
     d13 = _second_deriv(kx, kz)
     d23 = _second_deriv(ky, kz)
 
-    # S₂ in real space
     S2_real = @. d11*d22 - d12^2 + d11*d33 - d13^2 + d22*d33 - d23^2
 
-    # Fourier transform S₂, then Poisson solve → φ₂
-    fS2   = rfft(S2_real, [3, 1, 2])
+    fS2   = grid.plan_fwd * S2_real   # rfft via cached plan
     fphi2 = similar(fS2)
     _inv_laplace!(fphi2, fS2, k2; backend)
-
-    # Prefactor: -3/7 for 2LPT (exact for EdS)
     fphi2 .*= T(-3/7)
 
-    # ψ²_d = i·k_d·φ₂
     psi2 = Array{T}(undef, res, res, res, 3)
-    tmp  = similar(fphi2)
+    tmp  = similar(fphi2)   # complex scratch; destroyed by plan_inv each iteration
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi2, kcomp; backend)
-        psi2[:, :, :, d] .= irfft(tmp, res, [3, 1, 2])
+        psi2[:, :, :, d] .= grid.plan_inv * tmp
     end
     return psi2, fphi2
 end
@@ -148,43 +144,41 @@ function _compute_3lpt(fphi1::AbstractArray{Complex{T}}, fphi2::AbstractArray{Co
     k2 = grid.k2
     res = grid.res
 
+    # One shared scratch buffer for all twelve _sd calls (fphi1 and fphi2 have
+    # the same shape).  Each call fills fd from scratch before plan_inv destroys it.
+    fd = similar(fphi1)
     function _sd(ki, kj, fphi)
-        fd = similar(fphi)
         @inbounds for idx in eachindex(fd)
             fd[idx] = -ki[idx] * kj[idx] * fphi[idx]
         end
-        irfft(fd, res, [3, 1, 2])
+        grid.plan_inv * fd   # fd destroyed; returns Array{T,3}
     end
 
-    # First-order second derivatives
     d1_11 = _sd(kx, kx, fphi1); d1_22 = _sd(ky, ky, fphi1); d1_33 = _sd(kz, kz, fphi1)
     d1_12 = _sd(kx, ky, fphi1); d1_13 = _sd(kx, kz, fphi1); d1_23 = _sd(ky, kz, fphi1)
 
-    # S₃ᵃ = det(φ₁,ij)  — 6-term 3×3 determinant
     S3a = @. d1_11*(d1_22*d1_33 - d1_23^2) -
              d1_12*(d1_12*d1_33 - d1_23*d1_13) +
              d1_13*(d1_12*d1_23 - d1_22*d1_13)
 
-    # Second-order second derivatives
     d2_11 = _sd(kx, kx, fphi2); d2_22 = _sd(ky, ky, fphi2); d2_33 = _sd(kz, kz, fphi2)
     d2_12 = _sd(kx, ky, fphi2); d2_13 = _sd(kx, kz, fphi2); d2_23 = _sd(ky, kz, fphi2)
 
-    # S₃ᵇ cross term
     S3b = @. d2_11*(d1_22 + d1_33) + d2_22*(d1_11 + d1_33) + d2_33*(d1_11 + d1_22) -
              2*(d2_12*d1_12 + d2_13*d1_13 + d2_23*d1_23)
 
     S3_real = @. T(10/21) * S3a + T(1/3) * S3b
 
-    fS3   = rfft(S3_real, [3, 1, 2])
+    fS3   = grid.plan_fwd * S3_real   # rfft via cached plan
     fphi3 = similar(fS3)
     _inv_laplace!(fphi3, fS3, k2; backend)
     fphi3 .*= T(-1)
 
     psi3 = Array{T}(undef, res, res, res, 3)
-    tmp  = similar(fphi3)
+    tmp  = similar(fphi3)   # complex scratch; destroyed by plan_inv each iteration
     for (d, kcomp) in enumerate((kx, ky, kz))
         _grad_multiply!(tmp, fphi3, kcomp; backend)
-        psi3[:, :, :, d] .= irfft(tmp, res, [3, 1, 2])
+        psi3[:, :, :, d] .= grid.plan_inv * tmp
     end
     return psi3
 end

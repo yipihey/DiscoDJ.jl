@@ -29,6 +29,11 @@ struct FourierGrid{T<:AbstractFloat}
     boxsize::T
     k_vecs::NTuple{3, Array{T, 3}}  # (kx, ky, kz) each res×res×(res÷2+1)
     k2::Array{T, 3}
+    # Cached FFTW plans — reused across all LPT calls; replace bare rfft/irfft
+    # calls throughout nlpt.jl.  Stored as Any so the same struct works with
+    # FFTW on CPU and cuFFT / rocFFT on GPU (via AbstractFFTs.plan_* API).
+    plan_fwd::Any   # plan_rfft:  (res,res,res){T}       → (res,res,res÷2+1){Complex{T}}
+    plan_inv::Any   # plan_irfft: (res,res,res÷2+1){Complex{T}} → (res,res,res){T}
 end
 
 """
@@ -49,7 +54,13 @@ function get_fourier_grid(res::Int, boxsize::Real; T::Type{<:AbstractFloat}=Floa
     kz = reshape(khalf, 1, 1, res÷2+1) .* ones(T, res, res, 1)
 
     k2 = @. kx^2 + ky^2 + kz^2
-    return FourierGrid{T}(3, res, T(boxsize), (kx, ky, kz), k2)
+
+    # Build plans once; all subsequent rfft/irfft calls in nlpt.jl use these.
+    # plan_rfft/plan_irfft touch only shape+type of the dummy arrays.
+    plan_fwd = plan_rfft(zeros(T, res, res, res), [3, 1, 2])
+    plan_inv = plan_irfft(zeros(Complex{T}, res, res, res÷2+1), res, [3, 1, 2])
+
+    return FourierGrid{T}(3, res, T(boxsize), (kx, ky, kz), k2, plan_fwd, plan_inv)
 end
 
 # ── Fourier-space operations ──────────────────────────────────────────────────

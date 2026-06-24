@@ -14,6 +14,13 @@ Modules (load order matters for dependencies):
 """
 module DiscoDJNative
 
+using FFTW
+
+# Enable FFTW multi-threading as soon as the module loads.
+function __init__()
+    FFTW.set_num_threads(Threads.nthreads())
+end
+
 # ── Cosmology ────────────────────────────────────────────────────────────────
 include("cosmology/Cosmology.jl")
 include("cosmology/transfer.jl")
