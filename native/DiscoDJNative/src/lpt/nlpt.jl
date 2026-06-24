@@ -21,18 +21,11 @@ export compute_lpt, LPTResult
 using FFTW
 using LinearAlgebra: mul!
 
-# ── Portable Fourier-space second derivative  fd = -k_i k_j φ ──────────────────
-# Built O(10) times per nLPT call, so it is a real cost at large res.  Multiple
-# dispatch keeps one source of truth across backends: a threaded loop on host
-# Arrays, and a fused broadcast (a single GPU kernel) on device arrays — so the
-# unmodified nLPT code below runs on both CPU and GPU.
-@inline function _build_second_deriv!(fd::Array, ki, kj, fphi)
-    Threads.@threads for idx in eachindex(fd)
-        @inbounds fd[idx] = -ki[idx] * kj[idx] * fphi[idx]
-    end
-    return fd
-end
-@inline _build_second_deriv!(fd::AbstractArray, ki, kj, fphi) = (@. fd = -ki * kj * fphi)
+# ── Fourier-space second derivative  fd = -k_i k_j φ ──────────────────────────
+# `ki`/`kj` are the grid's compact reshaped 1-D k-vectors, so this fused broadcast
+# expands them on the fly (no dense k-array) — a single kernel on GPU, one pass on
+# CPU.  Runs unchanged on both backends.
+@inline _build_second_deriv!(fd, ki, kj, fphi) = (@. fd = -ki * kj * fphi)
 
 # ── Result type ───────────────────────────────────────────────────────────────
 
@@ -72,21 +65,11 @@ function _inv_laplace!(out, f, k2; backend)
     end
 end
 
-function _grad_multiply!(out, fphi, kcomp; backend)
-    if backend == :ka
-        grad_multiply_ka!(out, fphi, kcomp)
-    else
-        grad_multiply_threads!(out, fphi, kcomp)
-    end
-end
-
-function _fmu2!(out, f1, f2; backend)
-    if backend == :ka
-        fmu2_elementwise_ka!(out, f1, f2)
-    else
-        fmu2_elementwise_threads!(out, f1, f2)
-    end
-end
+# Fourier gradient  out = i·k·φ.  `kcomp` is a compact reshaped 1-D k-vector, so
+# this fused broadcast expands it on the fly (a single kernel on GPU); `backend`
+# is accepted for call-site symmetry but the broadcast already dispatches by array
+# type.  (`inv_laplace` still uses the dense k², so it keeps its KA/threads kernels.)
+_grad_multiply!(out, fphi, kcomp; backend=nothing) = (@. out = im * kcomp * fphi)
 
 # ── shared building blocks (buffer-reusing) ───────────────────────────────────
 

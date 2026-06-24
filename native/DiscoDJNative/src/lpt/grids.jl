@@ -76,10 +76,14 @@ function get_fourier_grid(res::Int, boxsize::Real; T::Type{<:AbstractFloat}=Floa
     kfull = [i <= res÷2 ? T(i) : T(i - res) for i in 0:res-1] .* dk
     khalf = collect(T, 0:res÷2) .* dk
 
-    # Broadcast to 3D rfft shape (res, res, res÷2+1)
-    kx = reshape(kfull, res, 1, 1) .* ones(T, 1, res, res÷2+1)
-    ky = reshape(kfull, 1, res, 1) .* ones(T, res, 1, res÷2+1)
-    kz = reshape(khalf, 1, 1, res÷2+1) .* ones(T, res, res, 1)
+    # Keep the k-components as compact, separable reshaped 1-D vectors — they
+    # broadcast to the full (res,res,res÷2+1) rfft shape on use, so we never
+    # materialise three dense k-arrays (≈4.3 GiB at 896³) and the elementwise
+    # kernels read O(res) instead of O(res³) k-values.  k² is materialised dense
+    # (used by inv_laplace and asserted dense by `get_fourier_grid` callers/tests).
+    kx = collect(reshape(kfull, res, 1, 1))
+    ky = collect(reshape(kfull, 1, res, 1))
+    kz = collect(reshape(khalf, 1, 1, res÷2+1))
 
     k2 = @. kx^2 + ky^2 + kz^2
 
