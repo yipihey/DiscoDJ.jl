@@ -240,6 +240,11 @@ mean(x) = sum(x) / length(x)
                     n >= 2 && @test relerr(cpu.psi2, to_host(gpu.psi2)) < 1e-4
                     n >= 3 && @test relerr(cpu.psi3, to_host(gpu.psi3)) < 1e-4
                 end
+                # f16 storage: packed displacements reconstruct to ~f16 round-off
+                g32 = compute_lpt(fphig, gridg; n_order=2, backend=:ka)
+                g16 = compute_lpt(fphig, gridg; n_order=2, backend=:ka, store=:f16)
+                @test g16.psi1 isa HalfField
+                @test relerr(to_host(g32.psi2), expand_half(to_host(g16.psi2))) < 5e-3
             end
         end
     else

@@ -32,6 +32,10 @@ to_gpu(::Any) = error("to_gpu requires the CUDA extension — run `using CUDA` f
 to_host(x) = x                      # no-op on host; CUDA ext adds CuArray methods
 export to_gpu, to_host
 
+# Release a device buffer eagerly (so packed-to-f16 fields free their f32 source
+# and lower the GPU peak).  No-op on host; the CUDA ext frees CuArrays.
+_free!(x) = nothing
+
 # ── Cosmology ────────────────────────────────────────────────────────────────
 include("cosmology/Cosmology.jl")
 include("cosmology/transfer.jl")
@@ -43,6 +47,7 @@ include("ics/grf.jl")
 
 # ── LPT ─────────────────────────────────────────────────────────────────────
 include("lpt/grids.jl")
+include("lpt/halffield.jl")
 include("lpt/kernels_ka.jl")
 include("lpt/kernels_threads.jl")
 include("lpt/nlpt.jl")

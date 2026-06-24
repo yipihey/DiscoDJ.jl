@@ -18,7 +18,7 @@ numerically identical to the CPU run (validated by the GPU≈CPU test).
 module DiscoDJNativeCUDAExt
 
 using DiscoDJNative
-using DiscoDJNative: FourierGrid, LPTResult
+using DiscoDJNative: FourierGrid, LPTResult, HalfField
 using CUDA
 using AbstractFFTs: plan_rfft, plan_irfft
 
@@ -56,22 +56,32 @@ function DiscoDJNative.to_gpu(grid::FourierGrid{T}) where {T}
     return FourierGrid{T}(grid.dim, res, grid.boxsize, kg, k2g, plan_fwd, plan_inv)
 end
 
-# Bring a displacement field (res,res,res,3) back to host in (x,y,z) order.
+# Free a device buffer eagerly (used by store=:f16 to drop the f32 source).
+DiscoDJNative._free!(x::CuArray) = (CUDA.unsafe_free!(x); nothing)
+
+# Bring a displacement field (res,res,res,3) back to host in (x,y,z) order.  A
+# packed HalfField is moved compactly (the f16 residual stays f16); only the
+# axis permutation and the device→host copy happen.
 _unswap(a::AbstractArray{<:Any,4}) = permutedims(Array(a), (2, 3, 1, 4))
+_tohost_field(a::CuArray{<:Any,4}) = _unswap(a)
+_tohost_field(h::HalfField)        = HalfField(_unswap(h.dev), h.mean)
+_tohost_field(::Nothing)           = nothing
 
 DiscoDJNative.to_host(a::CuArray{<:Any,4}) = _unswap(a)
 DiscoDJNative.to_host(a::CuArray)          = Array(a)
+DiscoDJNative.to_host(h::HalfField)        = _tohost_field(h)
 
 """
     to_host(lpt::LPTResult) -> LPTResult
 
-Copy all displacement fields of a GPU `LPTResult` to host arrays in CPU axis
-order — the canonical hand-off to the federation's injectors.
+Copy all displacement fields of a GPU `LPTResult` to host in CPU axis order —
+the canonical hand-off to the federation's injectors.  Works for both f32 and
+packed-f16 (`store=:f16`) results.
 """
 function DiscoDJNative.to_host(lpt::LPTResult{T}) where {T}
-    return LPTResult{T}(_unswap(lpt.psi1),
-                        lpt.psi2 === nothing ? nothing : _unswap(lpt.psi2),
-                        lpt.psi3 === nothing ? nothing : _unswap(lpt.psi3),
+    return LPTResult{T}(_tohost_field(lpt.psi1),
+                        _tohost_field(lpt.psi2),
+                        _tohost_field(lpt.psi3),
                         lpt.n_order, lpt.res, lpt.boxsize)
 end
 

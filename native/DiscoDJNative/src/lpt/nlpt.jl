@@ -44,12 +44,21 @@ Holds displacement fields from nLPT computation.
 - `psi3`: 3LPT correction                 (res,res,res,3)  [Mpc/h], or nothing
 """
 struct LPTResult{T}
-    psi1::AbstractArray{T, 4}                       # Array on CPU, CuArray on GPU
-    psi2::Union{AbstractArray{T, 4}, Nothing}
-    psi3::Union{AbstractArray{T, 4}, Nothing}
+    psi1::Union{AbstractArray{T, 4}, HalfField}     # Array/CuArray, or packed f16
+    psi2::Union{AbstractArray{T, 4}, HalfField, Nothing}
+    psi3::Union{AbstractArray{T, 4}, HalfField, Nothing}
     n_order::Int
     res::Int
     boxsize::T
+end
+
+# Optionally pack a freshly-computed f32 displacement into compact f16 storage,
+# eagerly freeing the f32 source so the GPU peak drops (see `store` in compute_lpt).
+function _maybe_pack(psi, store::Symbol)
+    store === :f16 || return psi
+    h = pack_half(psi)
+    _free!(psi)
+    return h
 end
 
 # ── Kernel dispatch ───────────────────────────────────────────────────────────
@@ -208,21 +217,31 @@ Compute nLPT displacement fields from the initial Fourier-space potential.
 Returns `LPTResult` with un-normalised displacements ψ₁, ψ₂, ψ₃.
 To get physical displacements at scale factor a:
     ψ(a) = D₁(a)·ψ₁ + D₂(a)·D₁(a=1)²·ψ₂ + …
+
+`store` controls how the displacement fields are kept: `:f32` (default) or `:f16`
+— the latter packs each ψ into a [`HalfField`](@ref) (per-component f32 mean +
+f16 residual) as soon as it is computed, freeing the f32 source.  That halves the
+displacement footprint and, because the f32 buffers are released eagerly, lets a
+larger box fit in GPU memory.
 """
 function compute_lpt(fphi_ini::AbstractArray{Complex{T}}, grid::FourierGrid{T};
-                     n_order::Int=2, backend::Symbol=:ka) where T
+                     n_order::Int=2, backend::Symbol=:ka, store::Symbol=:f32) where T
     n_order in (1, 2, 3) || error("n_order must be 1, 2, or 3")
+    store in (:f32, :f16) || error("store must be :f32 or :f16")
     res = grid.res
 
     psi1, fphi1 = _compute_1lpt(fphi_ini, grid; backend)
+    psi1 = _maybe_pack(psi1, store)
     psi2 = nothing; fphi2 = nothing
     psi3 = nothing
 
     if n_order >= 2
         psi2, fphi2 = _compute_2lpt(fphi1, grid; backend)
+        psi2 = _maybe_pack(psi2, store)
     end
     if n_order >= 3
         psi3 = _compute_3lpt(fphi1, fphi2, grid; backend)
+        psi3 = _maybe_pack(psi3, store)
     end
 
     return LPTResult{T}(psi1, psi2, psi3, n_order, res, grid.boxsize)

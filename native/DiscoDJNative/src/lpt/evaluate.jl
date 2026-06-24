@@ -36,18 +36,23 @@ end
 
 # ── Growth-weighted displacement ───────────────────────────────────────────────
 
+# Displacement fields may be stored f32 (Array/CuArray) or packed f16 (HalfField);
+# `_expand` returns an f32 array either way (a no-op in the f32 case).
+_expand(x::AbstractArray) = x
+_expand(x::HalfField)     = expand_half(x)
+
 function _psi_at_a(lpt::LPTResult{T}, cosmo::Cosmology, a::Real) where T
     D1 = T(growth_D1(cosmo, a))
-    psi = D1 .* lpt.psi1
+    psi = D1 .* _expand(lpt.psi1)
 
     if lpt.n_order >= 2 && lpt.psi2 !== nothing
         D2 = T(growth_D2(cosmo, a)) * D1^2
-        psi .+= D2 .* lpt.psi2
+        psi .+= D2 .* _expand(lpt.psi2)
     end
 
     if lpt.n_order >= 3 && lpt.psi3 !== nothing
         D3 = T(growth_D1(cosmo, a))^3   # EdS approximation for 3LPT
-        psi .+= D3 .* lpt.psi3 .* T(1/3)
+        psi .+= D3 .* _expand(lpt.psi3) .* T(1/3)
     end
     return psi
 end
@@ -109,13 +114,13 @@ function evaluate_lpt_psi_dot_at_a(lpt::LPTResult{T}, cosmo::Cosmology, a::Real;
     f1 = T(growth_f1(cosmo, a))
     D1 = T(growth_D1(cosmo, a))
 
-    vel = f1 * D1 * E * H0 * lpt.psi1
+    vel = f1 * D1 * E * H0 * _expand(lpt.psi1)
 
     if effective >= 2 && lpt.psi2 !== nothing
         # f₂ ≈ 2f₁ in EdS
         f2 = T(2) * f1
         D2 = T(growth_D2(cosmo, a)) * D1^2
-        vel .+= f2 * D2 * E * H0 * lpt.psi2
+        vel .+= f2 * D2 * E * H0 * _expand(lpt.psi2)
     end
     return vel
 end
@@ -135,6 +140,7 @@ function evaluate_lpt_eulerian_acc_at_a(lpt::LPTResult{T}, cosmo::Cosmology, a::
     # Simplified: 2nd conformal-time derivative of D(a)·ψ₁
     H  = E * H0
     dH_da = (hubble_E(cosmo, a * (1+1e-4)) - hubble_E(cosmo, a * (1-1e-4))) / (2a*1e-4) * H0
-    acc = @. -T(1.5) * T(Omega_m(cosmo)) * H0^2 / a^3 * D1 * lpt.psi1
+    p1 = _expand(lpt.psi1)
+    acc = @. -T(1.5) * T(Omega_m(cosmo)) * H0^2 / a^3 * D1 * p1
     return acc
 end

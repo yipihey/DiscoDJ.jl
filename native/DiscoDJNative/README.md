@@ -67,6 +67,28 @@ Two device-specific details, both handled by `to_gpu`:
 
 On the shared A6000 set a memory ceiling, e.g. `JULIA_CUDA_HARD_MEMORY_LIMIT=38GiB`.
 
+## Half-precision field storage (`store=:f16`)
+
+The displacement components are near-zero-mean with a modest spread, so storing a
+per-component Float32 mean plus a Float16 residual reproduces them to ~3e-4 — well
+below LPT's own accuracy — at **half** the footprint (6 vs 12 bytes/cell).
+
+```julia
+lpt = compute_lpt(fphig, gridg; n_order=2, backend=:ka, store=:f16)
+lpt.psi1 isa HalfField          # per-component f32 mean + f16 residual
+psi = evaluate_lpt_psi_at_a(lpt, c, 0.02)   # transparently expands to f32
+```
+
+`store=:f16` packs each ψ as it is computed and frees the f32 source, so the held
+displacement memory halves. `pack_half`/`expand_half` expose the conversion; the
+evaluators (`evaluate_lpt_*`) accept packed results transparently.
+
+This directly doubles how large a field you can **hold/output** on the GPU, and
+near-doubles the box for transient-light orders (1LPT/Zel'dovich). For 2LPT/3LPT
+the *compute* peak is bounded by the Float32 transient working set (FFTs + the
+six second-derivative arrays), so the compute ceiling gains there are modest —
+reducing those transients (in-place FFTs, buffer reuse) is the next lever.
+
 ## Performance (RTX A6000 vs dual EPYC 7763, 2LPT, Float32)
 
 | res  | CPU (32t) | GPU      | speedup | GPU throughput |
@@ -76,10 +98,13 @@ On the shared A6000 set a memory ceiling, e.g. `JULIA_CUDA_HARD_MEMORY_LIMIT=38G
 | 512³ | 11.4 s    |  181 ms  |   63×   |  742 Mcell/s   |
 
 The GPU sustains ~700-740 Mcell/s (memory-bandwidth + cuFFT bound) vs the CPU's
-~10-12 Mcell/s. **Crossover:** the 48 GB A6000 fits 2LPT up to **768³** (≈44 GiB);
-≥896³ must run on the CPU / 2 TB RAM. The pipeline is allocation-heavy
-(out-of-place FFTs + nLPT temporaries → ~23 GiB at 512³); fusing/reusing buffers
-would raise the GPU ceiling toward 1024³.
+~10-12 Mcell/s. **Crossover:** the 48 GB A6000 fits 2LPT up to **~896³** from a
+fresh allocation; ≥960³ must run on the CPU / 2 TB RAM. The 2LPT *compute* peak is
+set by the Float32 transient working set (out-of-place FFTs + the six
+second-derivative arrays), so `store=:f16` (which halves the *output* fields)
+extends output storage and the transient-light 1LPT ceiling but moves the 2LPT
+ceiling only modestly; fusing/reusing the transient buffers is what would push it
+toward 1024³.
 
 ## Benchmarks & tests
 
