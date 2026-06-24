@@ -12,6 +12,7 @@ The returned field is φ(k) in the rfft layout: shape (res…, res÷2+1).
 """
 
 export generate_grf, set_dc_zero!
+export ICOperator, ic_operator, white_noise_to_fphi
 
 using FFTW
 using Random: MersenneTwister
@@ -48,7 +49,16 @@ Returns fphi of shape (res^(dim-1), res÷2+1) for dim=1, or (res,res,res÷2+1) f
 """
 function generate_grf(sampling_space::Symbol, dim::Int, pk_table::Dict,
                       res::Int, boxsize::Float64, seed::Union{Integer, AbstractVector};
-                      dtype::Type=Float32, dtype_c::Type=ComplexF32)
+                      dtype::Type=Float32, dtype_c::Type=ComplexF32,
+                      white_noise::Union{Nothing,AbstractArray}=nothing)
+
+    # Explicit real-space white-noise field (the differentiable inference route):
+    # route through the linear ω → φ(k) map, bypassing the RNG draw.
+    if white_noise !== nothing
+        dim == 3 || error("explicit white_noise only supported for dim=3")
+        op = ic_operator(res, boxsize, pk_table; T=dtype)
+        return convert.(dtype_c, white_noise_to_fphi(op, convert.(dtype, white_noise)))
+    end
 
     k_grid, k2_grid = _rfft_k_grid(dim, res, boxsize, dtype)
     Pk_interp = _interpolate_pk(pk_table, k_grid, dtype)
@@ -70,6 +80,60 @@ function generate_grf(sampling_space::Symbol, dim::Int, pk_table::Dict,
     set_dc_zero!(fphi)
     return fphi
 end
+
+# ── Differentiable IC map  ω → φ(k)  ──────────────────────────────────────────
+# The map from a real-space unit white-noise field ω (res,res,res) to the initial
+# Fourier potential  φ(k) = rfft(ω)·√(P(k)·norm)/k²  (DC=0) is *linear* in ω, hence
+# fully differentiable with no custom adjoint: `rfft` has an AbstractFFTs ChainRule
+# and the rest is a broadcast by a precomputed real `scale`.  This is the field
+# inference optimises over (matches JAX's white_noise_space="real"); the result is a
+# drop-in `fphi_ini` for `compute_lpt`, identical to `generate_grf(:real, …)`.
+
+"""
+    ICOperator{T}
+
+Precomputed linear map ω → φ(k): holds `scale = √(P·norm)/k²` (0 at k=0) in the
+rfft layout `(res,res,res÷2+1)`.  Build with [`ic_operator`](@ref); apply with
+[`white_noise_to_fphi`](@ref).
+"""
+struct ICOperator{T<:AbstractFloat, A<:AbstractArray{T,3}}
+    scale::A
+    res::Int
+    boxsize::T
+end
+
+"""
+    ic_operator(res, boxsize, pk_table; T=Float32) -> ICOperator
+
+Precompute the (grid- and cosmology-dependent) linear IC map.  Reuse across
+inference iterations.
+"""
+function ic_operator(res::Int, boxsize::Real, pk_table::Dict; T::Type{<:AbstractFloat}=Float32)
+    kgrid, k2 = _rfft_k_grid(3, res, T(boxsize), T)
+    Pk  = _interpolate_pk(pk_table, kgrid, T)
+    nrm = T((res / boxsize)^3)
+    scale = similar(k2, T)
+    @inbounds for i in eachindex(k2)
+        scale[i] = k2[i] == 0 ? zero(T) : sqrt(Pk[i] * nrm) / k2[i]
+    end
+    return ICOperator{T, typeof(scale)}(scale, res, T(boxsize))
+end
+
+"""
+    white_noise_to_fphi(op::ICOperator, white)               -> φ(k)
+    white_noise_to_fphi(white, res, boxsize, pk_table; T)    -> φ(k)
+
+Differentiable initial potential φ(k) = rfft(ω, [3,1,2]) · scale from a real-space
+unit white-noise field `white` (res,res,res).  Linear in `white`, so AD frameworks
+(Zygote/ChainRules) differentiate it through the AbstractFFTs `rfft` rule with no
+custom adjoint.
+"""
+white_noise_to_fphi(op::ICOperator, white::AbstractArray{<:Real,3}) =
+    rfft(white, [3, 1, 2]) .* op.scale
+
+white_noise_to_fphi(white::AbstractArray{<:Real,3}, res::Int, boxsize::Real, pk_table::Dict;
+                    T::Type{<:AbstractFloat}=eltype(white)) =
+    white_noise_to_fphi(ic_operator(res, boxsize, pk_table; T=T), white)
 
 # ── Real-space sampling ───────────────────────────────────────────────────────
 

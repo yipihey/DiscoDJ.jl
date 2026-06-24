@@ -1,5 +1,6 @@
 using Test
 using DiscoDJNative
+using Random: MersenneTwister
 
 mean(x) = sum(x) / length(x)
 
@@ -249,6 +250,46 @@ mean(x) = sum(x) / length(x)
         end
     else
         @info "CUDA not functional — skipping GPU backend tests"
+    end
+
+    # ── Differentiability (runs only if Zygote + FiniteDifferences are available) ──
+    # The functional `lpt_psi_ad` reproduces compute_lpt+evaluate exactly and is
+    # differentiable w.r.t. the initial white-noise field ω (the property that makes
+    # DISCO-DJ "Done with Jax" — needed for field-level IC inference).
+    ad_ok = false
+    try
+        @eval using Zygote, FiniteDifferences
+        ad_ok = true
+    catch
+        ad_ok = false
+    end
+    if ad_ok
+        @testset "Differentiable nLPT (∂/∂ω)" begin
+            relerr2(a,b) = maximum(abs.(a .- b)) / (maximum(abs.(a)) + eps())
+            res = 16; L = 1000.0; T = Float64; a = 0.1
+            c  = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c)
+            grid = get_fourier_grid(res, L; T=T)
+            op   = ic_operator(res, L, pk; T=T)
+            ω    = randn(MersenneTwister(7), T, res, res, res)
+            fphi = white_noise_to_fphi(op, ω)
+            # ω → φ(k) reproduces generate_grf(:real)
+            @test relerr2(generate_grf(:real, 3, pk, res, L, 7; dtype=T, dtype_c=Complex{T}),
+                          white_noise_to_fphi(op, randn(MersenneTwister(7), T, res, res, res))) < 1e-12
+            for n in (1, 2, 3)
+                psi_ad  = lpt_psi_ad(fphi, grid, c, a; n_order=n)
+                psi_ref = evaluate_lpt_psi_at_a(compute_lpt(fphi, grid; n_order=n, backend=:threads), c, a)
+                @test relerr2(psi_ref, psi_ad) < 1e-10                       # forward parity
+            end
+            loss(w) = sum(abs2, lpt_psi_ad(white_noise_to_fphi(op, w), grid, c, a; n_order=2))
+            g = Zygote.gradient(loss, ω)[1]
+            fdm = central_fdm(5, 1)
+            for i in rand(MersenneTwister(3), 1:length(ω), 5)
+                gfd = FiniteDifferences.grad(fdm, t -> (w = copy(ω); w[i] = t; loss(w)), ω[i])[1]
+                @test isapprox(g[i], gfd; rtol=1e-5)                         # ∂/∂ω vs FD
+            end
+        end
+    else
+        @info "Zygote/FiniteDifferences not available — skipping differentiability tests"
     end
 
 end

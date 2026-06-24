@@ -52,6 +52,7 @@ include("lpt/kernels_ka.jl")
 include("lpt/kernels_threads.jl")
 include("lpt/nlpt.jl")
 include("lpt/evaluate.jl")
+include("lpt/nlpt_ad.jl")        # differentiable (AD-traceable) nLPT path
 
 # ── Lightcone ────────────────────────────────────────────────────────────────
 include("lightcone/shells.jl")
