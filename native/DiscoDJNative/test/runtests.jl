@@ -194,4 +194,17 @@ mean(x) = sum(x) / length(x)
         @test size(reps, 2) == 3
     end
 
+    @testset "Bispectrum equilateral" begin
+        res = 32; boxsize = 100.0
+        # White noise → B(k) ≈ 0 (no connected 3-point function)
+        rng_field = randn(res, res, res)
+        bs = evaluate_bispectrum_equilateral(rng_field, boxsize; bins=5)
+        @test length(bs.k) == 5
+        @test all(diff(bs.k) .> 0)   # k bins ordered
+        # B(k) for white noise should be small relative to P(k)²
+        ps = evaluate_power_spectrum(rng_field, boxsize; bins=5)
+        # |B| / P² ≪ 1 for white noise (no signal)
+        @test all(abs.(bs.Bk) ./ (ps.Pk .^ 2 .+ 1e-30) .< 1.0)
+    end
+
 end

@@ -42,5 +42,6 @@ include("lightcone/refresh.jl")
 
 # ── Analysis ─────────────────────────────────────────────────────────────────
 include("analysis/power_spectrum.jl")
+include("analysis/bispectrum.jl")
 
 end # module

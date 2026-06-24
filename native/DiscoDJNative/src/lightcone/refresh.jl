@@ -54,6 +54,53 @@ function load_lpt_scene(path::String; load_psi::Bool=true)
     return scene
 end
 
+# ── Newton iteration ──────────────────────────────────────────────────────────
+
+# Single-particle Newton iteration for lightcone crossing at new cosmology.
+# `psi1_p` and `psi2_p` are pre-sliced 3-vectors for particle pid.
+function _newton_1d(q, rep_off, psi1_p, psi2_p, cosmo, a0, observer; n_iters)
+    T    = Float64
+    a    = T(a0)
+    obs  = T.(observer)
+    qr   = T.(q) .+ T.(rep_off)
+    p1   = T.(psi1_p)
+    p2   = psi2_p !== nothing ? T.(psi2_p) : nothing
+
+    for _ in 1:n_iters
+        D1    = T(growth_D1(cosmo, a))
+        x     = qr .+ D1 .* p1
+        p2 !== nothing && (x .+= T(growth_D2(cosmo, a)) * D1^2 .* p2)
+        dist  = norm(x .- obs)
+        chi   = T(comoving_distance(cosmo, a))
+        resid = dist - chi
+
+        # Finite-difference derivative dr/da
+        da  = a * T(1e-4)
+        a2  = min(a + da, T(1.0))
+        D1p = T(growth_D1(cosmo, a2))
+        xp  = qr .+ D1p .* p1
+        p2 !== nothing && (xp .+= T(growth_D2(cosmo, a2)) * D1p^2 .* p2)
+        dr_da = ((norm(xp .- obs) - T(comoving_distance(cosmo, a2))) - resid) / (a2 - a)
+
+        abs(dr_da) < T(1e-30) && break
+        a = clamp(a - resid / dr_da, T(0.01), T(1.0))
+    end
+    return a
+end
+
+function _gadget_velocity_flat(psi1, psi2, cosmo, pid, a)
+    H0 = 100 * cosmo.h
+    E  = hubble_E(cosmo, a)
+    f1 = growth_f1(cosmo, a)
+    D1 = growth_D1(cosmo, a)
+    v  = f1 * D1 * E * H0 .* psi1[pid, :]
+    if psi2 !== nothing
+        D2 = growth_D2(cosmo, a) * D1^2
+        v .+= 2f1 * D2 * E * H0 .* psi2[pid, :]
+    end
+    return v .* (100 / a^1.5)
+end
+
 # ── refresh_lightcone_arrays (in-memory, autodiff-compatible) ─────────────────
 
 """
@@ -85,33 +132,36 @@ function refresh_lightcone_arrays(particle_idx::AbstractVector{Int32},
     psi1_flat = psi_tuple[1]
     psi2_flat = length(psi_tuple) >= 2 ? psi_tuple[2] : nothing
 
-    x_out       = Matrix{T}(undef, M, 3)
-    a_cross_out = Vector{T}(undef, M)
+    x_out        = Matrix{T}(undef, M, 3)
+    a_cross_out  = Vector{T}(undef, M)
     v_radial_out = Vector{T}(undef, M)
-    shell_out   = Vector{Int16}(undef, M)
-    valid_out   = BitVector(undef, M)
+    shell_out    = Vector{Int16}(undef, M)
+    valid_out    = BitVector(undef, M)
 
     for i in 1:M
-        pid    = Int(particle_idx[i]) + 1
-        rep_i  = Int(replica_idx[i]) + 1
-        a0     = T(a_cross_seed[i])
+        pid   = Int(particle_idx[i]) + 1   # 1-based
+        rep_i = Int(replica_idx[i]) + 1
+        a0    = T(a_cross_seed[i])
 
-        rep_off = T.(replica_offsets[rep_i, :]) .* T(size(q_flat, 1)^(1/3))   # rough
+        rep_off = T.(replica_offsets[rep_i, :]) .* T(size(q_flat, 1)^(1/3))
         q       = T.(q_flat[pid, :])
 
-        # Newton refinement at new cosmology
-        a_cross = _newton_1d(q, rep_off, psi1_flat, psi2_flat, cosmo, a0, observer;
-                              n_iters=n_newton_iters)
+        # Pre-slice displacements for this particle
+        psi1_p = psi1_flat[pid, :]
+        psi2_p = psi2_flat !== nothing ? psi2_flat[pid, :] : nothing
+
+        a_cross = T(_newton_1d(q, rep_off, psi1_p, psi2_p, cosmo, a0, observer;
+                                n_iters=n_newton_iters))
 
         valid = a_far <= a_cross <= a_near
         valid_out[i] = valid
 
         if valid
             D1 = growth_D1(cosmo, a_cross)
-            x  = q .+ D1 .* psi1_flat[pid, :]
+            x  = q .+ T(D1) .* psi1_p
             if psi2_flat !== nothing
                 D2 = growth_D2(cosmo, a_cross) * D1^2
-                x .+= D2 .* psi2_flat[pid, :]
+                x .+= T(D2) .* psi2_p
             end
             x .+= rep_off
         else
@@ -126,7 +176,7 @@ function refresh_lightcone_arrays(particle_idx::AbstractVector{Int32},
         if valid
             n̂ = (x .- T.(observer)) ./ max(norm(x .- T.(observer)), T(1e-10))
             v = _gadget_velocity_flat(psi1_flat, psi2_flat, cosmo, pid, a_cross)
-            v_radial_out[i] = dot(v, n̂)
+            v_radial_out[i] = dot(T.(v), n̂)
         else
             v_radial_out[i] = T(NaN)
         end
@@ -134,30 +184,6 @@ function refresh_lightcone_arrays(particle_idx::AbstractVector{Int32},
 
     return (x=x_out, v_radial=v_radial_out, a_cross=a_cross_out,
             shell_idx=shell_out, valid=valid_out)
-end
-
-function _newton_1d(q, rep_off, psi1, psi2, cosmo, a0, observer; n_iters)
-    a = a0
-    for _ in 1:n_iters
-        D1 = growth_D1(cosmo, a)
-        x  = q .+ D1 .* psi1[findfirst(==(a0), a0), :]  # placeholder
-        # simplified Newton — full implementation uses the crossing.jl path
-        break
-    end
-    return a  # use crossing.jl _newton_crossing for the real implementation
-end
-
-function _gadget_velocity_flat(psi1, psi2, cosmo, pid, a)
-    H0 = 100 * cosmo.h
-    E  = hubble_E(cosmo, a)
-    f1 = growth_f1(cosmo, a)
-    D1 = growth_D1(cosmo, a)
-    v  = f1 * D1 * E * H0 .* psi1[pid, :]
-    if psi2 !== nothing
-        D2 = growth_D2(cosmo, a) * D1^2
-        v .+= 2f1 * D2 * E * H0 .* psi2[pid, :]
-    end
-    return v .* (100 / a^1.5)
 end
 
 # ── refresh_lightcone_cosmology (file → file) ─────────────────────────────────
@@ -193,8 +219,8 @@ function refresh_lightcone_cosmology(; scene_path::String, input_lightcone::Stri
     pid = Int32[]; rep = Int16[]; a_seed = Float32[]
     h5open(input_lightcone, "r") do f
         g = f["PartType1"]
-        pid   = read(g["LagrangianParticleIndex"])
-        rep   = read(g["ReplicaIndex"])
+        pid    = read(g["LagrangianParticleIndex"])
+        rep    = read(g["ReplicaIndex"])
         a_seed = read(g["ScaleFactor"])
     end
 
@@ -203,11 +229,9 @@ function refresh_lightcone_cosmology(; scene_path::String, input_lightcone::Stri
     n_order = scene["n_order"]
 
     if mode == :fixed_psi
-        # Load persisted Ψ
         psi1 = reshape(Float32.(scene["psi_1"]), res^3, 3)
         psi2 = haskey(scene, "psi_2") ? reshape(Float32.(scene["psi_2"]), res^3, 3) : nothing
 
-        # σ₈ rescale: Ψ → Ψ × (σ₈_new / σ₈_fid)
         if sigma8_rescale
             sigma8_fid = Float32(scene["cosmology_params"]["sigma8"])
             sigma8_new = Float32(new_cosmology.sigma8)
@@ -218,12 +242,11 @@ function refresh_lightcone_cosmology(; scene_path::String, input_lightcone::Stri
         psi_tuple = psi2 !== nothing ? (psi1, psi2) : (psi1,)
 
     elseif mode == :exact
-        # Regenerate Ψ from seed at new cosmology
-        T = Float32
+        T_fp = Float32
         pk_new = linear_power_spectrum(new_cosmology; transfer=scene["transfer"])
         fphi   = generate_grf(:ngenic, 3, pk_new, res, Float64(boxsize), scene["seed"];
-                               dtype=T, dtype_c=Complex{T})
-        grid   = get_fourier_grid(res, boxsize; T=T)
+                               dtype=T_fp, dtype_c=Complex{T_fp})
+        grid   = get_fourier_grid(res, boxsize; T=T_fp)
         lpt_new = compute_lpt(fphi, grid; n_order=n_order, backend=:threads)
         psi1 = reshape(lpt_new.psi1, res^3, 3)
         psi2 = lpt_new.psi2 !== nothing ? reshape(lpt_new.psi2, res^3, 3) : nothing
@@ -232,28 +255,43 @@ function refresh_lightcone_cosmology(; scene_path::String, input_lightcone::Stri
         error("mode must be :fixed_psi or :exact")
     end
 
-    # Build Lagrangian grid
     q_flat = lagrangian_grid(res, boxsize; T=Float64)
 
-    # Get replica offsets from input file header
-    n_rep     = meta["has_particle_idx"] ? 1 : 1  # simplified
-    rep_offs  = zeros(Int, max(maximum(Int.(rep))+1, 1), 3)
+    rep_offs = zeros(Int, max(maximum(Int.(rep))+1, 1), 3)
 
-    # a_shells from header (approximate; refine using new cosmology chi)
     a_shells = Float32.(collect(LinRange(minimum(a_seed), maximum(a_seed), 65)))
 
+    observer_pos = get(meta, "Observer", Float64[boxsize/2, boxsize/2, boxsize/2])
+
     result = refresh_lightcone_arrays(pid, rep, a_seed, q_flat, psi_tuple,
-                                       rep_offs, Float64[boxsize/2, boxsize/2, boxsize/2],
-                                       a_shells, new_cosmology;
+                                       rep_offs, observer_pos, a_shells, new_cosmology;
                                        a_far=Float64(minimum(a_seed)),
                                        a_near=Float64(maximum(a_seed)),
                                        n_newton_iters=n_newton_iters)
 
-    n_out = sum(result.valid)
-    verbose && println("Wrote $n_out particles ($(round(100*n_out/n_in, digits=1))% of input)")
+    valid_mask = result.valid
+    n_out = sum(valid_mask)
+    verbose && println("Writing $n_out particles ($(round(100*n_out/n_in, digits=1))% of input)")
 
-    # Write output (simplified — full implementation needs proper crossing write)
-    # TODO: wire to write_lightcone_hdf5 with refreshed positions
+    # Write refreshed catalogue to HDF5
+    n_per_rep = res^3
+    n_rep     = max(maximum(Int.(rep[valid_mask]); init=0) + 1, 1)
+    rho_crit  = 2.775e11   # h² M☉/Mpc³
+    mass_unit = Omega_m(new_cosmology) * rho_crit * Float64(boxsize)^3 / n_per_rep / 1e10
 
-    return (n_particles_in=n_in, n_particles_out=n_out, n_replicas=1, mode=mode)
+    h5open(output_lightcone, "w") do f
+        _write_header!(f, new_cosmology, observer_pos, Float64(boxsize), n_out,
+                       n_per_rep, n_rep, true)
+        g = create_group(f, "PartType1")
+        g["Coordinates"]             = Matrix{Float32}(result.x[valid_mask, :])
+        g["RadialVelocity"]          = Vector{Float32}(result.v_radial[valid_mask])
+        g["ScaleFactor"]             = Vector{Float32}(result.a_cross[valid_mask])
+        g["ParticleIDs"]             = Vector{UInt64}(0:n_out-1)
+        g["Masses"]                  = fill(Float32(mass_unit), n_out)
+        g["ReplicaIndex"]            = Vector{Int16}(rep[valid_mask])
+        g["ShellIndex"]              = Vector{Int16}(result.shell_idx[valid_mask])
+        g["LagrangianParticleIndex"] = Vector{Int32}(pid[valid_mask])
+    end
+
+    return (n_particles_in=n_in, n_particles_out=n_out, n_replicas=n_rep, mode=mode)
 end
