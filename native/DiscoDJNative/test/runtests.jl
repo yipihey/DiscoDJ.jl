@@ -402,4 +402,40 @@ mean(x) = sum(x) / length(x)
         @test 0.5 < sqrt(sum(abs2, w) / length(w)) < 1.5   # ~unit-variance white noise
     end
 
+    # ── Differentiable deposit (CIC + tetrahedral CDM-sheet) ────────────────────
+    @testset "Differentiable deposit" begin
+        res = 8; L = 100.0
+        rng = MersenneTwister(1)
+        pos = rand(rng, 40, 3) .* L
+        w   = randn(rng, 40) .+ 2.0
+        # CIC conserves mass
+        @test isapprox(sum(cic_deposit(pos, w, res, L)), sum(w); rtol=1e-12)
+        # tetrahedral sheet conserves mass (unit weights → Σ = res³, mean 1)
+        xg = lagrangian_grid_3d(res, L) .+ 0.5 .* randn(rng, res, res, res, 3)
+        wg = ones(res, res, res)
+        @test isapprox(sum(sheet_deposit(xg, wg, res, L; n_sub=1)), Float64(res^3); rtol=1e-10)
+
+        if ad_ok
+            g = randn(rng, res, res, res)
+            lcic(p, ww) = sum(cic_deposit(p, ww, res, L) .* g)
+            gp, gw = Zygote.gradient(lcic, pos, w)
+            fdm = central_fdm(5, 1)
+            for (i, d) in ((1, 1), (7, 3), (20, 2))
+                gfd = FiniteDifferences.grad(fdm, t -> (q = copy(pos); q[i, d] = t; lcic(q, w)), pos[i, d])[1]
+                @test isapprox(gp[i, d], gfd; rtol=1e-5)
+            end
+            for i in (1, 20, 40)
+                gfd = FiniteDifferences.grad(fdm, t -> (v = copy(w); v[i] = t; lcic(pos, v)), w[i])[1]
+                @test isapprox(gw[i], gfd; rtol=1e-5)
+            end
+            # sheet deposit differentiates w.r.t. the displaced grid
+            lsheet(x) = sum(abs2, sheet_deposit(x, wg, res, L; n_sub=1))
+            gx = Zygote.gradient(lsheet, xg)[1]
+            for idx in ((2, 3, 4, 1), (5, 5, 5, 2))
+                gfd = FiniteDifferences.grad(fdm, t -> (y = copy(xg); y[idx...] = t; lsheet(y)), xg[idx...])[1]
+                @test isapprox(gx[idx...], gfd; rtol=1e-5)
+            end
+        end
+    end
+
 end

@@ -56,6 +56,9 @@ include("lpt/evaluate.jl")
 include("lpt/nlpt_ad.jl")        # differentiable (AD-traceable) nLPT path
 include("lpt/nlpt_core.jl")      # faithful general-order nLPT port (parity reference)
 
+# ── Field deposit (differentiable density estimators) ─────────────────────────
+include("field/sheet_deposit.jl")  # CIC + tetrahedral CDM-sheet deposit (+ rrule)
+
 # ── Lightcone ────────────────────────────────────────────────────────────────
 include("lightcone/shells.jl")
 include("lightcone/replicas.jl")
