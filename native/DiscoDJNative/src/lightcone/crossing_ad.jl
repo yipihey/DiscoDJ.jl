@@ -54,13 +54,14 @@ function _interp_growth(atab, Dmat, vcols::Tuple, a::AbstractVector, logamin, dl
     return Dm, vc
 end
 
-# Stack the exact-growth shape fields into (N, 3, K) — K = 2 (2LPT) or 5 (3LPT).
+# Stack the exact-growth shape fields into (N, 3, K) — K = 1 (1LPT/Zel'dovich → ψ₁),
+# 2 (2LPT → ψ₁,ψ₂ₑₓ) or 5 (3LPT → ψ₁,ψ₂ₑₓ,ψ₃ₐ,ψ₃ᵦ,ψ₃ᵧ).
 """    exact_shape_stack(shapes::Dict) -> (N,3,K) Array (differentiable in ω)"""
 function exact_shape_stack(shapes::Dict{String,<:AbstractArray{T,4}}) where {T}
-    keys5 = haskey(shapes, "psi_3a_ex") ?
-        ("psi_1", "psi_2_ex", "psi_3a_ex", "psi_3b_ex", "psi_3c_ex") : ("psi_1", "psi_2_ex")
+    ks = haskey(shapes, "psi_3a_ex") ? ("psi_1", "psi_2_ex", "psi_3a_ex", "psi_3b_ex", "psi_3c_ex") :
+         haskey(shapes, "psi_2_ex")  ? ("psi_1", "psi_2_ex") : ("psi_1",)
     res = size(shapes["psi_1"], 1); N = res^3
-    cols = map(k -> reshape(shapes[k], N, 3), keys5)
+    cols = map(k -> reshape(shapes[k], N, 3), ks)
     return cat(cols...; dims=3)
 end
 
