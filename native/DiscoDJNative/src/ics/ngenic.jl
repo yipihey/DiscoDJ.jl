@@ -1,18 +1,13 @@
 """
 N-GenIC-style white noise generator.
 
-⚠️ FIDELITY NOTE — this does **NOT** reproduce DISCO-DJ's `rng_ngenic` bit-for-bit.
-The reference (`discodj_native/grf_generators.cc`) builds its per-plane seed table
-and draws amplitudes/phases from **GSL's `ranlxd1`** (RANLUX) generator; this Julia
-version uses a Knuth lagged-Fibonacci RNG with a simplified per-plane seeding, so the
-phases differ entirely (verified: the fields are uncorrelated with the reference).
-Matching the reference exactly would require porting GSL `ranlxd1` and the exact
-`SeedTable_` spiral + Hermitian fill from grf_generators.cc.
+⚠️ FIDELITY NOTE — this approximate generator (Knuth lagged-Fibonacci RNG, simplified
+per-plane seeding) does **NOT** reproduce DISCO-DJ's `rng_ngenic` bit-for-bit.
 
-This only matters for *reproducing a specific N-GenIC/GADGET seed's phases*.  The
-faithful, differentiable inference path does not use it — it takes an explicit
-white-noise field through `ic_operator`/`white_noise_to_fphi` (JAX −1/k² gauge),
-which **does** match JAX to machine precision.
+To reproduce a specific N-GenIC/GADGET seed's phases, use the bit-exact port in
+`ngenic_gsl.jl` instead: `ngenic_field_gsl` (= `rng_ngenic(seed,res).get_field()`),
+`ngenic_wnoise_real` (= DISCO-DJ `get_ngenic_wnoise`), or `ngenic_ic` (the faithful
+−1/k² φ(k) for the differentiable path) — all validated to machine precision.
 
 The generator produces a Hermitian Fourier-space field of shape (res, res, res÷2+1)
 (complex128) so that the inverse FFT gives a real field.

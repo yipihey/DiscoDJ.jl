@@ -385,4 +385,21 @@ mean(x) = sum(x) / length(x)
         @test all(0.3 .<= cr.a_cross .<= 1.0)   # all within the shell range
     end
 
+    # ── Bit-exact N-GenIC (GSL ranlxd1 port) ────────────────────────────────────
+    # Reference constants validated against the GSL library + the C++ rng_ngenic.
+    @testset "N-GenIC bit-exact (GSL ranlxd1)" begin
+        st = DiscoDJNative.ranlxd1_set(42)      # GSL ranlxd1 stream for seed 42
+        ref = [0.66962007120990563, 0.26813969602963539, 0.0948083864381708,
+               0.31262174009276222, 0.34292274337927253]
+        for r in ref
+            @test isapprox(DiscoDJNative.gsl_uniform!(st), r; atol=1e-15)
+        end
+        f = ngenic_field_gsl(42, 8)             # = rng_ngenic(42,8).get_field()
+        @test size(f) == (8, 8, 5)
+        @test isapprox(sqrt(sum(abs2, f)), 13.448527; atol=1e-3)   # ‖field‖ (C++ oracle)
+        w = ngenic_wnoise_real(42, 8)           # = DISCO-DJ get_ngenic_wnoise
+        @test eltype(w) == Float64 && size(w) == (8, 8, 8)
+        @test 0.5 < sqrt(sum(abs2, w) / length(w)) < 1.5   # ~unit-variance white noise
+    end
+
 end

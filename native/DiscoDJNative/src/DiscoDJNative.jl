@@ -43,6 +43,7 @@ include("cosmology/growth.jl")
 
 # ── Initial conditions ───────────────────────────────────────────────────────
 include("ics/ngenic.jl")
+include("ics/ngenic_gsl.jl")     # bit-exact N-GenIC (GSL ranlxd1) — reproduce a seed
 include("ics/grf.jl")
 
 # ── LPT ─────────────────────────────────────────────────────────────────────
