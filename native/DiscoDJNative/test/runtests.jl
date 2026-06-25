@@ -438,4 +438,32 @@ mean(x) = sum(x) / length(x)
         end
     end
 
+    # ── Differentiable lightcone crossing (implicit-function theorem) ───────────
+    @testset "Differentiable lightcone crossing (IFT)" begin
+        c = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c)
+        res = 8; L = 300.0
+        op = ic_operator(res, L, pk; T=Float64); Kk = nlpt_kernels(res, L)
+        q  = reshape(lagrangian_grid_3d(res, L), res^3, 3)
+        obs = [-1400.0, L/2, L/2]                         # box ~1400 Mpc/h away → a_cross mid-range
+        ω  = randn(MersenneTwister(3), res, res, res)
+        fwd(w) = lightcone_cross_ad(
+            exact_shape_stack(compute_core_exact(white_noise_to_fphi(op, w), Kk; n_order=3)),
+            q, c, obs, 0.3, 1.0; rsd=true)
+        lc = fwd(ω)
+        @test all(lc.valid)
+        @test all(0.3 .<= lc.a_cross .<= 1.0)
+        # crossing condition |x_obs − obs| = χ(a_cross) to ~machine precision
+        mr = maximum(abs(norm(lc.x_obs[i, :] .- obs) - comoving_distance(c, lc.a_cross[i])) for i in 1:res^3)
+        @test mr < 1e-6
+        if ad_ok
+            loss(w) = (r = fwd(w); sum(abs2, r.x_obs) + sum(r.v_r))
+            g = Zygote.gradient(loss, ω)[1]
+            fdm = central_fdm(5, 1)
+            for idx in ((1, 1, 1), (4, 5, 6))
+                gfd = FiniteDifferences.grad(fdm, t -> (u = copy(ω); u[idx...] = t; loss(u)), ω[idx...])[1]
+                @test isapprox(g[idx...], gfd; rtol=1e-5)   # IFT gradient through a_cross
+            end
+        end
+    end
+
 end

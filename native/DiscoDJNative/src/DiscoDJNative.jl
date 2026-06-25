@@ -63,6 +63,7 @@ include("field/sheet_deposit.jl")  # CIC + tetrahedral CDM-sheet deposit (+ rrul
 include("lightcone/shells.jl")
 include("lightcone/replicas.jl")
 include("lightcone/crossing.jl")
+include("lightcone/crossing_ad.jl")  # differentiable lightcone crossing (IFT) for inference
 include("lightcone/sky.jl")
 include("lightcone/healpix.jl")
 include("lightcone/io.jl")
