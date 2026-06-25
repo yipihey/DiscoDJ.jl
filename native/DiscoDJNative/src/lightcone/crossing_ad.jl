@@ -49,7 +49,7 @@ end
 # Stack the exact-growth shape fields into (N, 3, 5) (row-major flatten of the
 # (res,res,res,3) arrays — matches `lagrangian_grid_3d` reshaped the same way).
 """    exact_shape_stack(shapes::Dict) -> (N,3,5) Array (differentiable in ω)"""
-function exact_shape_stack(shapes::Dict{String,Array{T,4}}) where {T}
+function exact_shape_stack(shapes::Dict{String,AbstractArray{T,4}}) where {T}
     keys5 = ("psi_1", "psi_2_ex", "psi_3a_ex", "psi_3b_ex", "psi_3c_ex")
     res = size(shapes["psi_1"], 1); N = res^3
     cols = map(k -> reshape(shapes[k], N, 3), keys5)

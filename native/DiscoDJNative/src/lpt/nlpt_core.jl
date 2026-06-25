@@ -28,8 +28,18 @@ export NLPTKernels, nlpt_kernels, compute_core, compute_core_exact,
 using ChainRulesCore: @ignore_derivatives   # growth factors are constants in ω
 
 # ── rfft/irfft in the pipeline's [3,1,2] convention ───────────────────────────
+# CPU uses the [3,1,2] region directly (JAX-parity layout); the CUDA extension
+# overrides these for CuArray with a permute-wrapped rfft (cuFFT needs an increasing
+# region) — numerically identical, same logical (…,…,half-on-3) layout.
 _rfftn(x) = rfft(x, [3, 1, 2])
 _irfftn(f, n::Int) = irfft(f, n, [3, 1, 2])
+
+# Device-aware zero allocation: `similar` follows the reference array's backend
+# (Array → Array, CuArray → CuArray), so the de-aliasing `cat`s stay on-device.  The
+# zero-pads are constants (no gradient flows to them), so the `fill!` is kept off the
+# AD tape — otherwise Zygote errors on the in-place fill.
+@inline _czeros(ref::AbstractArray, dims::Integer...) =
+    @ignore_derivatives fill!(similar(ref, dims...), 0)
 
 # ── 1-D k-vectors (DISCO-DJ get_fourier_grid convention) ──────────────────────
 # Full axis: fftshift(arange(-N//2, N//2))·dk → 0,1,…,N/2-1,-N/2,…,-1 (negative
@@ -66,13 +76,21 @@ function _inv_lap_kernel(n::Int, boxsize::T) where {T}
 end
 
 # ── Precomputed kernels ───────────────────────────────────────────────────────
-struct NLPTKernels{T<:AbstractFloat}
+# Parametric over the array type (AC complex, AR real) so the same struct holds CPU
+# `Array`s or `CuArray`s (type-stable on both) — `to_gpu(K)` just rebuilds with CuArrays.
+struct NLPTKernels{T<:AbstractFloat, AC<:AbstractArray{Complex{T},3}, AR<:AbstractArray{T,3}}
     res::Int
     ext::Int          # extended (de-aliasing) resolution = 3·res÷2
     boxsize::T
-    d_dx::Array{Complex{T},3}; d_dy::Array{Complex{T},3}; d_dz::Array{Complex{T},3}
-    inv_lap::Array{T,3}
-    dx_ext::Array{Complex{T},3}; dy_ext::Array{Complex{T},3}; dz_ext::Array{Complex{T},3}
+    d_dx::AC; d_dy::AC; d_dz::AC
+    inv_lap::AR
+    dx_ext::AC; dy_ext::AC; dz_ext::AC
+end
+
+# Outer constructor: infer the array types AC, AR from the kernel arrays.
+function NLPTKernels{T}(res::Int, ext::Int, bs::T, ddx::AC, ddy::AC, ddz::AC,
+                        il::AR, dxe::AC, dye::AC, dze::AC) where {T, AC, AR}
+    NLPTKernels{T, AC, AR}(res, ext, bs, ddx, ddy, ddz, il, dxe, dye, dze)
 end
 
 """
@@ -103,15 +121,14 @@ end
 layout (high modes → 0), with the (ext/orig)³ amplitude rescale."""
 function _pad3(ff::AbstractArray{Complex{T},3}, orig::Int, ext::Int) where {T}
     h = orig ÷ 2
-    Z = Complex{T}
     # dim 1 (full): [lo | zeros | hi]
-    a1 = cat(ff[1:h, :, :], zeros(Z, ext - 2h + 1, orig, h + 1),
+    a1 = cat(ff[1:h, :, :], _czeros(ff, ext - 2h + 1, orig, h + 1),
              ff[h+2:orig, :, :]; dims=1)                              # (ext, orig, h+1)
     # dim 2 (full)
-    a2 = cat(a1[:, 1:h, :], zeros(Z, ext, ext - 2h + 1, h + 1),
+    a2 = cat(a1[:, 1:h, :], _czeros(ff, ext, ext - 2h + 1, h + 1),
              a1[:, h+2:orig, :]; dims=2)                              # (ext, ext, h+1)
     # dim 3 (half): only the lower block, zero-pad up to ext÷2+1
-    a3 = cat(a2[:, :, 1:h], zeros(Z, ext, ext, ext ÷ 2 + 1 - h); dims=3)
+    a3 = cat(a2[:, :, 1:h], _czeros(ff, ext, ext, ext ÷ 2 + 1 - h); dims=3)
     return a3 .* T((ext / orig)^3)
 end
 
@@ -119,14 +136,13 @@ end
 `_pad3`, Nyquist planes → 0), with the (orig/ext)³ amplitude rescale."""
 function _crop3(ff::AbstractArray{Complex{T},3}, orig::Int, ext::Int) where {T}
     h = orig ÷ 2
-    Z = Complex{T}
     nz = size(ff, 3)
     # dim 1 (full): [lo | Nyquist=0 | hi]
-    a1 = cat(ff[1:h, :, :], zeros(Z, 1, ext, nz), ff[ext-h+2:ext, :, :]; dims=1)   # (orig, ext, nz)
+    a1 = cat(ff[1:h, :, :], _czeros(ff, 1, ext, nz), ff[ext-h+2:ext, :, :]; dims=1)   # (orig, ext, nz)
     # dim 2 (full)
-    a2 = cat(a1[:, 1:h, :], zeros(Z, orig, 1, nz), a1[:, ext-h+2:ext, :]; dims=2)  # (orig, orig, nz)
+    a2 = cat(a1[:, 1:h, :], _czeros(ff, orig, 1, nz), a1[:, ext-h+2:ext, :]; dims=2)  # (orig, orig, nz)
     # dim 3 (half): lower block + zero Nyquist plane
-    a3 = cat(a2[:, :, 1:h], zeros(Z, orig, orig, orig ÷ 2 + 1 - h); dims=3)
+    a3 = cat(a2[:, :, 1:h], _czeros(ff, orig, orig, orig ÷ 2 + 1 - h); dims=3)
     return a3 .* T((orig / ext)^3)
 end
 
@@ -153,7 +169,7 @@ const _MU2_SYM_TERMS = ((1,2,1,2,1), (1,3,1,3,1), (2,3,2,3,1),
 
 function fmu2_sym(K::NLPTKernels{T}, f1::AbstractArray{Complex{T},4}) where {T}
     res, ext = K.res, K.ext
-    acc = zeros(Complex{T}, res, res, res ÷ 2 + 1)
+    acc = _czeros(f1, res, res, res ÷ 2 + 1)
     for (i, j, k, l, s) in _MU2_SYM_TERMS
         t1 = _dext(K, f1, i, k)
         t2 = _dext(K, f1, j, l)
@@ -178,7 +194,7 @@ const _C_S = (1,-1,1,-1,1,-1)
 function fmu2_and_C(K::NLPTKernels{T}, f1::AbstractArray{Complex{T},4},
                     f2::AbstractArray{Complex{T},4}) where {T}
     res, ext = K.res, K.ext
-    z() = zeros(Complex{T}, res, res, res ÷ 2 + 1)
+    z() = _czeros(f1, res, res, res ÷ 2 + 1)
     mu2 = z()
     for n in 1:12
         t1 = _dext(K, f1, _MU2_I[n], _MU2_K[n])
@@ -206,7 +222,7 @@ const _MU3_M = (3,2,1,3,2,1); const _MU3_S = (1,-1,1,-1,1,-1)
 function fmu3(K::NLPTKernels{T}, f1::AbstractArray{Complex{T},4},
               f2::AbstractArray{Complex{T},4}, f3::AbstractArray{Complex{T},4}) where {T}
     res, ext = K.res, K.ext
-    acc = zeros(Complex{T}, res, res, res ÷ 2 + 1)
+    acc = _czeros(f1, res, res, res ÷ 2 + 1)
     for n in 1:6
         termA = _dext(K, f1, 1, _MU3_K[n])                       # ∂_k A_1
         inner = _conv2(_dext(K, f2, 2, _MU3_L[n]),               # ∂_l B_2
@@ -274,8 +290,8 @@ function compute_core(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernels{T};
     psi = (_psi1_fourier(K, fphi_ini),)
 
     for i in 2:n_order
-        fL = zeros(Complex{T}, res, res, res ÷ 2 + 1)
-        fT = zeros(Complex{T}, res, res, res ÷ 2 + 1, 3)
+        fL = _czeros(fphi_ini, res, res, res ÷ 2 + 1)
+        fT = _czeros(fphi_ini, res, res, res ÷ 2 + 1, 3)
 
         # symmetric μ₂ term for even orders (j == i/2)
         if iseven(i)
@@ -309,7 +325,7 @@ function compute_core(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernels{T};
         psi = (psi..., _assemble_psi(K, fL, no_transverse ? nothing : fT))
     end
 
-    out = Dict{String,Array{T,4}}()
+    out = Dict{String,AbstractArray{T,4}}()
     for i in 1:n_order
         out["psi_$i"] = _vec_irfftn(K, psi[i])
     end
@@ -329,7 +345,7 @@ function compute_core_exact(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernel
     res, ext = K.res, K.ext
     psi1 = _psi1_fourier(K, fphi_ini)   # φ DC irrelevant (killed by gradient kernel)
 
-    out = Dict{String,Array{T,4}}()
+    out = Dict{String,AbstractArray{T,4}}()
     out["psi_1"] = _vec_irfftn(K, psi1)
 
     if n_order >= 2
@@ -366,7 +382,7 @@ Combine the nLPT shape fields with the growth factors, exactly as DISCO-DJ's
                            + D₃plusc·ψ₃ᵧₑₓ  (shapes from `compute_core_exact`)
   * `exact_growth=false` → Σₙ D₁(a)ⁿ · ψ_n  (shapes from `compute_core`)
 """
-function evaluate_core(shapes::Dict{String,Array{T,4}}, cosmo::Cosmology, a::Real;
+function evaluate_core(shapes::Dict{String,AbstractArray{T,4}}, cosmo::Cosmology, a::Real;
                        n_order::Int, exact_growth::Bool) where {T}
     # Growth factors depend only on (cosmo, a), not on ω/φ — keep them off the AD
     # tape (Zygote tracing the growth-table interpolation otherwise segfaults).

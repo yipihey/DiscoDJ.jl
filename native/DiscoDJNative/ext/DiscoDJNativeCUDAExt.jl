@@ -18,9 +18,9 @@ numerically identical to the CPU run (validated by the GPU≈CPU test).
 module DiscoDJNativeCUDAExt
 
 using DiscoDJNative
-using DiscoDJNative: FourierGrid, LPTResult, HalfField
+using DiscoDJNative: FourierGrid, LPTResult, HalfField, NLPTKernels, ICOperator
 using CUDA
-using AbstractFFTs: plan_rfft, plan_irfft
+using AbstractFFTs: plan_rfft, plan_irfft, rfft, irfft
 
 # (res,res,res÷2+1) half-on-dim3  →  device (res÷2+1,res,res) half-on-dim1.
 #
@@ -100,5 +100,24 @@ function DiscoDJNative.to_host(lpt::LPTResult{T}) where {T}
                         _tohost_field(lpt.psi3),
                         lpt.n_order, lpt.res, lpt.boxsize)
 end
+
+# ── Faithful nLPT (nlpt_core) GPU path ────────────────────────────────────────
+# The differentiable engine keeps the (…,…,half-on-dim3) layout on the device too;
+# cuFFT only needs the reduced axis first in an increasing region, so we permute
+# (3,1,2) just around the transform and undo it (2,3,1).  Numerically identical to
+# the CPU `rfft(x,[3,1,2])` (validated), and all the elementwise kernels / pad-crop
+# stay in the same layout — so nothing else in nlpt_core changes.
+DiscoDJNative._rfftn(x::CuArray) = permutedims(rfft(permutedims(x, (3, 1, 2))), (2, 3, 1))
+DiscoDJNative._irfftn(f::CuArray, n::Int) = permutedims(irfft(permutedims(f, (3, 1, 2)), n), (2, 3, 1))
+
+# Move the faithful spectral kernels / IC map to the device (no layout change —
+# the kernels broadcast against the half-on-dim3 arrays).
+function DiscoDJNative.to_gpu(K::NLPTKernels{T}) where {T}
+    NLPTKernels{T}(K.res, K.ext, K.boxsize,
+        CuArray(K.d_dx), CuArray(K.d_dy), CuArray(K.d_dz), CuArray(K.inv_lap),
+        CuArray(K.dx_ext), CuArray(K.dy_ext), CuArray(K.dz_ext))
+end
+DiscoDJNative.to_gpu(op::ICOperator{T}) where {T} =
+    ICOperator{T, CuArray{T,3}}(CuArray(op.scale), op.res, op.boxsize)
 
 end # module

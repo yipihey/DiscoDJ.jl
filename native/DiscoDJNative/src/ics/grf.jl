@@ -137,7 +137,7 @@ unit white-noise field `white` (res,res,res).  Linear in `white`, so AD framewor
 custom adjoint.
 """
 white_noise_to_fphi(op::ICOperator, white::AbstractArray{<:Real,3}) =
-    rfft(white, [3, 1, 2]) .* op.scale
+    _rfftn(white) .* op.scale   # device-aware rfft (CPU [3,1,2]; CuArray permute-wrapped)
 
 white_noise_to_fphi(white::AbstractArray{<:Real,3}, res::Int, boxsize::Real, pk_table::Dict;
                     T::Type{<:AbstractFloat}=eltype(white)) =
