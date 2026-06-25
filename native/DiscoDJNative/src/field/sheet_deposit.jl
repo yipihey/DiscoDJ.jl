@@ -47,64 +47,78 @@ end
     return (i0 + 1, mod(i0 + 1, res) + 1, f)
 end
 
-# ── CIC deposit (serial CPU reference; KA/GPU path added later) ───────────────
+# ── CIC deposit (KernelAbstractions: one code path on CPU and CUDA) ───────────
+using KernelAbstractions
+using KernelAbstractions: @kernel, @index, @Const, get_backend, synchronize
+
+# Forward scatter: atomic-add each particle's 8 CIC contributions into the mesh.
+@kernel function _cic_scatter_kernel!(mesh, @Const(pos), @Const(w), res::Int, invdx)
+    p = @index(Global)
+    @inbounds if p <= size(pos, 1)
+        a0x, a1x, fx = _cic_ax(pos[p, 1], invdx, res)
+        a0y, a1y, fy = _cic_ax(pos[p, 2], invdx, res)
+        a0z, a1z, fz = _cic_ax(pos[p, 3], invdx, res)
+        wp = w[p]; gx0 = 1 - fx; gx1 = fx; gy0 = 1 - fy; gy1 = fy; gz0 = 1 - fz; gz1 = fz
+        KernelAbstractions.@atomic mesh[a0x, a0y, a0z] += wp * gx0 * gy0 * gz0
+        KernelAbstractions.@atomic mesh[a1x, a0y, a0z] += wp * gx1 * gy0 * gz0
+        KernelAbstractions.@atomic mesh[a0x, a1y, a0z] += wp * gx0 * gy1 * gz0
+        KernelAbstractions.@atomic mesh[a1x, a1y, a0z] += wp * gx1 * gy1 * gz0
+        KernelAbstractions.@atomic mesh[a0x, a0y, a1z] += wp * gx0 * gy0 * gz1
+        KernelAbstractions.@atomic mesh[a1x, a0y, a1z] += wp * gx1 * gy0 * gz1
+        KernelAbstractions.@atomic mesh[a0x, a1y, a1z] += wp * gx0 * gy1 * gz1
+        KernelAbstractions.@atomic mesh[a1x, a1y, a1z] += wp * gx1 * gy1 * gz1
+    end
+end
+
+# Adjoint gather: each particle reads its 8 mesh-cotangents (no atomics) → x̄, w̄.
+@kernel function _cic_gather_kernel!(x̄, w̄, @Const(Δm), @Const(pos), @Const(w), res::Int, invdx)
+    p = @index(Global)
+    @inbounds if p <= size(pos, 1)
+        a0x, a1x, fx = _cic_ax(pos[p, 1], invdx, res)
+        a0y, a1y, fy = _cic_ax(pos[p, 2], invdx, res)
+        a0z, a1z, fz = _cic_ax(pos[p, 3], invdx, res)
+        wp = w[p]; gx0 = 1 - fx; gx1 = fx; gy0 = 1 - fy; gy1 = fy; gz0 = 1 - fz; gz1 = fz
+        c000 = Δm[a0x,a0y,a0z]; c100 = Δm[a1x,a0y,a0z]; c010 = Δm[a0x,a1y,a0z]; c110 = Δm[a1x,a1y,a0z]
+        c001 = Δm[a0x,a0y,a1z]; c101 = Δm[a1x,a0y,a1z]; c011 = Δm[a0x,a1y,a1z]; c111 = Δm[a1x,a1y,a1z]
+        w̄[p] = c000*gx0*gy0*gz0 + c100*gx1*gy0*gz0 + c010*gx0*gy1*gz0 + c110*gx1*gy1*gz0 +
+               c001*gx0*gy0*gz1 + c101*gx1*gy0*gz1 + c011*gx0*gy1*gz1 + c111*gx1*gy1*gz1
+        s1 = (c100*gy0*gz0 + c110*gy1*gz0 + c101*gy0*gz1 + c111*gy1*gz1 -
+              c000*gy0*gz0 - c010*gy1*gz0 - c001*gy0*gz1 - c011*gy1*gz1) * invdx
+        s2 = (c010*gx0*gz0 + c110*gx1*gz0 + c011*gx0*gz1 + c111*gx1*gz1 -
+              c000*gx0*gz0 - c100*gx1*gz0 - c001*gx0*gz1 - c101*gx1*gz1) * invdx
+        s3 = (c001*gx0*gy0 + c101*gx1*gy0 + c011*gx0*gy1 + c111*gx1*gy1 -
+              c000*gx0*gy0 - c100*gx1*gy0 - c010*gx0*gy1 - c110*gx1*gy1) * invdx
+        x̄[p,1] = wp * s1; x̄[p,2] = wp * s2; x̄[p,3] = wp * s3
+    end
+end
+
 """
     cic_deposit(pos::(N,3), w::(N,), res, boxsize) -> mesh::(res,res,res)
 
 Periodic Cloud-In-Cell deposit of weights `w` at positions `pos` (Mpc/h, wrapped to
-[0,L)).  Differentiable w.r.t. `pos` and `w` (see module docstring).
+[0,L)).  Runs on CPU or CUDA (KernelAbstractions); differentiable w.r.t. `pos` and `w`.
 """
 function cic_deposit(pos::AbstractMatrix{T}, w::AbstractVector{T},
                      res::Int, boxsize::Real) where {T}
+    backend = get_backend(pos)
+    mesh = KernelAbstractions.zeros(backend, T, res, res, res)
     invdx = T(res) / T(boxsize)
-    mesh  = zeros(T, res, res, res)
-    N = size(pos, 1)
-    @inbounds for p in 1:N
-        a0x, a1x, fx = _cic_ax(pos[p, 1], invdx, res)
-        a0y, a1y, fy = _cic_ax(pos[p, 2], invdx, res)
-        a0z, a1z, fz = _cic_ax(pos[p, 3], invdx, res)
-        wp = w[p]
-        gx0 = 1 - fx; gx1 = fx; gy0 = 1 - fy; gy1 = fy; gz0 = 1 - fz; gz1 = fz
-        mesh[a0x, a0y, a0z] += wp * gx0 * gy0 * gz0
-        mesh[a1x, a0y, a0z] += wp * gx1 * gy0 * gz0
-        mesh[a0x, a1y, a0z] += wp * gx0 * gy1 * gz0
-        mesh[a1x, a1y, a0z] += wp * gx1 * gy1 * gz0
-        mesh[a0x, a0y, a1z] += wp * gx0 * gy0 * gz1
-        mesh[a1x, a0y, a1z] += wp * gx1 * gy0 * gz1
-        mesh[a0x, a1y, a1z] += wp * gx0 * gy1 * gz1
-        mesh[a1x, a1y, a1z] += wp * gx1 * gy1 * gz1
-    end
+    _cic_scatter_kernel!(backend)(mesh, pos, w, res, invdx; ndrange=size(pos, 1))
+    synchronize(backend)
     return mesh
 end
 
 function rrule(::typeof(cic_deposit), pos::AbstractMatrix{T}, w::AbstractVector{T},
                res::Int, boxsize::Real) where {T}
     mesh = cic_deposit(pos, w, res, boxsize)
-    invdx = T(res) / T(boxsize)
-    N = size(pos, 1)
     function cic_pullback(Δ)
         Δm = unthunk(Δ)
-        x̄ = zeros(T, N, 3); w̄ = zeros(T, N)
-        @inbounds for p in 1:N
-            a0x, a1x, fx = _cic_ax(pos[p, 1], invdx, res)
-            a0y, a1y, fy = _cic_ax(pos[p, 2], invdx, res)
-            a0z, a1z, fz = _cic_ax(pos[p, 3], invdx, res)
-            wp = w[p]
-            # per axis: (cell, weight g, dg/dx)
-            axx = ((a0x, 1 - fx, -invdx), (a1x, fx, invdx))
-            axy = ((a0y, 1 - fy, -invdx), (a1y, fy, invdx))
-            axz = ((a0z, 1 - fz, -invdx), (a1z, fz, invdx))
-            sw = zero(T); s1 = zero(T); s2 = zero(T); s3 = zero(T)
-            for (ix, gx, dgx) in axx, (iy, gy, dgy) in axy, (iz, gz, dgz) in axz
-                c = Δm[ix, iy, iz]
-                sw += c * gx * gy * gz
-                s1 += c * dgx * gy  * gz
-                s2 += c * gx  * dgy * gz
-                s3 += c * gx  * gy  * dgz
-            end
-            w̄[p] = sw
-            x̄[p, 1] = wp * s1; x̄[p, 2] = wp * s2; x̄[p, 3] = wp * s3
-        end
+        backend = get_backend(pos)
+        x̄ = KernelAbstractions.zeros(backend, T, size(pos, 1), 3)
+        w̄ = KernelAbstractions.zeros(backend, T, length(w))
+        invdx = T(res) / T(boxsize)
+        _cic_gather_kernel!(backend)(x̄, w̄, Δm, pos, w, res, invdx; ndrange=size(pos, 1))
+        synchronize(backend)
         return (NoTangent(), x̄, w̄, NoTangent(), NoTangent())
     end
     return mesh, cic_pullback
