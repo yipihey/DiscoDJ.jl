@@ -7,11 +7,13 @@ with the exact-growth shape fields Ψ (K = 2 for 2LPT → ψ₁, ψ₂ₑₓ; K 
 ψ₁, ψ₂ₑₓ, ψ₃ₐ, ψ₃ᵦ, ψ₃ᵧ; differentiable in ω) and growth factors D = (D₁, D₂plus, …;
 the first K).  The crossing scale factor a_cross solves F(a)=|x(q,a)−obs|−χ(a)=0.
 
-The root-find is procedural (a coarse scalar-a sign-change scan then per-particle
-bisection) and is run with the shape VALUES detached (`@ignore_derivatives`), fully
-**vectorised / backend-agnostic** — it runs natively on `CuArray`s (the growth/χ table
-lookups are device row-gathers; geometric a-grid ⇒ O(1) bracket index, no scalar
-indexing).  The exact implicit-function gradient ∂a_cross/∂Ψ is recovered by one Newton
+The root-find is procedural (per-particle sign-change scan then bisection) and is run
+with the shape VALUES detached (`@ignore_derivatives`), **fused into a single
+KernelAbstractions kernel** (one launch on CPU or CUDA): each particle scans + bisects
+entirely in registers against the shared geometric-a growth/χ tables (O(1) log-a index),
+with no intermediate global-memory traffic — this is the dominant cost of the cheap
+(1LPT) path, so collapsing the prior ~47-iteration × ~8-kernel storm matters most there.
+The exact implicit-function gradient ∂a_cross/∂Ψ is recovered by one Newton
 step at the converged solution `a_cross = a* − F(a*,Ψ)/F'` (a*, F' stop-grad; F(a*)=0 ⇒
 value unchanged, gradient = −∂F/∂Ψ/F').  So Zygote differentiates the whole lightcone
 with no hand rrule.  The number of orders K is read from `size(Ψ,3)` throughout.
@@ -20,39 +22,12 @@ with no hand rrule.  The number of orders K is read from `size(Ψ,3)` throughout
 export lightcone_cross_ad, exact_shape_stack
 
 using ChainRulesCore: @ignore_derivatives
-using Interpolations: linear_interpolation
-
-# Cached CPU interpolants of the growth factors / χ(a) for the scalar-a scan.
-struct _CosmoITP{F}
-    D::NTuple{5,F}; chi::F; f1::F; amin::Float64; amax::Float64
-end
-function _cosmo_interps(c::Cosmology)
-    a = c._a_table
-    D = (linear_interpolation(a, c._D1_table),  linear_interpolation(a, c._D2_table),
-         linear_interpolation(a, c._D3a_table), linear_interpolation(a, c._D3b_table),
-         linear_interpolation(a, c._D3c_table))
-    _CosmoITP(D, linear_interpolation(a, c._chi_table), linear_interpolation(a, c._f1_table),
-              Float64(a[1]), Float64(a[end]))
-end
-@inline _clampa(itp::_CosmoITP, a) = clamp(a, oftype(a, itp.amin), oftype(a, itp.amax))
+using KernelAbstractions
+using KernelAbstractions: @kernel, @index, @Const, get_backend, synchronize
 
 # Copy a host array to the backend of `ref` (constant data → off the AD tape).
 _devcopy(ref::AbstractArray, x::AbstractArray{S}) where {S} =
     (y = similar(ref, S, size(x)); copyto!(y, x); y)
-
-# Interpolate the (n,K) growth matrix's rows + extra (n,) columns at a (N-vector); the
-# a-grid is geometric (uniform in log a), so the bracket index is O(1) and the lookup a
-# device gather.  Returns (Dm::(N,K), tuple of interpolated extra columns).
-function _interp_growth(atab, Dmat, vcols::Tuple, a::AbstractVector, logamin, dloga, n::Int)
-    jf = (log10.(a) .- logamin) ./ dloga
-    j  = clamp.(floor.(Int, jf), 0, n - 2)
-    j1 = j .+ 1; j2 = j .+ 2
-    aj = atab[j1]; aj1 = atab[j2]
-    fr = (a .- aj) ./ (aj1 .- aj); frm = reshape(fr, :, 1)
-    Dm = Dmat[j1, :] .* (1 .- frm) .+ Dmat[j2, :] .* frm
-    vc = map(c -> c[j1] .* (1 .- fr) .+ c[j2] .* fr, vcols)
-    return Dm, vc
-end
 
 # Stack the exact-growth shape fields into (N, 3, K) — K = 1 (1LPT/Zel'dovich → ψ₁),
 # 2 (2LPT → ψ₁,ψ₂ₑₓ) or 5 (3LPT → ψ₁,ψ₂ₑₓ,ψ₃ₐ,ψ₃ᵦ,ψ₃ᵧ).
@@ -65,68 +40,113 @@ function exact_shape_stack(shapes::Dict{String,<:AbstractArray{T,4}}) where {T}
     return cat(cols...; dims=3)
 end
 
-# ── Vectorised, device-aware forward root-find (detached) ─────────────────────
+# ── Fused per-particle forward root-find (one KA kernel, CPU + CUDA) ───────────
+# Each particle independently scans + bisects F(a)=|q+ΣP_kD_k(a)−obs|−χ(a)=0 entirely
+# in registers, looking up the shared geometric-a growth/χ tables (Dmat (n,K), chitab,
+# f1tab) by O(1) log-a index.  Replaces the previous ~47-iteration × ~8-kernel launch
+# storm (+17 host→device syncs): one launch, no intermediate global-memory traffic —
+# this is the dominant cost of the cheap (1LPT) path.  Detached (inside
+# `@ignore_derivatives`); the IFT gradient is recovered analytically downstream.
+
+# Linear interp of one geometric-a table column at scalar `a` (Nyquist-flat ends).
+@inline function _tabidx(a, logamin, dloga, n, atab)
+    jf = (log10(a) - logamin) / dloga
+    j  = clamp(unsafe_trunc(Int, floor(jf)), 0, n - 2)
+    j1 = j + 1; j2 = j + 2
+    fr = (a - atab[j1]) / (atab[j2] - atab[j1])
+    return j1, j2, fr
+end
+
+# F(a) = |q + Σ_k P_k D_k(a) − obs| − χ(a) for particle p (no closure → GPU-clean).
+@inline function _Fcross(a, p, q1, q2, q3, o1, o2, o3, Psi, Dmat, chitab, K, n, logamin, dloga, atab)
+    j1, j2, fr = _tabidx(a, logamin, dloga, n, atab)
+    s1 = q1 - o1; s2 = q2 - o2; s3 = q3 - o3
+    @inbounds for k in 1:K
+        Dkk = Dmat[j1, k] * (1 - fr) + Dmat[j2, k] * fr
+        s1 += Psi[p, 1, k] * Dkk; s2 += Psi[p, 2, k] * Dkk; s3 += Psi[p, 3, k] * Dkk
+    end
+    @inbounds ca = chitab[j1] * (1 - fr) + chitab[j2] * fr
+    return sqrt(s1 * s1 + s2 * s2 + s3 * s3) - ca
+end
+
+@kernel function _cross_kernel!(ac, valid, Dk, dDk, chi, f1, Fp,
+        @Const(q), @Const(Psi), @Const(atab), @Const(Dmat), @Const(chitab), @Const(f1tab),
+        K::Int, n::Int, logamin, dloga, af, an, o1, o2, o3,
+        Om, Ok, Ode0, w0, wa, nscan::Int, nbisect::Int)
+    p = @index(Global)
+    @inbounds if p <= size(q, 1)
+        T = eltype(q)
+        q1 = q[p, 1]; q2 = q[p, 2]; q3 = q[p, 3]
+        # Scan [af,an] for the first sign change → bracket [lo,hi].
+        lo = af; hi = an; found = false
+        a_prev = af; F_prev = _Fcross(af, p, q1,q2,q3, o1,o2,o3, Psi, Dmat, chitab, K, n, logamin, dloga, atab)
+        for s in 1:nscan
+            a_cur = af + (an - af) * s / nscan
+            F_cur = _Fcross(a_cur, p, q1,q2,q3, o1,o2,o3, Psi, Dmat, chitab, K, n, logamin, dloga, atab)
+            if !found && ((F_prev < 0) != (F_cur < 0))
+                lo = a_prev; hi = a_cur; found = true
+            end
+            a_prev = a_cur; F_prev = F_cur
+        end
+        # Bisect the bracket.
+        Flo = _Fcross(lo, p, q1,q2,q3, o1,o2,o3, Psi, Dmat, chitab, K, n, logamin, dloga, atab)
+        for _ in 1:nbisect
+            mid = (lo + hi) / 2
+            Fm  = _Fcross(mid, p, q1,q2,q3, o1,o2,o3, Psi, Dmat, chitab, K, n, logamin, dloga, atab)
+            if (Fm < 0) == (Flo < 0); lo = mid; Flo = Fm; else; hi = mid; end
+        end
+        a = found ? (lo + hi) / 2 : an
+        ac[p] = a; valid[p] = found
+
+        # Growth/χ/f and dD/da (central diff) at the crossing; trajectory + dF/da.
+        j1, j2, fr = _tabidx(a, logamin, dloga, n, atab)
+        e = a * T(1e-5)
+        j1p, j2p, frp = _tabidx(a + e, logamin, dloga, n, atab)
+        j1m, j2m, frm = _tabidx(a - e, logamin, dloga, n, atab)
+        xs1 = q1; xs2 = q2; xs3 = q3; xd1 = zero(T); xd2 = zero(T); xd3 = zero(T)
+        for k in 1:K
+            Dkk = Dmat[j1, k] * (1 - fr) + Dmat[j2, k] * fr
+            Dp  = Dmat[j1p, k] * (1 - frp) + Dmat[j2p, k] * frp
+            Dm  = Dmat[j1m, k] * (1 - frm) + Dmat[j2m, k] * frm
+            dD  = (Dp - Dm) / (2e)
+            Dk[p, k] = Dkk; dDk[p, k] = dD
+            P1k = Psi[p, 1, k]; P2k = Psi[p, 2, k]; P3k = Psi[p, 3, k]
+            xs1 += P1k * Dkk; xs2 += P2k * Dkk; xs3 += P3k * Dkk
+            xd1 += P1k * dD;  xd2 += P2k * dD;  xd3 += P3k * dD
+        end
+        chi[p] = chitab[j1] * (1 - fr) + chitab[j2] * fr
+        f1[p]  = f1tab[j1] * (1 - fr) + f1tab[j2] * fr
+        d1 = xs1 - o1; d2 = xs2 - o2; d3 = xs3 - o3
+        r  = sqrt(d1 * d1 + d2 * d2 + d3 * d3)
+        drda = (d1 * xd1 + d2 * xd2 + d3 * xd3) / max(r, T(1e-30))
+        Ea = sqrt(Om / (a*a*a) + Ok / (a*a) + Ode0 * a^(-3 * (1 + w0 + wa)) * exp(-3 * wa * (1 - a)))
+        Fp[p] = drda - (-T(2997.92458) / (a * a * Ea))
+    end
+end
+
 function _crossing_forward(Psi::AbstractArray{T,3}, q::AbstractMatrix{T},
                            cosmo::Cosmology, obs::NTuple{3,T}, af::T, an::T;
                            n_scan::Int=16, n_bisect::Int=30) where {T}
     N = size(Psi, 1); K = size(Psi, 3)
-    itp = _cosmo_interps(cosmo)
     atabh = cosmo._a_table; n = length(atabh)
     logamin = log10(T(atabh[1])); dloga = (log10(T(atabh[end])) - logamin) / (n - 1)
-    aD = _devcopy(Psi, atabh)
+    aD   = _devcopy(Psi, T.(atabh))
     Ktab = (cosmo._D1_table, cosmo._D2_table, cosmo._D3a_table, cosmo._D3b_table, cosmo._D3c_table)
-    Dmat = _devcopy(Psi, reduce(hcat, Ktab[1:K]))            # (n,K) on device
-    chic = _devcopy(Psi, cosmo._chi_table); f1c = _devcopy(Psi, cosmo._f1_table)
+    Dmat = _devcopy(Psi, T.(reduce(hcat, Ktab[1:K])))       # (n,K) on device
+    chic = _devcopy(Psi, T.(cosmo._chi_table)); f1c = _devcopy(Psi, T.(cosmo._f1_table))
     o1, o2, o3 = obs
-    q1 = q[:, 1]; q2 = q[:, 2]; q3 = q[:, 3]
-    P1 = Psi[:, 1, :]; P2 = Psi[:, 2, :]; P3 = Psi[:, 3, :]   # (N,K) per component
+    Om = T(Omega_m(cosmo)); Ok = T(cosmo.Omega_k); w0 = T(cosmo.w0); wa = T(cosmo.wa)
+    Ode0 = T(1) - Om - Ok
 
-    function Fscalar(a)
-        Dv = _devcopy(Psi, T[itp.D[k](_clampa(itp, a)) for k in 1:K]); ca = T(itp.chi(_clampa(itp, a)))
-        dx = q1 .+ (P1 * Dv) .- o1; dy = q2 .+ (P2 * Dv) .- o2; dz = q3 .+ (P3 * Dv) .- o3
-        return sqrt.(dx.^2 .+ dy.^2 .+ dz.^2) .- ca
-    end
-    function Fvec(a)
-        Dm, (ca,) = _interp_growth(aD, Dmat, (chic,), a, logamin, dloga, n)
-        dx = q1 .+ vec(sum(P1 .* Dm; dims=2)) .- o1
-        dy = q2 .+ vec(sum(P2 .* Dm; dims=2)) .- o2
-        dz = q3 .+ vec(sum(P3 .* Dm; dims=2)) .- o3
-        return sqrt.(dx.^2 .+ dy.^2 .+ dz.^2) .- ca
-    end
-
-    lo = fill!(similar(Psi, T, N), af); hi = fill!(similar(Psi, T, N), an)
-    found = fill!(similar(Psi, Bool, N), false)
-    a_prev = af; F_prev = Fscalar(af)
-    for s in 1:n_scan
-        a_cur = af + (an - af) * s / n_scan
-        F_cur = Fscalar(a_cur)
-        nb = ((F_prev .< 0) .!= (F_cur .< 0)) .& .!found
-        lo = ifelse.(nb, a_prev, lo); hi = ifelse.(nb, a_cur, hi); found = found .| nb
-        a_prev = a_cur; F_prev = F_cur
-    end
-    Flo = Fvec(lo)
-    for _ in 1:n_bisect
-        mid  = (lo .+ hi) ./ 2
-        Fm   = Fvec(mid)
-        same = (Fm .< 0) .== (Flo .< 0)
-        lo = ifelse.(same, mid, lo); Flo = ifelse.(same, Fm, Flo); hi = ifelse.(same, hi, mid)
-    end
-    ac = ifelse.(found, (lo .+ hi) ./ 2, an)
-
-    Dk, (chi, f1) = _interp_growth(aD, Dmat, (chic, f1c), ac, logamin, dloga, n)
-    e   = ac .* T(1e-5)
-    Dp, _  = _interp_growth(aD, Dmat, (), ac .+ e, logamin, dloga, n)
-    Dm2, _ = _interp_growth(aD, Dmat, (), ac .- e, logamin, dloga, n)
-    dDk = (Dp .- Dm2) ./ (2 .* reshape(e, :, 1))
-    xs1 = q1 .+ vec(sum(P1 .* Dk; dims=2)); xs2 = q2 .+ vec(sum(P2 .* Dk; dims=2)); xs3 = q3 .+ vec(sum(P3 .* Dk; dims=2))
-    xd1 = vec(sum(P1 .* dDk; dims=2)); xd2 = vec(sum(P2 .* dDk; dims=2)); xd3 = vec(sum(P3 .* dDk; dims=2))
-    d1 = xs1 .- o1; d2 = xs2 .- o2; d3 = xs3 .- o3
-    r  = sqrt.(d1.^2 .+ d2.^2 .+ d3.^2)
-    drda = (d1 .* xd1 .+ d2 .* xd2 .+ d3 .* xd3) ./ max.(r, T(1e-30))
-    Om = Omega_m(cosmo); Ok = cosmo.Omega_k; w0 = cosmo.w0; wa = cosmo.wa; Ode0 = 1 - Om - Ok
-    Ea(a) = sqrt(Om * a^(-3) + Ok * a^(-2) + Ode0 * a^(-3 * (1 + w0 + wa)) * exp(-3 * wa * (1 - a)))
-    Fp = drda .- (.-T(2997.92458) ./ (ac.^2 .* Ea.(ac)))
-    return (ac=ac, valid=found, Dk=Dk, dDk=dDk, chi=chi, f1=f1, Fp=Fp)
+    ac  = similar(Psi, T, N); valid = similar(Psi, Bool, N)
+    Dk  = similar(Psi, T, N, K); dDk = similar(Psi, T, N, K)
+    chi = similar(Psi, T, N); f1 = similar(Psi, T, N); Fp = similar(Psi, T, N)
+    backend = get_backend(Psi)
+    _cross_kernel!(backend)(ac, valid, Dk, dDk, chi, f1, Fp, q, Psi, aD, Dmat, chic, f1c,
+        K, n, logamin, dloga, af, an, o1, o2, o3, Om, Ok, Ode0, w0, wa,
+        n_scan, n_bisect; ndrange=N)
+    synchronize(backend)
+    return (ac=ac, valid=valid, Dk=Dk, dDk=dDk, chi=chi, f1=f1, Fp=Fp)
 end
 
 """
