@@ -478,6 +478,39 @@ mean(x) = sum(x) / length(x)
         @test all(m1 .<= 1) && count(m1 .>= 1) > 500
     end
 
+    # ── Grid-free sheet density: differentiable tet→point deposit + rrule (P3) ──
+    @testset "Sheet density deposit + rrule (P3)" begin
+        res = 6; L = 10.0; dx = L/res
+        q  = lagrangian_grid_3d(res, L)
+        xg = q .+ 0.08dx .* randn(MersenneTwister(7), res,res,res,3)
+        w  = 1.0 .+ 0.3 .* randn(MersenneTwister(8), res,res,res)
+        off = DiscoDJNative._TET_OFFSETS; ncube = res-1
+        tv(v) = let e1=v[2].-v[1], e2=v[3].-v[1], e3=v[4].-v[1]
+            (e1[1]*(e2[2]*e3[3]-e2[3]*e3[2])-e1[2]*(e2[1]*e3[3]-e2[3]*e3[1])+e1[3]*(e2[1]*e3[2]-e2[2]*e3[1]))/6 end
+        ntet = 6*ncube^3; cents = zeros(ntet,3); rhoT = zeros(ntet); n=0
+        for i in 1:ncube, j in 1:ncube, k in 1:ncube, t in 1:6
+            n += 1
+            v  = [[xg[i+off[t,vv,1],j+off[t,vv,2],k+off[t,vv,3],d] for d in 1:3] for vv in 1:4]
+            ws = sum(w[i+off[t,vv,1],j+off[t,vv,2],k+off[t,vv,3]] for vv in 1:4)/4
+            cents[n,:] = (v[1].+v[2].+v[3].+v[4])./4; rhoT[n] = (1/6)*ws/abs(tv(v))
+        end
+        cl = build_cell_list(cents, dx)
+        ρg, Z = sheet_density_at_points(xg, w, cents, cl, res, L)
+        @test maximum(abs.(ρg .- rhoT) ./ rhoT) < 1e-9            # exact per-tet density at centroids
+        @test isapprox(Z, sheet_tet_reduce(xg, w, res, L)[2]; rtol=1e-12)
+        if ad_ok
+            Lt(x, ww) = (r = sheet_density_at_points(x, ww, cents, cl, res, L); sum(log.(r[1])) + r[2])
+            gx = Zygote.gradient(x -> Lt(x, w), xg)[1]; gw = Zygote.gradient(ww -> Lt(xg, ww), w)[1]
+            fdm = central_fdm(5,1)
+            for idx in ((2,3,3,1), (4,2,4,2))                    # cofactor adjoint through the scatter
+                fd = FiniteDifferences.grad(fdm, t->(u=copy(xg); u[idx...]=t; Lt(u,w)), xg[idx...])[1]
+                @test isapprox(gx[idx...], fd; rtol=1e-4)
+            end
+            fd = FiniteDifferences.grad(fdm, t->(u=copy(w); u[2,3,3]=t; Lt(xg,u)), w[2,3,3])[1]
+            @test isapprox(gw[2,3,3], fd; rtol=1e-4)              # weight adjoint
+        end
+    end
+
     # ── Differentiable lightcone crossing (implicit-function theorem) ───────────
     @testset "Differentiable lightcone crossing (IFT)" begin
         c = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c)

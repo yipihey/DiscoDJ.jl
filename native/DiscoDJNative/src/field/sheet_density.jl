@@ -252,3 +252,141 @@ function locate_points_in_sheet(x_grid::AbstractArray{T,4}, pts::AbstractMatrix{
     synchronize(backend)
     return mult
 end
+
+# ── P3: the differentiable tet→galaxy deposit (the core primitive) ────────────
+export sheet_density_at_points
+
+# forward: per tet, ρ_T = m_T w_T/|V_T|; scatter to contained points; reduce Z = Σ m_T w_T
+@kernel function _deposit_fwd!(ρg, Z, @Const(xg), @Const(wg), @Const(off), @Const(pts),
+        @Const(perm), @Const(cstart), o1, o2, o3, h, d1::Int, d2::Int, d3::Int,
+        res::Int, mT, floorvol, eps)
+    t, i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        p1=i+off[t,1,1];q1=j+off[t,1,2];r1=k+off[t,1,3]; p2=i+off[t,2,1];q2=j+off[t,2,2];r2=k+off[t,2,3]
+        p3=i+off[t,3,1];q3=j+off[t,3,2];r3=k+off[t,3,3]; p4=i+off[t,4,1];q4=j+off[t,4,2];r4=k+off[t,4,3]
+        y1x=xg[p1,q1,r1,1];y1y=xg[p1,q1,r1,2];y1z=xg[p1,q1,r1,3]; y2x=xg[p2,q2,r2,1];y2y=xg[p2,q2,r2,2];y2z=xg[p2,q2,r2,3]
+        y3x=xg[p3,q3,r3,1];y3y=xg[p3,q3,r3,2];y3z=xg[p3,q3,r3,3]; y4x=xg[p4,q4,r4,1];y4y=xg[p4,q4,r4,2];y4z=xg[p4,q4,r4,3]
+        e1x=y2x-y1x;e1y=y2y-y1y;e1z=y2z-y1z; e2x=y3x-y1x;e2y=y3y-y1y;e2z=y3z-y1z; e3x=y4x-y1x;e3y=y4y-y1y;e3z=y4z-y1z
+        c23x=e2y*e3z-e2z*e3y;c23y=e2z*e3x-e2x*e3z;c23z=e2x*e3y-e2y*e3x
+        detf = e1x*c23x+e1y*c23y+e1z*c23z
+        wT = (wg[p1,q1,r1]+wg[p2,q2,r2]+wg[p3,q3,r3]+wg[p4,q4,r4])*oftype(detf,0.25)
+        KernelAbstractions.@atomic Z[1] += Float64(mT*wT)
+        if abs(detf) > eps
+            ρT = mT*wT/max(abs(detf)/6, floorvol); inv = one(detf)/detf
+            axmn=min(y1x,y2x,y3x,y4x);axmx=max(y1x,y2x,y3x,y4x); aymn=min(y1y,y2y,y3y,y4y);aymx=max(y1y,y2y,y3y,y4y); azmn=min(y1z,y2z,y3z,y4z);azmx=max(y1z,y2z,y3z,y4z)
+            cxa=clamp(unsafe_trunc(Int,(axmn-o1)/h),0,d1-1);cxb=clamp(unsafe_trunc(Int,(axmx-o1)/h),0,d1-1)
+            cya=clamp(unsafe_trunc(Int,(aymn-o2)/h),0,d2-1);cyb=clamp(unsafe_trunc(Int,(aymx-o2)/h),0,d2-1)
+            cza=clamp(unsafe_trunc(Int,(azmn-o3)/h),0,d3-1);czb=clamp(unsafe_trunc(Int,(azmx-o3)/h),0,d3-1)
+            for cz in cza:czb, cy in cya:cyb, cx in cxa:cxb
+                c = cx + d1*(cy + d2*cz) + 1
+                for idx in cstart[c]:(cstart[c+1]-1)
+                    g = perm[idx]; dx=pts[g,1]-y1x;dy=pts[g,2]-y1y;dz=pts[g,3]-y1z
+                    l2=(dx*c23x+dy*c23y+dz*c23z)*inv
+                    l3=(e1x*(dy*e3z-dz*e3y)+e1y*(dz*e3x-dx*e3z)+e1z*(dx*e3y-dy*e3x))*inv
+                    l4=(e1x*(e2y*dz-e2z*dy)+e1y*(e2z*dx-e2x*dz)+e1z*(e2x*dy-e2y*dx))*inv
+                    l1=one(l2)-l2-l3-l4; tol=oftype(l2,eps)
+                    if l1>=-tol&&l2>=-tol&&l3>=-tol&&l4>=-tol
+                        KernelAbstractions.@atomic ρg[g] += Float64(ρT)
+                    end
+                end
+            end
+        end
+    end
+end
+
+# backward: per tet, gather ρ̄_T = Σ_{g∈T} ρ̄g[g]; then ρ_T's V/w derivatives → cofactor
+# adjoint → x̄_grid, weight-mean adjoint → w̄ (recompute-in-backward; locator re-run).
+@kernel function _deposit_bwd!(x̄, w̄, @Const(ρ̄g), Z̄, @Const(xg), @Const(wg), @Const(off),
+        @Const(pts), @Const(perm), @Const(cstart), o1, o2, o3, h, d1::Int, d2::Int, d3::Int,
+        res::Int, mT, floorvol, eps)
+    t, i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        p1=i+off[t,1,1];q1=j+off[t,1,2];r1=k+off[t,1,3]; p2=i+off[t,2,1];q2=j+off[t,2,2];r2=k+off[t,2,3]
+        p3=i+off[t,3,1];q3=j+off[t,3,2];r3=k+off[t,3,3]; p4=i+off[t,4,1];q4=j+off[t,4,2];r4=k+off[t,4,3]
+        y1x=xg[p1,q1,r1,1];y1y=xg[p1,q1,r1,2];y1z=xg[p1,q1,r1,3]; y2x=xg[p2,q2,r2,1];y2y=xg[p2,q2,r2,2];y2z=xg[p2,q2,r2,3]
+        y3x=xg[p3,q3,r3,1];y3y=xg[p3,q3,r3,2];y3z=xg[p3,q3,r3,3]; y4x=xg[p4,q4,r4,1];y4y=xg[p4,q4,r4,2];y4z=xg[p4,q4,r4,3]
+        e1x=y2x-y1x;e1y=y2y-y1y;e1z=y2z-y1z; e2x=y3x-y1x;e2y=y3y-y1y;e2z=y3z-y1z; e3x=y4x-y1x;e3y=y4y-y1y;e3z=y4z-y1z
+        c23x=e2y*e3z-e2z*e3y;c23y=e2z*e3x-e2x*e3z;c23z=e2x*e3y-e2y*e3x
+        detf = e1x*c23x+e1y*c23y+e1z*c23z; V = detf/6; absV = abs(V); Vc = max(absV, floorvol)
+        wT = (wg[p1,q1,r1]+wg[p2,q2,r2]+wg[p3,q3,r3]+wg[p4,q4,r4])*oftype(detf,0.25)
+        rbar = zero(Float64)
+        if abs(detf) > eps
+            inv = one(detf)/detf
+            axmn=min(y1x,y2x,y3x,y4x);axmx=max(y1x,y2x,y3x,y4x); aymn=min(y1y,y2y,y3y,y4y);aymx=max(y1y,y2y,y3y,y4y); azmn=min(y1z,y2z,y3z,y4z);azmx=max(y1z,y2z,y3z,y4z)
+            cxa=clamp(unsafe_trunc(Int,(axmn-o1)/h),0,d1-1);cxb=clamp(unsafe_trunc(Int,(axmx-o1)/h),0,d1-1)
+            cya=clamp(unsafe_trunc(Int,(aymn-o2)/h),0,d2-1);cyb=clamp(unsafe_trunc(Int,(aymx-o2)/h),0,d2-1)
+            cza=clamp(unsafe_trunc(Int,(azmn-o3)/h),0,d3-1);czb=clamp(unsafe_trunc(Int,(azmx-o3)/h),0,d3-1)
+            for cz in cza:czb, cy in cya:cyb, cx in cxa:cxb
+                c = cx + d1*(cy + d2*cz) + 1
+                for idx in cstart[c]:(cstart[c+1]-1)
+                    g = perm[idx]; dx=pts[g,1]-y1x;dy=pts[g,2]-y1y;dz=pts[g,3]-y1z
+                    l2=(dx*c23x+dy*c23y+dz*c23z)*inv
+                    l3=(e1x*(dy*e3z-dz*e3y)+e1y*(dz*e3x-dx*e3z)+e1z*(dx*e3y-dy*e3x))*inv
+                    l4=(e1x*(e2y*dz-e2z*dy)+e1y*(e2z*dx-e2x*dz)+e1z*(e2x*dy-e2y*dx))*inv
+                    l1=one(l2)-l2-l3-l4; tol=oftype(l2,eps)
+                    (l1>=-tol&&l2>=-tol&&l3>=-tol&&l4>=-tol) && (rbar += ρ̄g[g])
+                end
+            end
+        end
+        ρ̄T = oftype(V, rbar)
+        dρdV = absV > floorvol ? (-mT*wT*sign(V)/(V*V)) : zero(V)
+        V̄  = ρ̄T * dρdV
+        w̄T = ρ̄T * (mT/Vc) + oftype(V, Z̄) * mT
+        s = V̄ / 6
+        g2x=s*c23x; g2y=s*c23y; g2z=s*c23z
+        g3x=s*(e3y*e1z-e3z*e1y); g3y=s*(e3z*e1x-e3x*e1z); g3z=s*(e3x*e1y-e3y*e1x)
+        g4x=s*(e1y*e2z-e1z*e2y); g4y=s*(e1z*e2x-e1x*e2z); g4z=s*(e1x*e2y-e1y*e2x)
+        g1x=-(g2x+g3x+g4x); g1y=-(g2y+g3y+g4y); g1z=-(g2z+g3z+g4z); ww=w̄T*oftype(V,0.25)
+        KernelAbstractions.@atomic x̄[p1,q1,r1,1]+=Float64(g1x); KernelAbstractions.@atomic x̄[p1,q1,r1,2]+=Float64(g1y); KernelAbstractions.@atomic x̄[p1,q1,r1,3]+=Float64(g1z)
+        KernelAbstractions.@atomic x̄[p2,q2,r2,1]+=Float64(g2x); KernelAbstractions.@atomic x̄[p2,q2,r2,2]+=Float64(g2y); KernelAbstractions.@atomic x̄[p2,q2,r2,3]+=Float64(g2z)
+        KernelAbstractions.@atomic x̄[p3,q3,r3,1]+=Float64(g3x); KernelAbstractions.@atomic x̄[p3,q3,r3,2]+=Float64(g3y); KernelAbstractions.@atomic x̄[p3,q3,r3,3]+=Float64(g3z)
+        KernelAbstractions.@atomic x̄[p4,q4,r4,1]+=Float64(g4x); KernelAbstractions.@atomic x̄[p4,q4,r4,2]+=Float64(g4y); KernelAbstractions.@atomic x̄[p4,q4,r4,3]+=Float64(g4z)
+        KernelAbstractions.@atomic w̄[p1,q1,r1]+=Float64(ww); KernelAbstractions.@atomic w̄[p2,q2,r2]+=Float64(ww); KernelAbstractions.@atomic w̄[p3,q3,r3]+=Float64(ww); KernelAbstractions.@atomic w̄[p4,q4,r4]+=Float64(ww)
+    end
+end
+
+"""
+    sheet_density_at_points(x_grid, w, pts, cl, res, boxsize; floor_frac=1e-3, eps=1e-7)
+        -> (ρ_g::(N,), Z)
+
+AHK galaxy density at each query point on the deformed sheet — `ρ_g[g] = Σ_{T∋g} m_T w_T/|V_T|`
+(piecewise-constant; sum over containing tets ⇒ multi-streaming) — and the normalisation
+`Z = Σ_T m_T w_T`.  Differentiable w.r.t. `x_grid` (det cofactors) and `w` (weight mean);
+the tet→point assignment is detached and recomputed in the backward.  Hand-written `rrule`.
+"""
+function sheet_density_at_points(x_grid::AbstractArray{T,4}, w::AbstractArray{T,3},
+        pts::AbstractMatrix{T}, cl, res::Int, boxsize::Real;
+        floor_frac::Real=1e-3, eps::Real=1e-7) where {T}
+    backend = get_backend(x_grid); off = _offsets_on(x_grid)
+    mv(x) = (y = similar(x_grid, eltype(x), size(x)); copyto!(y, x); y)
+    mT = T(1//6); floorvol = T(floor_frac)*(T(boxsize)/res)^3/6
+    ρg = KernelAbstractions.zeros(backend, Float64, size(pts,1)); Z = KernelAbstractions.zeros(backend, Float64, 1)
+    _deposit_fwd!(backend)(ρg, Z, x_grid, w, off, mv(pts), mv(cl.perm), mv(cl.cell_start),
+        T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, mT, floorvol, T(eps);
+        ndrange=(6,res-1,res-1,res-1))
+    synchronize(backend)
+    return (ρg, Array(Z)[1])
+end
+
+function ChainRulesCore.rrule(::typeof(sheet_density_at_points), x_grid::AbstractArray{T,4},
+        w::AbstractArray{T,3}, pts::AbstractMatrix{T}, cl, res::Int, boxsize::Real;
+        floor_frac::Real=1e-3, eps::Real=1e-7) where {T}
+    out = sheet_density_at_points(x_grid, w, pts, cl, res, boxsize; floor_frac, eps)
+    backend = get_backend(x_grid); off = _offsets_on(x_grid)
+    mv(x) = (y = similar(x_grid, eltype(x), size(x)); copyto!(y, x); y)
+    ptsb = mv(pts); permb = mv(cl.perm); cstartb = mv(cl.cell_start)
+    mT = T(1//6); floorvol = T(floor_frac)*(T(boxsize)/res)^3/6
+    function deposit_pullback(Δ)
+        ρ̄g = Δ[1] isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend, Float64, size(pts,1)) :
+             (y = KernelAbstractions.zeros(backend, Float64, size(pts,1)); copyto!(y, Float64.(unthunk(Δ[1]))); y)
+        Z̄ = Δ[2] isa ChainRulesCore.AbstractZero ? 0.0 : Float64(Δ[2])
+        x̄ = KernelAbstractions.zeros(backend, Float64, res, res, res, 3)
+        w̄ = KernelAbstractions.zeros(backend, Float64, res, res, res)
+        _deposit_bwd!(backend)(x̄, w̄, ρ̄g, Z̄, x_grid, w, off, ptsb, permb, cstartb,
+            T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, mT, floorvol, T(eps);
+            ndrange=(6,res-1,res-1,res-1))
+        synchronize(backend)
+        return (NoTangent(), T.(x̄), T.(w̄), NoTangent(), NoTangent(), NoTangent(), NoTangent())
+    end
+    return out, deposit_pullback
+end
