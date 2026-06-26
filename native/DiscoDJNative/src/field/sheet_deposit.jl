@@ -58,7 +58,8 @@ using KernelAbstractions: @kernel, @index, @Const, get_backend, synchronize
         a0x, a1x, fx = _cic_ax(pos[p, 1], invdx, res)
         a0y, a1y, fy = _cic_ax(pos[p, 2], invdx, res)
         a0z, a1z, fz = _cic_ax(pos[p, 3], invdx, res)
-        wp = w[p]; gx0 = 1 - fx; gx1 = fx; gy0 = 1 - fy; gy1 = fy; gz0 = 1 - fz; gz1 = fz
+        wp = eltype(mesh)(w[p])   # accumulate in the mesh's (possibly wider) precision
+        gx0 = 1 - fx; gx1 = fx; gy0 = 1 - fy; gy1 = fy; gz0 = 1 - fz; gz1 = fz
         KernelAbstractions.@atomic mesh[a0x, a0y, a0z] += wp * gx0 * gy0 * gz0
         KernelAbstractions.@atomic mesh[a1x, a0y, a0z] += wp * gx1 * gy0 * gz0
         KernelAbstractions.@atomic mesh[a0x, a1y, a0z] += wp * gx0 * gy1 * gz0
@@ -98,10 +99,16 @@ end
 Periodic Cloud-In-Cell deposit of weights `w` at positions `pos` (Mpc/h, wrapped to
 [0,L)).  Runs on CPU or CUDA (KernelAbstractions); differentiable w.r.t. `pos` and `w`.
 """
+# Accumulate in a wider type than the (per-cell) storage: an F32 scatter sums ~48M atomic
+# contributions, whose F32 round-off (~1e-3) wrecks the gradient and breaks NUTS energy
+# conservation.  F32 fields/FFTs stay fast + light; only the mesh accumulator widens.
+_acc(::Type{Float32}) = Float64
+_acc(::Type{T}) where {T} = T
+
 function cic_deposit(pos::AbstractMatrix{T}, w::AbstractVector{T},
                      res::Int, boxsize::Real) where {T}
     backend = get_backend(pos)
-    mesh = KernelAbstractions.zeros(backend, T, res, res, res)
+    mesh = KernelAbstractions.zeros(backend, _acc(T), res, res, res)
     invdx = T(res) / T(boxsize)
     _cic_scatter_kernel!(backend)(mesh, pos, w, res, invdx; ndrange=size(pos, 1))
     synchronize(backend)

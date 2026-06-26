@@ -100,7 +100,8 @@ end
 
         # Growth/χ/f and dD/da (central diff) at the crossing; trajectory + dF/da.
         j1, j2, fr = _tabidx(a, logamin, dloga, n, atab)
-        e = a * T(1e-5)
+        e = a * cbrt(eps(T))     # precision-aware central-diff step (≈6e-6 f64, ≈5e-3 f32);
+                                 # a fixed 1e-5 catastrophically cancels dDk in Float32
         j1p, j2p, frp = _tabidx(a + e, logamin, dloga, n, atab)
         j1m, j2m, frm = _tabidx(a - e, logamin, dloga, n, atab)
         xs1 = q1; xs2 = q2; xs3 = q3; xd1 = zero(T); xd2 = zero(T); xd3 = zero(T)
