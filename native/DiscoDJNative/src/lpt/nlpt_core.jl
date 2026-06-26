@@ -23,7 +23,7 @@ component axis: `(res, res, res÷2+1, 3)`.
 """
 
 export NLPTKernels, nlpt_kernels, compute_core, compute_core_exact,
-       evaluate_core, lpt_displacement
+       evaluate_core, lpt_displacement, upsample_white_noise
 
 using ChainRulesCore: @ignore_derivatives   # growth factors are constants in ω
 
@@ -144,6 +144,23 @@ function _crop3(ff::AbstractArray{Complex{T},3}, orig::Int, ext::Int) where {T}
     # dim 3 (half): lower block + zero Nyquist plane
     a3 = cat(a2[:, :, 1:h], _czeros(ff, orig, orig, orig ÷ 2 + 1 - h); dims=3)
     return a3 .* T((orig / ext)^3)
+end
+
+"""
+    upsample_white_noise(ω, res_fine) -> ω_fine
+
+Coarse→fine warm-start upsample of a real white-noise field `ω` (res,res,res), by Fourier
+zero-padding the low-k modes with the `(res/res_fine)^{3/2}` per-mode rescale — the MUSIC
+construction.  The shared low-k modes are preserved so the IC potential
+`white_noise_to_fphi` (∝ √((res/L)³)·rfft(ω)/k²) matches the coarse realisation at large
+scales (corr & amplitude ≈ 1 down to the coarse Nyquist); the new high-k modes are zero, to
+be filled in by optimisation at the finer level.  Differentiable (plain rfft/pad/irfft).
+"""
+function upsample_white_noise(ω::AbstractArray{T,3}, res_fine::Int) where {T}
+    res = size(ω, 1)
+    res_fine == res && return copy(ω)
+    res_fine > res || throw(ArgumentError("upsample_white_noise: res_fine ($res_fine) must exceed res ($res)"))
+    return _irfftn(_pad3(_rfftn(ω), res, res_fine) .* T((res / res_fine)^(T(3) / 2)), res_fine)
 end
 
 """Fourier-space convolution: rfft(irfft(ff1)·irfft(ff2)); inputs are extended

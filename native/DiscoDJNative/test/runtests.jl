@@ -577,6 +577,24 @@ mean(x) = sum(x) / length(x)
         end
     end
 
+    @testset "White-noise upsample (MUSIC warm-start)" begin
+        c = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c); L = 1500.0
+        rc = 16; rf = 32
+        op_c = ic_operator(rc, L, pk; T=Float64); op_f = ic_operator(rf, L, pk; T=Float64)
+        ω = randn(MersenneTwister(0), rc, rc, rc)
+        ωf = upsample_white_noise(ω, rf)
+        @test size(ωf) == (rf, rf, rf)
+        @test upsample_white_noise(ω, rc) == ω           # no-op at equal resolution
+        # the IC potential must be preserved at the shared large scales (corr & amplitude ≈ 1)
+        φc = white_noise_to_fphi(op_c, ω); φf = white_noise_to_fphi(op_f, ωf)
+        rn = DiscoDJNative._rfftn; irn = DiscoDJNative._irfftn
+        prc = irn(φc, rc)
+        prf_dn = irn(DiscoDJNative._crop3(rn(irn(φf, rf)), rc, rf), rc)
+        corr = sum(vec(prf_dn).*vec(prc)) / sqrt(sum(abs2,prf_dn)*sum(abs2,prc))
+        @test corr > 0.99
+        @test isapprox(sqrt(sum(abs2,prf_dn)), sqrt(sum(abs2,prc)); rtol=0.05)   # amplitude preserved
+    end
+
     @testset "Red-black GS Poisson smoother + reverse-sweep rrule" begin
         N=12; h2=(1.0/N)^2; K=5
         δ  = randn(MersenneTwister(0),N,N,N); δ .-= sum(δ)/length(δ)
