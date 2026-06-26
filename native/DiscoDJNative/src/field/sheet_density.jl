@@ -159,3 +159,96 @@ function tet_volume_sum(x_grid::AbstractArray{T,4}, res::Int) where {T}
     synchronize(backend)
     return Array(S)[1]
 end
+
+# ── P2: detached point-location (fixed-galaxy cell list + per-tet barycentric query) ──
+export build_cell_list, locate_points_in_sheet
+
+"""
+    build_cell_list(pts::(N,3), h) -> NamedTuple
+
+Uniform chaining mesh on the FIXED query points (built once; the mesh deforms, the
+galaxies don't).  Counting-sort into cells of size `h`: `perm[cell_start[c]:cell_start[c+1]-1]`
+are the point indices in cell `c`.  CPU/host (detached — not on the AD tape).
+"""
+function build_cell_list(pts::AbstractMatrix{T}, h::Real) where {T}
+    N = size(pts, 1); h = T(h)
+    o1 = minimum(@view pts[:,1]); o2 = minimum(@view pts[:,2]); o3 = minimum(@view pts[:,3])
+    m1 = maximum(@view pts[:,1]); m2 = maximum(@view pts[:,2]); m3 = maximum(@view pts[:,3])
+    d1 = max(1, floor(Int,(m1-o1)/h)+1); d2 = max(1, floor(Int,(m2-o2)/h)+1); d3 = max(1, floor(Int,(m3-o3)/h)+1)
+    nc = d1*d2*d3
+    cid = Vector{Int}(undef, N); counts = zeros(Int, nc)
+    @inbounds for g in 1:N
+        cx = clamp(floor(Int,(pts[g,1]-o1)/h),0,d1-1); cy = clamp(floor(Int,(pts[g,2]-o2)/h),0,d2-1); cz = clamp(floor(Int,(pts[g,3]-o3)/h),0,d3-1)
+        c = cx + d1*(cy + d2*cz) + 1; cid[g] = c; counts[c] += 1
+    end
+    cell_start = Vector{Int}(undef, nc+1); cell_start[1] = 1
+    @inbounds for c in 1:nc; cell_start[c+1] = cell_start[c] + counts[c]; end
+    perm = Vector{Int}(undef, N); fill_at = copy(cell_start)
+    @inbounds for g in 1:N; c = cid[g]; perm[fill_at[c]] = g; fill_at[c] += 1; end
+    return (o1=o1, o2=o2, o3=o3, h=h, d1=d1, d2=d2, d3=d3, cell_start=cell_start, perm=perm)
+end
+
+# per-tet: AABB → overlapping cells → barycentric test → atomic-increment each point's
+# containment multiplicity (det reused for the barycentric solve, Cramer's rule).
+@kernel function _locate_kernel!(mult, @Const(xg), @Const(off), @Const(pts), @Const(perm),
+        @Const(cstart), o1, o2, o3, h, d1::Int, d2::Int, d3::Int, res::Int, eps)
+    t, i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        p1=i+off[t,1,1]; q1=j+off[t,1,2]; r1=k+off[t,1,3]
+        p2=i+off[t,2,1]; q2=j+off[t,2,2]; r2=k+off[t,2,3]
+        p3=i+off[t,3,1]; q3=j+off[t,3,2]; r3=k+off[t,3,3]
+        p4=i+off[t,4,1]; q4=j+off[t,4,2]; r4=k+off[t,4,3]
+        y1x=xg[p1,q1,r1,1]; y1y=xg[p1,q1,r1,2]; y1z=xg[p1,q1,r1,3]
+        y2x=xg[p2,q2,r2,1]; y2y=xg[p2,q2,r2,2]; y2z=xg[p2,q2,r2,3]
+        y3x=xg[p3,q3,r3,1]; y3y=xg[p3,q3,r3,2]; y3z=xg[p3,q3,r3,3]
+        y4x=xg[p4,q4,r4,1]; y4y=xg[p4,q4,r4,2]; y4z=xg[p4,q4,r4,3]
+        e1x=y2x-y1x; e1y=y2y-y1y; e1z=y2z-y1z
+        e2x=y3x-y1x; e2y=y3y-y1y; e2z=y3z-y1z
+        e3x=y4x-y1x; e3y=y4y-y1y; e3z=y4z-y1z
+        c23x=e2y*e3z-e2z*e3y; c23y=e2z*e3x-e2x*e3z; c23z=e2x*e3y-e2y*e3x   # e₂×e₃
+        detf = e1x*c23x + e1y*c23y + e1z*c23z                            # = 6 V_T
+        if abs(detf) > eps
+            inv = one(detf)/detf
+            axmn=min(y1x,y2x,y3x,y4x); axmx=max(y1x,y2x,y3x,y4x)
+            aymn=min(y1y,y2y,y3y,y4y); aymx=max(y1y,y2y,y3y,y4y)
+            azmn=min(y1z,y2z,y3z,y4z); azmx=max(y1z,y2z,y3z,y4z)
+            cxa=clamp(unsafe_trunc(Int,(axmn-o1)/h),0,d1-1); cxb=clamp(unsafe_trunc(Int,(axmx-o1)/h),0,d1-1)
+            cya=clamp(unsafe_trunc(Int,(aymn-o2)/h),0,d2-1); cyb=clamp(unsafe_trunc(Int,(aymx-o2)/h),0,d2-1)
+            cza=clamp(unsafe_trunc(Int,(azmn-o3)/h),0,d3-1); czb=clamp(unsafe_trunc(Int,(azmx-o3)/h),0,d3-1)
+            for cz in cza:czb, cy in cya:cyb, cx in cxa:cxb
+                c = cx + d1*(cy + d2*cz) + 1
+                for idx in cstart[c]:(cstart[c+1]-1)
+                    g = perm[idx]
+                    dx=pts[g,1]-y1x; dy=pts[g,2]-y1y; dz=pts[g,3]-y1z
+                    l2 = (dx*c23x + dy*c23y + dz*c23z)*inv
+                    l3 = (e1x*(dy*e3z-dz*e3y) + e1y*(dz*e3x-dx*e3z) + e1z*(dx*e3y-dy*e3x))*inv
+                    l4 = (e1x*(e2y*dz-e2z*dy) + e1y*(e2z*dx-e2x*dz) + e1z*(e2x*dy-e2y*dx))*inv
+                    l1 = one(l2) - l2 - l3 - l4
+                    tol = oftype(l2, eps)
+                    if l1 >= -tol && l2 >= -tol && l3 >= -tol && l4 >= -tol
+                        KernelAbstractions.@atomic mult[g] += Int32(1)
+                    end
+                end
+            end
+        end
+    end
+end
+
+"""
+    locate_points_in_sheet(x_grid, pts, cl, res; eps=1e-7) -> mult::(N,) Int32
+
+For each query point, the number of sheet tetrahedra containing it (stream multiplicity:
+1 single-stream, ≥3 in folded/multi-stream regions, 0 outside the sheet).  Detached.
+`cl` = `build_cell_list(pts, h)`.  Reuses the per-tet edges + det.
+"""
+function locate_points_in_sheet(x_grid::AbstractArray{T,4}, pts::AbstractMatrix{T},
+                                cl, res::Int; eps::Real=1e-7) where {T}
+    backend = get_backend(x_grid); off = _offsets_on(x_grid)
+    mv(x) = (y = similar(x_grid, eltype(x), size(x)); copyto!(y, x); y)   # to backend
+    mult = KernelAbstractions.zeros(backend, Int32, size(pts,1))
+    _locate_kernel!(backend)(mult, x_grid, off, mv(pts), mv(cl.perm), mv(cl.cell_start),
+        T(cl.o1), T(cl.o2), T(cl.o3), T(cl.h), cl.d1, cl.d2, cl.d3, res, T(eps);
+        ndrange=(6, res-1, res-1, res-1))
+    synchronize(backend)
+    return mult
+end

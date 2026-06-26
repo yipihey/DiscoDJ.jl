@@ -463,6 +463,21 @@ mean(x) = sum(x) / length(x)
         end
     end
 
+    # ── Grid-free sheet point-location: cell list + barycentric query (P2) ──────
+    @testset "Sheet point-location (P2)" begin
+        res = 8; L = 10.0; dx = L/res
+        q = lagrangian_grid_3d(res, L)
+        lo = 0.2dx; hi = (res-1)*dx - 0.2dx
+        pts = lo .+ rand(MersenneTwister(5), 600, 3) .* (hi-lo)
+        cl = build_cell_list(pts, dx)
+        # identity tessellation partitions the interior → every point in exactly one tet
+        @test all(locate_points_in_sheet(q, pts, cl, res) .== 1)
+        # small displacement stays single-stream (multiplicity ≤ 1) and well-covered
+        xg = q .+ 0.1dx .* randn(MersenneTwister(6), res,res,res,3)
+        m1 = locate_points_in_sheet(xg, pts, cl, res)
+        @test all(m1 .<= 1) && count(m1 .>= 1) > 500
+    end
+
     # ── Differentiable lightcone crossing (implicit-function theorem) ───────────
     @testset "Differentiable lightcone crossing (IFT)" begin
         c = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c)
