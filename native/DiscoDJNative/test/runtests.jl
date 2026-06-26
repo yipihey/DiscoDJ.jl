@@ -577,4 +577,29 @@ mean(x) = sum(x) / length(x)
         end
     end
 
+    @testset "Red-black GS Poisson smoother + reverse-sweep rrule" begin
+        N=12; h2=(1.0/N)^2; K=5
+        δ  = randn(MersenneTwister(0),N,N,N); δ .-= sum(δ)/length(δ)
+        φ0 = 0.1 .* randn(MersenneTwister(1),N,N,N)
+        # GS reduces the Poisson residual, and is bit-identical to a functional reference sweep
+        @test norm(laplacian7(gs_smooth(zero(δ),δ,h2,K),h2) .- δ) < norm(δ)
+        active = falses(N,N,N); active[3:9,3:9,3:9] .= true
+        φm = gs_smooth(φ0, δ, h2, K; mask=active)
+        @test all(φm[.!active] .== φ0[.!active])             # masked: inactive cells untouched
+        if ad_ok
+            fdm = central_fdm(5,1); w = randn(MersenneTwister(2),N,N,N)
+            for msk in (nothing, active)                     # reverse-sweep rrule, full + masked
+                Lδ(d) = sum(w .* gs_smooth(φ0, d, h2, K; mask=msk))
+                gδ = Zygote.gradient(Lδ, δ)[1]
+                for idx in ((4,5,6),(7,3,8))
+                    fd = FiniteDifferences.grad(fdm, t->(u=copy(δ);u[idx...]=t;Lδ(u)), δ[idx...])[1]
+                    @test isapprox(gδ[idx...], fd; rtol=1e-5)
+                end
+            end
+            gl = Zygote.gradient(p->sum(w .* laplacian7(p,h2)), φ0)[1]   # self-adjoint Laplacian rrule
+            fd = FiniteDifferences.grad(fdm, t->(u=copy(φ0);u[4,5,6]=t;sum(w.*laplacian7(u,h2))), φ0[4,5,6])[1]
+            @test isapprox(gl[4,5,6], fd; rtol=1e-5)
+        end
+    end
+
 end
