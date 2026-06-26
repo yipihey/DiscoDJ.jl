@@ -479,6 +479,44 @@ mean(x) = sum(x) / length(x)
     end
 
     # ── Grid-free sheet density: differentiable tet→point deposit + rrule (P3) ──
+    @testset "C⁰ nodal sheet density + λ-derivative (P6)" begin
+        res = 6; L = 10.0; dx = L/res
+        q  = lagrangian_grid_3d(res, L)
+        xg = q .+ 0.08dx .* randn(MersenneTwister(7), res,res,res,3)
+        w  = 1.0 .+ 0.3 .* randn(MersenneTwister(8), res,res,res)
+        off = DiscoDJNative._TET_OFFSETS; ncube = res-1
+        ntet = 6*ncube^3; cents = zeros(ntet,3); n=0
+        for i in 1:ncube, j in 1:ncube, k in 1:ncube, t in 1:6
+            n += 1; cx=cy=cz=0.0
+            for v in 1:4; cx+=xg[i+off[t,v,1],j+off[t,v,2],k+off[t,v,3],1];cy+=xg[i+off[t,v,1],j+off[t,v,2],k+off[t,v,3],2];cz+=xg[i+off[t,v,1],j+off[t,v,2],k+off[t,v,3],3]; end
+            cents[n,:]=[cx/4,cy/4,cz/4]
+        end
+        cl = build_cell_list(cents, dx)
+        ρv, Z = nodal_density(xg, w, res, L)
+        @test size(ρv) == (res,res,res) && all(ρv .> 0) && isfinite(Z)
+        if ad_ok
+            fdm = central_fdm(5,1)
+            # nodal_density: cofactor (x) + weight (w) adjoints
+            gx = Zygote.gradient(x -> sum(abs2, nodal_density(x, w, res, L)[1]), xg)[1]
+            for idx in ((2,3,3,1),(4,2,5,2))
+                fd = FiniteDifferences.grad(fdm, t->(u=copy(xg);u[idx...]=t;sum(abs2,nodal_density(u,w,res,L)[1])), xg[idx...])[1]
+                @test isapprox(gx[idx...], fd; rtol=1e-4)
+            end
+            # interp: the barycentric-coordinate derivative −λ_j(∇ρ)_T
+            ρvf = 1.0 .+ 0.5 .* randn(MersenneTwister(11), res,res,res)
+            gxi = Zygote.gradient(x -> sum(interp_sheet_at_points(x, ρvf, cents, cl, res)), xg)[1]
+            for idx in ((2,3,3,1),(3,4,2,2))
+                fd = FiniteDifferences.grad(fdm, t->(u=copy(xg);u[idx...]=t;sum(interp_sheet_at_points(u,ρvf,cents,cl,res))), xg[idx...])[1]
+                @test isapprox(gxi[idx...], fd; rtol=1e-4)
+            end
+            # composed C⁰ density end-to-end
+            Lc(x) = sum(log.(interp_sheet_at_points(x, nodal_density(x,w,res,L)[1], cents, cl, res)))
+            gc = Zygote.gradient(Lc, xg)[1]
+            fd = FiniteDifferences.grad(fdm, t->(u=copy(xg);u[2,3,3,1]=t;Lc(u)), xg[2,3,3,1])[1]
+            @test isapprox(gc[2,3,3,1], fd; rtol=1e-4)
+        end
+    end
+
     @testset "Sheet density deposit + rrule (P3)" begin
         res = 6; L = 10.0; dx = L/res
         q  = lagrangian_grid_3d(res, L)
