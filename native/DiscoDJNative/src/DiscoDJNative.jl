@@ -58,6 +58,7 @@ include("lpt/nlpt_core.jl")      # faithful general-order nLPT port (parity refe
 
 # ── Field deposit (differentiable density estimators) ─────────────────────────
 include("field/sheet_deposit.jl")  # CIC + tetrahedral CDM-sheet deposit (+ rrule)
+include("field/sheet_density.jl")  # grid-free AHK sheet density — per-tet core (P1)
 
 # ── Lightcone ────────────────────────────────────────────────────────────────
 include("lightcone/shells.jl")

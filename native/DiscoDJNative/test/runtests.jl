@@ -438,6 +438,31 @@ mean(x) = sum(x) / length(x)
         end
     end
 
+    # ── Grid-free AHK sheet density: per-tet core (P1) ──────────────────────────
+    @testset "Sheet density per-tet core (P1)" begin
+        res = 6; L = 10.0; dx = L/res
+        q = lagrangian_grid_3d(res, L)
+        # det + non-periodic connectivity: identity grid → exact interior volume
+        @test isapprox(tet_volume_sum(q, res), ((res-1)*dx)^3; rtol=1e-10)
+        xg = q .+ 0.1dx .* randn(MersenneTwister(2), res, res, res, 3)
+        w  = 1.0 .+ 0.3 .* randn(MersenneTwister(3), res, res, res)
+        D, Z = sheet_tet_reduce(xg, w, res, L)
+        @test isfinite(D) && isfinite(Z) && D > 0
+        if ad_ok
+            fdm = central_fdm(5, 1)
+            gD = Zygote.gradient(x -> sheet_tet_reduce(x, w, res, L)[1], xg)[1]   # det cofactor adjoint
+            gZw = Zygote.gradient(v -> sheet_tet_reduce(xg, v, res, L)[2], w)[1]   # weight adjoint
+            for idx in ((2,3,3,1), (4,2,5,3))
+                fd = FiniteDifferences.grad(fdm, t->(u=copy(xg); u[idx...]=t; sheet_tet_reduce(u,w,res,L)[1]), xg[idx...])[1]
+                @test isapprox(gD[idx...], fd; rtol=1e-5)
+            end
+            for idx in ((2,3,3), (4,2,5))
+                fd = FiniteDifferences.grad(fdm, t->(u=copy(w); u[idx...]=t; sheet_tet_reduce(xg,u,res,L)[2]), w[idx...])[1]
+                @test isapprox(gZw[idx...], fd; rtol=1e-5)
+            end
+        end
+    end
+
     # ── Differentiable lightcone crossing (implicit-function theorem) ───────────
     @testset "Differentiable lightcone crossing (IFT)" begin
         c = Cosmology("Planck18EEBAOSN"); pk = linear_power_spectrum(c)
