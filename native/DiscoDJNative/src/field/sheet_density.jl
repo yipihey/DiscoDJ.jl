@@ -514,8 +514,9 @@ end
     end
 end
 
-# backward: ρ̄_g → ρ̄_v += λ_i ρ̄_g (gather); x̄ += −ρ̄_g λ_j (∇ρ)_T   (∂λ_i/∂y_j = −λ_j ∇λ_i)
-@kernel function _interp_bwd!(x̄, ρ̄v, @Const(ρ̄g), @Const(xg), @Const(ρv), @Const(off), @Const(pts),
+# backward: ρ̄_g → ρ̄_v += λ_i ρ̄_g (gather); x̄ += −ρ̄_g λ_j (∇ρ)_T   (∂λ_i/∂y_j = −λ_j ∇λ_i);
+#           p̄_g += ρ̄_g (∇ρ)_T   (∂ρ_g/∂p = ∇ρ, the query-point gradient — moving quasars/galaxies)
+@kernel function _interp_bwd!(x̄, p̄, ρ̄v, @Const(ρ̄g), @Const(xg), @Const(ρv), @Const(off), @Const(pts),
         @Const(perm), @Const(cstart), o1,o2,o3,h,d1::Int,d2::Int,d3::Int, res::Int, eps)
     t,i,j,k = @index(Global, NTuple)
     @inbounds begin
@@ -546,6 +547,7 @@ end
                     l1=one(l2)-l2-l3-l4; tol=oftype(l2,eps)
                     if l1>=-tol&&l2>=-tol&&l3>=-tol&&l4>=-tol
                         rb=ρ̄g[g]
+                        KernelAbstractions.@atomic p̄[g,1]+=Float64(rb*gρx);KernelAbstractions.@atomic p̄[g,2]+=Float64(rb*gρy);KernelAbstractions.@atomic p̄[g,3]+=Float64(rb*gρz)
                         KernelAbstractions.@atomic ρ̄v[p1,q1,r1]+=Float64(l1*rb);KernelAbstractions.@atomic ρ̄v[p2,q2,r2]+=Float64(l2*rb);KernelAbstractions.@atomic ρ̄v[p3,q3,r3]+=Float64(l3*rb);KernelAbstractions.@atomic ρ̄v[p4,q4,r4]+=Float64(l4*rb)
                         b1=-rb*l1;b2=-rb*l2;b3=-rb*l3;b4=-rb*l4   # ȳ_j = −ρ̄_g λ_j (∇ρ)_T
                         KernelAbstractions.@atomic x̄[p1,q1,r1,1]+=Float64(b1*gρx);KernelAbstractions.@atomic x̄[p1,q1,r1,2]+=Float64(b1*gρy);KernelAbstractions.@atomic x̄[p1,q1,r1,3]+=Float64(b1*gρz)
@@ -563,7 +565,8 @@ end
 
 C⁰ density at the query points: `ρ_g = Σ_{T∋g} Σ_i λ_i ρ_{v_i}` (barycentric interpolation
 of the vertex densities; sum over containing tets).  Differentiable w.r.t. `x_grid` (the
-λ-derivative) and `ρ_v`."""
+λ-derivative), `ρ_v`, AND the query points `pts` (∂ρ_g/∂p = ∇ρ, the per-tet density gradient —
+this is what lets the galaxy/quasar positions be free parameters, e.g. inferring redshifts)."""
 function interp_sheet_at_points(x_grid::AbstractArray{T,4}, ρv::AbstractArray{T,3},
                                 pts::AbstractMatrix{T}, cl, res::Int; eps::Real=1e-7) where {T}
     backend = get_backend(x_grid); off = _offsets_on(x_grid)
@@ -585,10 +588,11 @@ function ChainRulesCore.rrule(::typeof(interp_sheet_at_points), x_grid::Abstract
         ρ̄g = Δ isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend,Float64,size(pts,1)) :
              (y=KernelAbstractions.zeros(backend,Float64,size(pts,1)); copyto!(y, Float64.(unthunk(Δ))); y)
         x̄ = KernelAbstractions.zeros(backend, Float64, res,res,res,3); ρ̄v = KernelAbstractions.zeros(backend, Float64, res,res,res)
-        _interp_bwd!(backend)(x̄, ρ̄v, ρ̄g, x_grid, ρv, off, ptsb, permb, cstartb,
+        p̄ = KernelAbstractions.zeros(backend, Float64, size(pts,1), 3)
+        _interp_bwd!(backend)(x̄, p̄, ρ̄v, ρ̄g, x_grid, ρv, off, ptsb, permb, cstartb,
             T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, T(eps); ndrange=(6,res-1,res-1,res-1))
         synchronize(backend)
-        return (NoTangent(), T.(x̄), T.(ρ̄v), NoTangent(), NoTangent(), NoTangent())
+        return (NoTangent(), T.(x̄), T.(ρ̄v), T.(p̄), NoTangent(), NoTangent())
     end
     return ρg, interp_pullback
 end
