@@ -61,6 +61,7 @@ include("field/sheet_deposit.jl")  # CIC + tetrahedral CDM-sheet deposit (+ rrul
 include("field/sheet_density.jl")  # grid-free AHK sheet density — per-tet core (P1)
 include("field/sheet_density_masked.jl")  # sheet-on-mask: AHK nodal density restricted to footprint trace-back
 include("field/gs_poisson.jl")     # differentiable red-black Gauss-Seidel Poisson smoother
+include("field/multigrid.jl")      # FFT-free geometric multigrid Poisson (+ AMR mask) — resolution unlock
 
 # ── Lightcone ────────────────────────────────────────────────────────────────
 include("lightcone/shells.jl")
