@@ -159,7 +159,7 @@ on any backend; the result is differentiable in Ψ (→ ω).
 """
 function lightcone_cross_ad(Psi::AbstractArray{T,3}, q::AbstractMatrix{T},
                             cosmo::Cosmology, observer::AbstractVector,
-                            a_far::Real, a_near::Real; rsd::Bool=false) where {T}
+                            a_far::Real, a_near::Real; rsd::Bool=false, velocity::Bool=false) where {T}
     N = size(Psi, 1); K = size(Psi, 3)
     af = T(a_far); an = T(a_near)
     obs = (T(observer[1]), T(observer[2]), T(observer[3]))
@@ -174,13 +174,19 @@ function lightcone_cross_ad(Psi::AbstractArray{T,3}, q::AbstractMatrix{T},
     xdot  = dropdims(sum(reshape(fwd.dDk, N, 1, K) .* Psi; dims=3); dims=3)
     x_obs = xstar .+ xdot .* (a_d .- fwd.ac)
 
+    # peculiar-velocity vector v(q)=Σ_k f₁ D_k Ψ_k (comoving Mpc/h; ×aH(a) → km/s). Computed when
+    # needed for RSD or when requested for a peculiar-velocity likelihood; differentiable in Ψ (→ ω).
+    vvec = if rsd || velocity
+        fk = @ignore_derivatives fwd.f1 .* fwd.Dk
+        dropdims(sum(reshape(fk, N, 1, K) .* Psi; dims=3); dims=3)
+    else
+        @ignore_derivatives fill!(similar(x_obs), zero(T))
+    end
     v_r = if rsd
         rhat = diff ./ max.(r, T(1e-30))
-        fk   = @ignore_derivatives fwd.f1 .* fwd.Dk
-        vvec = dropdims(sum(reshape(fk, N, 1, K) .* Psi; dims=3); dims=3)
         vec(sum(vvec .* rhat; dims=2))
     else
         @ignore_derivatives fill!(similar(r, N), zero(T))
     end
-    return (x_obs=x_obs, a_cross=a_d, v_r=v_r, valid=fwd.valid)
+    return (x_obs=x_obs, a_cross=a_d, v_r=v_r, v_vec=vvec, valid=fwd.valid)
 end
