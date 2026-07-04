@@ -78,4 +78,7 @@ include("lightcone/refresh.jl")
 include("analysis/power_spectrum.jl")
 include("analysis/bispectrum.jl")
 
+# ── Sheet query: density + deformation eigenvalues at arbitrary points ─────────
+include("field/sheet_query.jl")  # our-ICs → evolve sheet → fast point query (ρ, ∂x/∂q eigenvalues)
+
 end # module

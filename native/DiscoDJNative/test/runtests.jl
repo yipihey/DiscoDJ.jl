@@ -620,4 +620,36 @@ mean(x) = sum(x) / length(x)
         end
     end
 
+    @testset "Sheet query: density + deformation eigenvalues" begin
+        res=8; L=8.0; dx=L/res; q0=[3.0,3.0,3.0]
+        # analytic: uniform sheet → density 1, λ=(1,1,1), single-stream (query a tet-1 centroid)
+        xg = lagrangian_grid_3d(res, L; T=Float64)
+        cen = reshape([q0[1]+0.75dx, q0[2]+0.5dx, q0[3]+0.25dx], 1, 3)
+        r = sheet_query(xg, cen, build_cell_list(cen, dx), res, L)
+        @test r.nstream[1] == 1
+        @test isapprox(r.density[1], 1.0; atol=1e-6)
+        @test all(isapprox.(r.lambda[1,:], 1.0; atol=1e-6))
+        # analytic: diagonal stretch → density 1/det, λ = sorted stretch factors
+        s = (1.2, 0.9, 1.5); xs = similar(xg); for d in 1:3; @views xs[:,:,:,d] .= s[d].*xg[:,:,:,d]; end
+        cs = reshape([s[1]*(q0[1]+0.75dx), s[2]*(q0[2]+0.5dx), s[3]*(q0[3]+0.25dx)], 1, 3)
+        rs = sheet_query(xs, cs, build_cell_list(cs, dx), res, L)
+        @test rs.nstream[1] == 1
+        @test isapprox(rs.density[1], 1/prod(s); atol=1e-6)
+        @test all(isapprox.(rs.lambda[1,:], sort(collect(s), rev=true); atol=1e-6))
+        # pipeline: our IC ω → evolve sheet → query interior points (mass conservation + det=∏λ)
+        c = Cosmology("Planck18EEBAOSN"); rr = 16; LL = 200.0
+        ω  = Float64.(0.10 .* randn(MersenneTwister(7), rr, rr, rr))
+        sh = evolve_sheet_snapshot(ω, c, 1.0; boxsize=LL, n_order=2)
+        pts = LL*0.2 .+ (LL*0.6) .* rand(MersenneTwister(9), 4000, 3)
+        qr  = sheet_query(sh.x_grid, pts, build_cell_list(pts, LL/rr), rr, LL)
+        loc = qr.nstream .>= 1; ss = qr.nstream .== 1
+        @test count(loc) == 4000                                     # every interior point located
+        @test isapprox(sum(qr.density[loc])/count(loc), 1.0; atol=0.05)   # volume-weighted mean ≈ 1
+        i = findfirst(ss)
+        @test isapprox(prod(qr.lambda[i,:]), 1/qr.density[i]; rtol=0.1)   # det F ≈ ∏λ (mild field)
+        # lightcone mode composes end-to-end
+        sl = evolve_sheet_lightcone(ω, c, [LL/2,LL/2,LL/2], 1/1.1, 1/1.001; boxsize=LL, n_order=2)
+        @test count(sl.valid) > 0 && all(isfinite, sl.a_cross[sl.valid])
+    end
+
 end
