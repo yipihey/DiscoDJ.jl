@@ -22,6 +22,7 @@ with no hand rrule.  The number of orders K is read from `size(Ψ,3)` throughout
 export lightcone_cross_ad, exact_shape_stack
 
 using ChainRulesCore: @ignore_derivatives
+import ChainRulesCore
 using KernelAbstractions
 using KernelAbstractions: @kernel, @index, @Const, get_backend, synchronize
 
@@ -165,6 +166,14 @@ function lightcone_cross_ad(Psi::AbstractArray{T,3}, q::AbstractMatrix{T},
     obs = (T(observer[1]), T(observer[2]), T(observer[3]))
     fwd = @ignore_derivatives _crossing_forward(Psi, q, cosmo, obs, af, an)
 
+    if !rsd
+        # fused per-particle path with a hand adjoint — zero AD tape (the res-512 memory unlock)
+        xo, ad, vv = _cross_eval(Psi, q, fwd, obs, velocity)
+        v_r0  = @ignore_derivatives fill!(similar(fwd.chi), zero(T))
+        vvec0 = velocity ? vv : @ignore_derivatives fill!(similar(xo), zero(T))
+        return (x_obs=xo, a_cross=ad, v_r=v_r0, v_vec=vvec0, valid=fwd.valid)
+    end
+
     obsr  = @ignore_derivatives permutedims(_devcopy(Psi, T[obs...]))   # (1,3) on backend
     xstar = q .+ dropdims(sum(reshape(fwd.Dk, N, 1, K) .* Psi; dims=3); dims=3)
     diff  = xstar .- obsr
@@ -190,3 +199,107 @@ function lightcone_cross_ad(Psi::AbstractArray{T,3}, q::AbstractMatrix{T},
     end
     return (x_obs=x_obs, a_cross=a_d, v_r=v_r, v_vec=vvec, valid=fwd.valid)
 end
+
+
+# ── Fused per-particle crossing evaluation with a hand adjoint (zero AD tape) ──────────────────────
+# The generic-broadcast evaluation tapes two (N,3,K) products plus the diff/r/F chain (~12–16 GB at
+# 512³ F32). Everything is per-particle closed form given the detached crossing tables, so one KA
+# kernel computes x_obs (and optionally v_vec) and a second kernel evaluates the exact adjoint by
+# recomputing the per-particle chain in registers:
+#   x_obs = xstar − xdot·F/Fp,  xstar = q + Σₖ Dₖ Ψₖ,  xdot = Σₖ dDₖ Ψₖ,  F = |xstar−obs| − χ
+#   P̄ⱼₖ = x̄ⱼ(Dₖ + dDₖ·(a_d−a_c)) − (x̄·xdot)·(diffⱼ/(r·Fp))·Dₖ  [+ v̄ⱼ·f₁Dₖ]
+@kernel function _cross_eval_fwd!(xobs, ad_out, vvec, @Const(Psi), @Const(q), @Const(Dk), @Const(dDk),
+        @Const(ac), @Const(chi), @Const(Fp), @Const(f1), o1, o2, o3, K::Int, wantv::Bool)
+    n = @index(Global)
+    T = eltype(xobs)
+    @inbounds begin
+        x1 = q[n,1]; x2 = q[n,2]; x3 = q[n,3]
+        d1 = zero(T); d2 = zero(T); d3 = zero(T)
+        for k in 1:K
+            D = Dk[n,k]; dD = dDk[n,k]
+            x1 += D*Psi[n,1,k]; x2 += D*Psi[n,2,k]; x3 += D*Psi[n,3,k]
+            d1 += dD*Psi[n,1,k]; d2 += dD*Psi[n,2,k]; d3 += dD*Psi[n,3,k]
+        end
+        f1_ = x1-o1; f2_ = x2-o2; f3_ = x3-o3
+        r  = sqrt(f1_*f1_ + f2_*f2_ + f3_*f3_)
+        F  = r - chi[n]
+        s  = -F / Fp[n]                                   # = a_d − a_c
+        ad_out[n] = ac[n] + s
+        xobs[n,1] = x1 + d1*s; xobs[n,2] = x2 + d2*s; xobs[n,3] = x3 + d3*s
+        if wantv
+            v1 = zero(T); v2 = zero(T); v3 = zero(T)
+            for k in 1:K
+                fD = f1[n]*Dk[n,k]
+                v1 += fD*Psi[n,1,k]; v2 += fD*Psi[n,2,k]; v3 += fD*Psi[n,3,k]
+            end
+            vvec[n,1] = v1; vvec[n,2] = v2; vvec[n,3] = v3
+        end
+    end
+end
+
+@kernel function _cross_eval_adj!(Pbar, @Const(xb), @Const(vb), @Const(Psi), @Const(q), @Const(Dk),
+        @Const(dDk), @Const(ac), @Const(chi), @Const(Fp), @Const(f1), o1, o2, o3, K::Int, wantv::Bool)
+    n = @index(Global)
+    T = eltype(Pbar)
+    @inbounds begin
+        x1 = q[n,1]; x2 = q[n,2]; x3 = q[n,3]
+        d1 = zero(T); d2 = zero(T); d3 = zero(T)
+        for k in 1:K
+            D = Dk[n,k]; dD = dDk[n,k]
+            x1 += D*Psi[n,1,k]; x2 += D*Psi[n,2,k]; x3 += D*Psi[n,3,k]
+            d1 += dD*Psi[n,1,k]; d2 += dD*Psi[n,2,k]; d3 += dD*Psi[n,3,k]
+        end
+        f1_ = x1-o1; f2_ = x2-o2; f3_ = x3-o3
+        r  = sqrt(f1_*f1_ + f2_*f2_ + f3_*f3_)
+        F  = r - chi[n]
+        s  = -F / Fp[n]
+        xb1 = xb[n,1]; xb2 = xb[n,2]; xb3 = xb[n,3]
+        xdotdot = xb1*d1 + xb2*d2 + xb3*d3                # x̄·xdot
+        rinv = one(T) / max(r, T(1e-30))
+        c = xdotdot / Fp[n] * rinv                        # scalar for the −F/Fp chain
+        for k in 1:K
+            D = Dk[n,k]; dD = dDk[n,k]
+            g1 = xb1*(D + dD*s) - c*f1_*D
+            g2 = xb2*(D + dD*s) - c*f2_*D
+            g3 = xb3*(D + dD*s) - c*f3_*D
+            if wantv
+                fD = f1[n]*D
+                g1 += vb[n,1]*fD; g2 += vb[n,2]*fD; g3 += vb[n,3]*fD
+            end
+            Pbar[n,1,k] = g1; Pbar[n,2,k] = g2; Pbar[n,3,k] = g3
+        end
+    end
+end
+
+"""Fused, tape-free crossing evaluation (rsd=false path): returns (x_obs, a_d, vvec-or-nothing)."""
+function _cross_eval(Psi::AbstractArray{T,3}, q, fwd, obs, wantv::Bool) where {T}
+    N = size(Psi,1); K = size(Psi,3); backend = get_backend(Psi)
+    xobs = similar(Psi, T, N, 3); ad = similar(Psi, T, N)
+    vvec = wantv ? similar(Psi, T, N, 3) : similar(Psi, T, 1, 3)
+    _cross_eval_fwd!(backend)(xobs, ad, vvec, Psi, q, fwd.Dk, fwd.dDk, fwd.ac, fwd.chi, fwd.Fp,
+                              fwd.f1, obs[1], obs[2], obs[3], K, wantv; ndrange=N)
+    synchronize(backend)
+    return xobs, ad, (wantv ? vvec : nothing)
+end
+
+function ChainRulesCore.rrule(::typeof(_cross_eval), Psi::AbstractArray{T,3}, q, fwd, obs, wantv::Bool) where {T}
+    y = _cross_eval(Psi, q, fwd, obs, wantv)
+    N = size(Psi,1); K = size(Psi,3); backend = get_backend(Psi)
+    function cross_eval_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        (Ȳ[2] isa ChainRulesCore.AbstractZero || Ȳ[2] === nothing) ||
+            error("_cross_eval: a_cross cotangent not supported in the fused path")
+        x̄ = ChainRulesCore.unthunk(Ȳ[1]); v̄ = Ȳ[3]
+        xb = x̄ isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend, T, N, 3) : x̄
+        havev = wantv && !(v̄ isa ChainRulesCore.AbstractZero) && v̄ !== nothing
+        vb = havev ? ChainRulesCore.unthunk(v̄) : KernelAbstractions.zeros(backend, T, 1, 3)
+        P̄ = similar(Psi)
+        _cross_eval_adj!(backend)(P̄, xb, vb, Psi, q, fwd.Dk, fwd.dDk, fwd.ac, fwd.chi, fwd.Fp,
+                                  fwd.f1, obs[1], obs[2], obs[3], K, havev; ndrange=N)
+        synchronize(backend)
+        return (ChainRulesCore.NoTangent(), P̄, ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(),
+                ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent())
+    end
+    return y, cross_eval_pullback
+end
+

@@ -89,12 +89,12 @@ end
         g4x = s*(e1y*e2z-e1z*e2y); g4y = s*(e1z*e2x-e1x*e2z); g4z = s*(e1x*e2y-e1y*e2x)
         g1x = -(g2x+g3x+g4x); g1y = -(g2y+g3y+g4y); g1z = -(g2z+g3z+g4z)
         ww = w̄T * oftype(V, 0.25)
-        KernelAbstractions.@atomic x̄[p1,q1,r1,1] += Float64(g1x); KernelAbstractions.@atomic x̄[p1,q1,r1,2] += Float64(g1y); KernelAbstractions.@atomic x̄[p1,q1,r1,3] += Float64(g1z)
-        KernelAbstractions.@atomic x̄[p2,q2,r2,1] += Float64(g2x); KernelAbstractions.@atomic x̄[p2,q2,r2,2] += Float64(g2y); KernelAbstractions.@atomic x̄[p2,q2,r2,3] += Float64(g2z)
-        KernelAbstractions.@atomic x̄[p3,q3,r3,1] += Float64(g3x); KernelAbstractions.@atomic x̄[p3,q3,r3,2] += Float64(g3y); KernelAbstractions.@atomic x̄[p3,q3,r3,3] += Float64(g3z)
-        KernelAbstractions.@atomic x̄[p4,q4,r4,1] += Float64(g4x); KernelAbstractions.@atomic x̄[p4,q4,r4,2] += Float64(g4y); KernelAbstractions.@atomic x̄[p4,q4,r4,3] += Float64(g4z)
-        KernelAbstractions.@atomic w̄[p1,q1,r1] += Float64(ww); KernelAbstractions.@atomic w̄[p2,q2,r2] += Float64(ww)
-        KernelAbstractions.@atomic w̄[p3,q3,r3] += Float64(ww); KernelAbstractions.@atomic w̄[p4,q4,r4] += Float64(ww)
+        KernelAbstractions.@atomic x̄[p1,q1,r1,1] += eltype(x̄)(g1x); KernelAbstractions.@atomic x̄[p1,q1,r1,2] += eltype(x̄)(g1y); KernelAbstractions.@atomic x̄[p1,q1,r1,3] += eltype(x̄)(g1z)
+        KernelAbstractions.@atomic x̄[p2,q2,r2,1] += eltype(x̄)(g2x); KernelAbstractions.@atomic x̄[p2,q2,r2,2] += eltype(x̄)(g2y); KernelAbstractions.@atomic x̄[p2,q2,r2,3] += eltype(x̄)(g2z)
+        KernelAbstractions.@atomic x̄[p3,q3,r3,1] += eltype(x̄)(g3x); KernelAbstractions.@atomic x̄[p3,q3,r3,2] += eltype(x̄)(g3y); KernelAbstractions.@atomic x̄[p3,q3,r3,3] += eltype(x̄)(g3z)
+        KernelAbstractions.@atomic x̄[p4,q4,r4,1] += eltype(x̄)(g4x); KernelAbstractions.@atomic x̄[p4,q4,r4,2] += eltype(x̄)(g4y); KernelAbstractions.@atomic x̄[p4,q4,r4,3] += eltype(x̄)(g4z)
+        KernelAbstractions.@atomic w̄[p1,q1,r1] += eltype(w̄)(ww); KernelAbstractions.@atomic w̄[p2,q2,r2] += eltype(w̄)(ww)
+        KernelAbstractions.@atomic w̄[p3,q3,r3] += eltype(w̄)(ww); KernelAbstractions.@atomic w̄[p4,q4,r4] += eltype(w̄)(ww)
     end
 end
 
@@ -126,8 +126,8 @@ function ChainRulesCore.rrule(::typeof(sheet_tet_reduce), x_grid::AbstractArray{
         D̄ = ΔDZ[1] isa ChainRulesCore.AbstractZero ? 0.0 : Float64(ΔDZ[1])
         Z̄ = ΔDZ[2] isa ChainRulesCore.AbstractZero ? 0.0 : Float64(ΔDZ[2])
         backend = get_backend(x_grid)
-        x̄ = KernelAbstractions.zeros(backend, Float64, res, res, res, 3)
-        w̄ = KernelAbstractions.zeros(backend, Float64, res, res, res)
+        x̄ = KernelAbstractions.zeros(backend, T, res, res, res, 3)
+        w̄ = KernelAbstractions.zeros(backend, T, res, res, res)
         _sheet_reduce_bwd!(backend)(x̄, w̄, D̄, Z̄, x_grid, w, off, res, mT, floorvol; ndrange=(6, res-1, res-1, res-1))
         synchronize(backend)
         return (NoTangent(), T.(x̄), T.(w̄), NoTangent(), NoTangent())
@@ -286,7 +286,7 @@ export sheet_density_at_points
                     l4=(e1x*(e2y*dz-e2z*dy)+e1y*(e2z*dx-e2x*dz)+e1z*(e2x*dy-e2y*dx))*inv
                     l1=one(l2)-l2-l3-l4; tol=oftype(l2,eps)
                     if l1>=-tol&&l2>=-tol&&l3>=-tol&&l4>=-tol
-                        KernelAbstractions.@atomic ρg[g] += Float64(ρT)
+                        KernelAbstractions.@atomic ρg[g] += eltype(ρg)(ρT)
                     end
                 end
             end
@@ -337,11 +337,11 @@ end
         g3x=s*(e3y*e1z-e3z*e1y); g3y=s*(e3z*e1x-e3x*e1z); g3z=s*(e3x*e1y-e3y*e1x)
         g4x=s*(e1y*e2z-e1z*e2y); g4y=s*(e1z*e2x-e1x*e2z); g4z=s*(e1x*e2y-e1y*e2x)
         g1x=-(g2x+g3x+g4x); g1y=-(g2y+g3y+g4y); g1z=-(g2z+g3z+g4z); ww=w̄T*oftype(V,0.25)
-        KernelAbstractions.@atomic x̄[p1,q1,r1,1]+=Float64(g1x); KernelAbstractions.@atomic x̄[p1,q1,r1,2]+=Float64(g1y); KernelAbstractions.@atomic x̄[p1,q1,r1,3]+=Float64(g1z)
-        KernelAbstractions.@atomic x̄[p2,q2,r2,1]+=Float64(g2x); KernelAbstractions.@atomic x̄[p2,q2,r2,2]+=Float64(g2y); KernelAbstractions.@atomic x̄[p2,q2,r2,3]+=Float64(g2z)
-        KernelAbstractions.@atomic x̄[p3,q3,r3,1]+=Float64(g3x); KernelAbstractions.@atomic x̄[p3,q3,r3,2]+=Float64(g3y); KernelAbstractions.@atomic x̄[p3,q3,r3,3]+=Float64(g3z)
-        KernelAbstractions.@atomic x̄[p4,q4,r4,1]+=Float64(g4x); KernelAbstractions.@atomic x̄[p4,q4,r4,2]+=Float64(g4y); KernelAbstractions.@atomic x̄[p4,q4,r4,3]+=Float64(g4z)
-        KernelAbstractions.@atomic w̄[p1,q1,r1]+=Float64(ww); KernelAbstractions.@atomic w̄[p2,q2,r2]+=Float64(ww); KernelAbstractions.@atomic w̄[p3,q3,r3]+=Float64(ww); KernelAbstractions.@atomic w̄[p4,q4,r4]+=Float64(ww)
+        KernelAbstractions.@atomic x̄[p1,q1,r1,1] += eltype(x̄)(g1x); KernelAbstractions.@atomic x̄[p1,q1,r1,2] += eltype(x̄)(g1y); KernelAbstractions.@atomic x̄[p1,q1,r1,3] += eltype(x̄)(g1z)
+        KernelAbstractions.@atomic x̄[p2,q2,r2,1] += eltype(x̄)(g2x); KernelAbstractions.@atomic x̄[p2,q2,r2,2] += eltype(x̄)(g2y); KernelAbstractions.@atomic x̄[p2,q2,r2,3] += eltype(x̄)(g2z)
+        KernelAbstractions.@atomic x̄[p3,q3,r3,1] += eltype(x̄)(g3x); KernelAbstractions.@atomic x̄[p3,q3,r3,2] += eltype(x̄)(g3y); KernelAbstractions.@atomic x̄[p3,q3,r3,3] += eltype(x̄)(g3z)
+        KernelAbstractions.@atomic x̄[p4,q4,r4,1] += eltype(x̄)(g4x); KernelAbstractions.@atomic x̄[p4,q4,r4,2] += eltype(x̄)(g4y); KernelAbstractions.@atomic x̄[p4,q4,r4,3] += eltype(x̄)(g4z)
+        KernelAbstractions.@atomic w̄[p1,q1,r1] += eltype(w̄)(ww); KernelAbstractions.@atomic w̄[p2,q2,r2] += eltype(w̄)(ww); KernelAbstractions.@atomic w̄[p3,q3,r3] += eltype(w̄)(ww); KernelAbstractions.@atomic w̄[p4,q4,r4] += eltype(w̄)(ww)
     end
 end
 
@@ -360,7 +360,7 @@ function sheet_density_at_points(x_grid::AbstractArray{T,4}, w::AbstractArray{T,
     backend = get_backend(x_grid); off = _offsets_on(x_grid)
     mv(x) = (y = similar(x_grid, eltype(x), size(x)); copyto!(y, x); y)
     mT = T(1//6); floorvol = T(floor_frac)*(T(boxsize)/res)^3/6
-    ρg = KernelAbstractions.zeros(backend, Float64, size(pts,1)); Z = KernelAbstractions.zeros(backend, Float64, 1)
+    ρg = KernelAbstractions.zeros(backend, T, size(pts,1)); Z = KernelAbstractions.zeros(backend, Float64, 1)
     _deposit_fwd!(backend)(ρg, Z, x_grid, w, off, mv(pts), mv(cl.perm), mv(cl.cell_start),
         T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, mT, floorvol, T(eps);
         ndrange=(6,res-1,res-1,res-1))
@@ -377,11 +377,11 @@ function ChainRulesCore.rrule(::typeof(sheet_density_at_points), x_grid::Abstrac
     ptsb = mv(pts); permb = mv(cl.perm); cstartb = mv(cl.cell_start)
     mT = T(1//6); floorvol = T(floor_frac)*(T(boxsize)/res)^3/6
     function deposit_pullback(Δ)
-        ρ̄g = Δ[1] isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend, Float64, size(pts,1)) :
-             (y = KernelAbstractions.zeros(backend, Float64, size(pts,1)); copyto!(y, Float64.(unthunk(Δ[1]))); y)
+        ρ̄g = Δ[1] isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend, T, size(pts,1)) :
+             (y = KernelAbstractions.zeros(backend, T, size(pts,1)); copyto!(y, T.(unthunk(Δ[1]))); y)
         Z̄ = Δ[2] isa ChainRulesCore.AbstractZero ? 0.0 : Float64(Δ[2])
-        x̄ = KernelAbstractions.zeros(backend, Float64, res, res, res, 3)
-        w̄ = KernelAbstractions.zeros(backend, Float64, res, res, res)
+        x̄ = KernelAbstractions.zeros(backend, T, res, res, res, 3)
+        w̄ = KernelAbstractions.zeros(backend, T, res, res, res)
         _deposit_bwd!(backend)(x̄, w̄, ρ̄g, Z̄, x_grid, w, off, ptsb, permb, cstartb,
             T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, mT, floorvol, T(eps);
             ndrange=(6,res-1,res-1,res-1))
@@ -433,11 +433,11 @@ end
         g3x=s*(e3y*e1z-e3z*e1y);g3y=s*(e3z*e1x-e3x*e1z);g3z=s*(e3x*e1y-e3y*e1x)
         g4x=s*(e1y*e2z-e1z*e2y);g4y=s*(e1z*e2x-e1x*e2z);g4z=s*(e1x*e2y-e1y*e2x)
         g1x=-(g2x+g3x+g4x);g1y=-(g2y+g3y+g4y);g1z=-(g2z+g3z+g4z); ww=w̄T*oftype(V,0.25)
-        KernelAbstractions.@atomic x̄[p1,q1,r1,1]+=Float64(g1x);KernelAbstractions.@atomic x̄[p1,q1,r1,2]+=Float64(g1y);KernelAbstractions.@atomic x̄[p1,q1,r1,3]+=Float64(g1z)
-        KernelAbstractions.@atomic x̄[p2,q2,r2,1]+=Float64(g2x);KernelAbstractions.@atomic x̄[p2,q2,r2,2]+=Float64(g2y);KernelAbstractions.@atomic x̄[p2,q2,r2,3]+=Float64(g2z)
-        KernelAbstractions.@atomic x̄[p3,q3,r3,1]+=Float64(g3x);KernelAbstractions.@atomic x̄[p3,q3,r3,2]+=Float64(g3y);KernelAbstractions.@atomic x̄[p3,q3,r3,3]+=Float64(g3z)
-        KernelAbstractions.@atomic x̄[p4,q4,r4,1]+=Float64(g4x);KernelAbstractions.@atomic x̄[p4,q4,r4,2]+=Float64(g4y);KernelAbstractions.@atomic x̄[p4,q4,r4,3]+=Float64(g4z)
-        KernelAbstractions.@atomic w̄[p1,q1,r1]+=Float64(ww);KernelAbstractions.@atomic w̄[p2,q2,r2]+=Float64(ww);KernelAbstractions.@atomic w̄[p3,q3,r3]+=Float64(ww);KernelAbstractions.@atomic w̄[p4,q4,r4]+=Float64(ww)
+        KernelAbstractions.@atomic x̄[p1,q1,r1,1] += eltype(x̄)(g1x);KernelAbstractions.@atomic x̄[p1,q1,r1,2] += eltype(x̄)(g1y);KernelAbstractions.@atomic x̄[p1,q1,r1,3] += eltype(x̄)(g1z)
+        KernelAbstractions.@atomic x̄[p2,q2,r2,1] += eltype(x̄)(g2x);KernelAbstractions.@atomic x̄[p2,q2,r2,2] += eltype(x̄)(g2y);KernelAbstractions.@atomic x̄[p2,q2,r2,3] += eltype(x̄)(g2z)
+        KernelAbstractions.@atomic x̄[p3,q3,r3,1] += eltype(x̄)(g3x);KernelAbstractions.@atomic x̄[p3,q3,r3,2] += eltype(x̄)(g3y);KernelAbstractions.@atomic x̄[p3,q3,r3,3] += eltype(x̄)(g3z)
+        KernelAbstractions.@atomic x̄[p4,q4,r4,1] += eltype(x̄)(g4x);KernelAbstractions.@atomic x̄[p4,q4,r4,2] += eltype(x̄)(g4y);KernelAbstractions.@atomic x̄[p4,q4,r4,3] += eltype(x̄)(g4z)
+        KernelAbstractions.@atomic w̄[p1,q1,r1] += eltype(w̄)(ww);KernelAbstractions.@atomic w̄[p2,q2,r2] += eltype(w̄)(ww);KernelAbstractions.@atomic w̄[p3,q3,r3] += eltype(w̄)(ww);KernelAbstractions.@atomic w̄[p4,q4,r4] += eltype(w̄)(ww)
     end
 end
 
@@ -449,11 +449,11 @@ function nodal_density(x_grid::AbstractArray{T,4}, w::AbstractArray{T,3}, res::I
                        floor_frac::Real=1e-3) where {T}
     backend = get_backend(x_grid); off = _offsets_on(x_grid)
     mT = T(1//6); floorvol = T(floor_frac)*(T(boxsize)/res)^3/6
-    Nv = KernelAbstractions.zeros(backend, Float64, res, res, res); Dv = KernelAbstractions.zeros(backend, Float64, res, res, res)
+    Nv = KernelAbstractions.zeros(backend, T, res, res, res); Dv = KernelAbstractions.zeros(backend, T, res, res, res)
     Z = KernelAbstractions.zeros(backend, Float64, 1)
     _nodal_fwd!(backend)(Nv, Dv, Z, x_grid, w, off, res, mT, floorvol; ndrange=(6,res-1,res-1,res-1))
     synchronize(backend)
-    Dc = max.(Dv, Float64(floorvol)); ρv = T.(Nv ./ Dc)
+    Dc = max.(Dv, floorvol); ρv = T.(Nv ./ Dc)
     return (ρv, Array(Z)[1])
 end
 
@@ -461,18 +461,18 @@ function ChainRulesCore.rrule(::typeof(nodal_density), x_grid::AbstractArray{T,4
                               w::AbstractArray{T,3}, res::Int, boxsize::Real; floor_frac::Real=1e-3) where {T}
     backend = get_backend(x_grid); off = _offsets_on(x_grid)
     mT = T(1//6); floorvol = T(floor_frac)*(T(boxsize)/res)^3/6
-    Nv = KernelAbstractions.zeros(backend, Float64, res, res, res); Dv = KernelAbstractions.zeros(backend, Float64, res, res, res)
+    Nv = KernelAbstractions.zeros(backend, T, res, res, res); Dv = KernelAbstractions.zeros(backend, T, res, res, res)
     Z = KernelAbstractions.zeros(backend, Float64, 1)
     _nodal_fwd!(backend)(Nv, Dv, Z, x_grid, w, off, res, mT, floorvol; ndrange=(6,res-1,res-1,res-1))
     synchronize(backend)
-    Dc = max.(Dv, Float64(floorvol)); ρv = T.(Nv ./ Dc); Zv = Array(Z)[1]
+    Dc = max.(Dv, floorvol); ρv = T.(Nv ./ Dc); Zv = Array(Z)[1]
     function nodal_pullback(Δ)
-        ρ̄v = Δ[1] isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend, Float64, res,res,res) :
-             (y=KernelAbstractions.zeros(backend,Float64,res,res,res); copyto!(y, Float64.(unthunk(Δ[1]))); y)
+        ρ̄v = Δ[1] isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend, T, res,res,res) :
+             (y=KernelAbstractions.zeros(backend,T,res,res,res); copyto!(y, T.(unthunk(Δ[1]))); y)
         Z̄ = Δ[2] isa ChainRulesCore.AbstractZero ? 0.0 : Float64(Δ[2])
         N̄v = ρ̄v ./ Dc
         D̄v = @. -ρ̄v * Nv / (Dc*Dc) * (Dv > Float64(floorvol))
-        x̄ = KernelAbstractions.zeros(backend, Float64, res,res,res,3); w̄ = KernelAbstractions.zeros(backend, Float64, res,res,res)
+        x̄ = KernelAbstractions.zeros(backend, T, res,res,res,3); w̄ = KernelAbstractions.zeros(backend, T, res,res,res)
         _nodal_bwd!(backend)(x̄, w̄, N̄v, D̄v, Z̄, x_grid, off, res, mT, floorvol; ndrange=(6,res-1,res-1,res-1))
         synchronize(backend)
         return (NoTangent(), T.(x̄), T.(w̄), NoTangent(), NoTangent())
@@ -506,7 +506,7 @@ end
                     l4=(e1x*(e2y*dz-e2z*dy)+e1y*(e2z*dx-e2x*dz)+e1z*(e2x*dy-e2y*dx))*inv
                     l1=one(l2)-l2-l3-l4; tol=oftype(l2,eps)
                     if l1>=-tol&&l2>=-tol&&l3>=-tol&&l4>=-tol
-                        KernelAbstractions.@atomic ρg[g]+=Float64(l1*ρ1+l2*ρ2+l3*ρ3+l4*ρ4)
+                        KernelAbstractions.@atomic ρg[g] += eltype(ρg)(l1*ρ1+l2*ρ2+l3*ρ3+l4*ρ4)
                     end
                 end
             end
@@ -547,13 +547,13 @@ end
                     l1=one(l2)-l2-l3-l4; tol=oftype(l2,eps)
                     if l1>=-tol&&l2>=-tol&&l3>=-tol&&l4>=-tol
                         rb=ρ̄g[g]
-                        KernelAbstractions.@atomic p̄[g,1]+=Float64(rb*gρx);KernelAbstractions.@atomic p̄[g,2]+=Float64(rb*gρy);KernelAbstractions.@atomic p̄[g,3]+=Float64(rb*gρz)
-                        KernelAbstractions.@atomic ρ̄v[p1,q1,r1]+=Float64(l1*rb);KernelAbstractions.@atomic ρ̄v[p2,q2,r2]+=Float64(l2*rb);KernelAbstractions.@atomic ρ̄v[p3,q3,r3]+=Float64(l3*rb);KernelAbstractions.@atomic ρ̄v[p4,q4,r4]+=Float64(l4*rb)
+                        KernelAbstractions.@atomic p̄[g,1] += eltype(p̄)(rb*gρx);KernelAbstractions.@atomic p̄[g,2] += eltype(p̄)(rb*gρy);KernelAbstractions.@atomic p̄[g,3] += eltype(p̄)(rb*gρz)
+                        KernelAbstractions.@atomic ρ̄v[p1,q1,r1] += eltype(ρ̄v)(l1*rb);KernelAbstractions.@atomic ρ̄v[p2,q2,r2] += eltype(ρ̄v)(l2*rb);KernelAbstractions.@atomic ρ̄v[p3,q3,r3] += eltype(ρ̄v)(l3*rb);KernelAbstractions.@atomic ρ̄v[p4,q4,r4] += eltype(ρ̄v)(l4*rb)
                         b1=-rb*l1;b2=-rb*l2;b3=-rb*l3;b4=-rb*l4   # ȳ_j = −ρ̄_g λ_j (∇ρ)_T
-                        KernelAbstractions.@atomic x̄[p1,q1,r1,1]+=Float64(b1*gρx);KernelAbstractions.@atomic x̄[p1,q1,r1,2]+=Float64(b1*gρy);KernelAbstractions.@atomic x̄[p1,q1,r1,3]+=Float64(b1*gρz)
-                        KernelAbstractions.@atomic x̄[p2,q2,r2,1]+=Float64(b2*gρx);KernelAbstractions.@atomic x̄[p2,q2,r2,2]+=Float64(b2*gρy);KernelAbstractions.@atomic x̄[p2,q2,r2,3]+=Float64(b2*gρz)
-                        KernelAbstractions.@atomic x̄[p3,q3,r3,1]+=Float64(b3*gρx);KernelAbstractions.@atomic x̄[p3,q3,r3,2]+=Float64(b3*gρy);KernelAbstractions.@atomic x̄[p3,q3,r3,3]+=Float64(b3*gρz)
-                        KernelAbstractions.@atomic x̄[p4,q4,r4,1]+=Float64(b4*gρx);KernelAbstractions.@atomic x̄[p4,q4,r4,2]+=Float64(b4*gρy);KernelAbstractions.@atomic x̄[p4,q4,r4,3]+=Float64(b4*gρz)
+                        KernelAbstractions.@atomic x̄[p1,q1,r1,1] += eltype(x̄)(b1*gρx);KernelAbstractions.@atomic x̄[p1,q1,r1,2] += eltype(x̄)(b1*gρy);KernelAbstractions.@atomic x̄[p1,q1,r1,3] += eltype(x̄)(b1*gρz)
+                        KernelAbstractions.@atomic x̄[p2,q2,r2,1] += eltype(x̄)(b2*gρx);KernelAbstractions.@atomic x̄[p2,q2,r2,2] += eltype(x̄)(b2*gρy);KernelAbstractions.@atomic x̄[p2,q2,r2,3] += eltype(x̄)(b2*gρz)
+                        KernelAbstractions.@atomic x̄[p3,q3,r3,1] += eltype(x̄)(b3*gρx);KernelAbstractions.@atomic x̄[p3,q3,r3,2] += eltype(x̄)(b3*gρy);KernelAbstractions.@atomic x̄[p3,q3,r3,3] += eltype(x̄)(b3*gρz)
+                        KernelAbstractions.@atomic x̄[p4,q4,r4,1] += eltype(x̄)(b4*gρx);KernelAbstractions.@atomic x̄[p4,q4,r4,2] += eltype(x̄)(b4*gρy);KernelAbstractions.@atomic x̄[p4,q4,r4,3] += eltype(x̄)(b4*gρz)
                     end
                 end
             end
@@ -571,7 +571,7 @@ function interp_sheet_at_points(x_grid::AbstractArray{T,4}, ρv::AbstractArray{T
                                 pts::AbstractMatrix{T}, cl, res::Int; eps::Real=1e-7) where {T}
     backend = get_backend(x_grid); off = _offsets_on(x_grid)
     mv(x)=(y=similar(x_grid,eltype(x),size(x)); copyto!(y,x); y)
-    ρg = KernelAbstractions.zeros(backend, Float64, size(pts,1))
+    ρg = KernelAbstractions.zeros(backend, T, size(pts,1))
     _interp_fwd!(backend)(ρg, x_grid, ρv, off, mv(pts), mv(cl.perm), mv(cl.cell_start),
         T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, T(eps); ndrange=(6,res-1,res-1,res-1))
     synchronize(backend)
@@ -586,9 +586,9 @@ function ChainRulesCore.rrule(::typeof(interp_sheet_at_points), x_grid::Abstract
     ptsb=mv(pts); permb=mv(cl.perm); cstartb=mv(cl.cell_start)
     function interp_pullback(Δ)
         ρ̄g = Δ isa ChainRulesCore.AbstractZero ? KernelAbstractions.zeros(backend,Float64,size(pts,1)) :
-             (y=KernelAbstractions.zeros(backend,Float64,size(pts,1)); copyto!(y, Float64.(unthunk(Δ))); y)
-        x̄ = KernelAbstractions.zeros(backend, Float64, res,res,res,3); ρ̄v = KernelAbstractions.zeros(backend, Float64, res,res,res)
-        p̄ = KernelAbstractions.zeros(backend, Float64, size(pts,1), 3)
+             (y=KernelAbstractions.zeros(backend,T,size(pts,1)); copyto!(y, T.(unthunk(Δ))); y)
+        x̄ = KernelAbstractions.zeros(backend, T, res,res,res,3); ρ̄v = KernelAbstractions.zeros(backend, T, res,res,res)
+        p̄ = KernelAbstractions.zeros(backend, T, size(pts,1), 3)
         _interp_bwd!(backend)(x̄, p̄, ρ̄v, ρ̄g, x_grid, ρv, off, ptsb, permb, cstartb,
             T(cl.o1),T(cl.o2),T(cl.o3),T(cl.h),cl.d1,cl.d2,cl.d3, res, T(eps); ndrange=(6,res-1,res-1,res-1))
         synchronize(backend)

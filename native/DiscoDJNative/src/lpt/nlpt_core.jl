@@ -26,6 +26,7 @@ export NLPTKernels, nlpt_kernels, compute_core, compute_core_exact,
        evaluate_core, lpt_displacement, upsample_white_noise
 
 using ChainRulesCore: @ignore_derivatives   # growth factors are constants in ω
+import ChainRulesCore
 
 # ── rfft/irfft in the pipeline's [3,1,2] convention ───────────────────────────
 # CPU uses the [3,1,2] region directly (JAX-parity layout); the CUDA extension
@@ -33,6 +34,7 @@ using ChainRulesCore: @ignore_derivatives   # growth factors are constants in ω
 # region) — numerically identical, same logical (…,…,half-on-3) layout.
 _rfftn(x) = rfft(x, [3, 1, 2])
 _irfftn(f, n::Int) = irfft(f, n, [3, 1, 2])
+_brfftn(f, n::Int) = brfft(f, n, [3, 1, 2])   # unnormalized inverse (adjoint building block)
 
 # Device-aware zero allocation: `similar` follows the reference array's backend
 # (Array → Array, CuArray → CuArray), so the de-aliasing `cat`s stay on-device.  The
@@ -194,6 +196,8 @@ function fmu2_sym(K::NLPTKernels{T}, f1::AbstractArray{Complex{T},4}) where {T}
     end
     return acc
 end
+
+
 
 # ── μ₂ & C asymmetric terms (j != i-j), Algorithms 1 & 3 ──────────────────────
 # 1-based ports of the JAX i/j/k/l/s lists (component indices i,j and axes k,l).
@@ -442,4 +446,189 @@ function lpt_displacement(fphi::AbstractArray{Complex{T},3}, K::NLPTKernels{T},
     shapes = exact_growth ? compute_core_exact(fphi, K; n_order) :
                             compute_core(fphi, K; n_order)
     return evaluate_core(shapes, cosmo, a; n_order, exact_growth)
+end
+
+# ── Streaming pullback for the de-aliased 2LPT bilinear (the ext-grid tape killer) ──────────────
+# Under generic reverse AD, `fmu2_sym` tapes ~6 ext-grid (ext=3res/2) intermediates PER TERM — ~36 ext
+# arrays, ≈65 GB at res 512 (F32).  This config-rrule runs the forward untaped and, in the pullback,
+# re-differentiates ONE TERM AT A TIME via `rrule_via_ad`: peak backward memory = a single term's tape
+# (6× smaller), each term's tape freed before the next.  AD-framework-agnostic (works under Zygote).
+function ChainRulesCore.rrule(cfg::ChainRulesCore.RuleConfig{>:ChainRulesCore.HasReverseMode},
+                              ::typeof(fmu2_sym), K::NLPTKernels{T},
+                              f1::AbstractArray{Complex{T},4}) where {T}
+    res, ext = K.res, K.ext
+    acc = _czeros(f1, res, res, res ÷ 2 + 1)
+    for (i, j, k, l, s) in _MU2_SYM_TERMS
+        acc = acc .+ T(s) .* _conv2(_dext(K, f1, i, k), _dext(K, f1, j, l), res, ext)
+    end
+    project = ChainRulesCore.ProjectTo(f1)
+    function fmu2_sym_pullback(ā)
+        Ā = ChainRulesCore.unthunk(ā)
+        f̄ = nothing
+        for (i, j, k, l, s) in _MU2_SYM_TERMS
+            term = f -> T(s) .* _conv2(_dext(K, f, i, k), _dext(K, f, j, l), res, ext)
+            _, pb = ChainRulesCore.rrule_via_ad(cfg, term, f1)
+            tf̄ = ChainRulesCore.unthunk(pb(Ā)[2])
+            f̄ = f̄ === nothing ? tf̄ : (f̄ .+ tf̄)          # term tape freed here before the next
+            pb = nothing; GC.gc(false)                     # release the term tape to the device pool
+        end
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), project(f̄))
+    end
+    return acc, fmu2_sym_pullback
+end
+
+# Linear hand adjoint for ψ₁(k) = −∇φ: avoids taping the three kernel-broadcast operands.
+function ChainRulesCore.rrule(::typeof(_psi1_fourier), K::NLPTKernels{T},
+                              fphi::AbstractArray{Complex{T},3}) where {T}
+    y = _psi1_fourier(K, fphi)
+    function psi1_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        f̄ = .-(conj.(K.d_dx) .* Ȳ[:,:,:,1] .+ conj.(K.d_dy) .* Ȳ[:,:,:,2] .+ conj.(K.d_dz) .* Ȳ[:,:,:,3])
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), f̄)
+    end
+    return y, psi1_pullback
+end
+
+# ── Linear hand adjoints for the ext-grid block maps (kill the pad/crop cat-chain tape) ────────────
+# `_pad3(x) = (ext/orig)³·S(x)` and `_crop3(y) = (orig/ext)³·Sᵀ(y)` share the same block-selection S
+# (Nyquist planes dropped/zeroed), so each is the other's adjoint up to the amplitude factors:
+#   pad3ᵀ(ȳ)  = (ext/orig)³·Sᵀ(ȳ) = (ext/orig)⁶·_crop3(ȳ)
+#   crop3ᵀ(x̄) = (orig/ext)³·S(x̄)  = (orig/ext)⁶·_pad3(x̄)
+# Verified against finite differences through the full 2LPT loss (F64 rel ~6e-6).
+function ChainRulesCore.rrule(::typeof(_pad3), ff::AbstractArray{Complex{T},3},
+                              orig::Int, ext::Int) where {T}
+    y = _pad3(ff, orig, ext)
+    function pad3_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        f̄ = _crop3(Ȳ, orig, ext) .* T((ext / orig)^6)
+        return (ChainRulesCore.NoTangent(), f̄, ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent())
+    end
+    return y, pad3_pullback
+end
+
+function ChainRulesCore.rrule(::typeof(_crop3), ff::AbstractArray{Complex{T},3},
+                              orig::Int, ext::Int) where {T}
+    y = _crop3(ff, orig, ext)
+    function crop3_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        f̄ = _pad3(Ȳ, orig, ext) .* T((orig / ext)^6)
+        return (ChainRulesCore.NoTangent(), f̄, ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent())
+    end
+    return y, crop3_pullback
+end
+
+# `_dext(K, X, m, axis) = d_axis .* _pad3(X[:,:,:,m])` — linear; the pullback needs only the (static)
+# kernel and the pad adjoint, so nothing from the forward is taped.
+function ChainRulesCore.rrule(::typeof(_dext), K::NLPTKernels{T},
+                              X::AbstractArray{Complex{T},4}, m::Int, axis::Int) where {T}
+    y = _dext(K, X, m, axis)
+    res, ext = K.res, K.ext
+    function dext_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        d = axis == 1 ? K.dx_ext : axis == 2 ? K.dy_ext : K.dz_ext
+        s̄ = _crop3(conj.(d) .* Ȳ, res, ext) .* T((ext / res)^6)
+        X̄ = ChainRulesCore.@thunk begin
+            full = fill!(similar(X), zero(Complex{T}))
+            copyto!(view(full, :, :, :, m), s̄)
+            full
+        end
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), X̄,
+                ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent())
+    end
+    return y, dext_pullback
+end
+
+# ── Staged 2LPT pipeline with per-stage checkpointing (the res-512 unlock) ─────────────────────────
+# Whole-segment checkpointing rematerializes ALL shape intermediates at once during the backward, so the
+# fmu2 term tape and the full segment tape coexist (~44 GB at 512³ F32). Splitting the segment into two
+# independently-checkpointed stages — (ψ₁ → ψ₂) and (ψ₁,ψ₂ → real stack) — means the backward holds only
+# ONE stage's rematerialization at a time. Each stage rrule runs the forward untaped and re-differentiates
+# via `rrule_via_ad` in its pullback (AD-framework-agnostic checkpointing).
+export psi2_fourier, shape_stack_2lpt
+
+"""ψ₂(k) from ψ₁(k): the de-aliased 2LPT source assembled to a displacement (longitudinal)."""
+psi2_fourier(K::NLPTKernels{T}, psi1::AbstractArray{Complex{T},4}) where {T} =
+    _assemble_psi(K, fmu2_sym(K, psi1), nothing)
+
+function ChainRulesCore.rrule(cfg::ChainRulesCore.RuleConfig{>:ChainRulesCore.HasReverseMode},
+                              ::typeof(psi2_fourier), K::NLPTKernels{T}, psi1) where {T}
+    y = psi2_fourier(K, psi1)                     # untaped forward
+    function psi2_pullback(ȳ)
+        # differentiate the BODY, not psi2_fourier itself (whose rrule would recurse)
+        _, pb = ChainRulesCore.rrule_via_ad(cfg, p -> _assemble_psi(K, fmu2_sym(K, p), nothing), psi1)
+        p̄ = ChainRulesCore.unthunk(pb(ChainRulesCore.unthunk(ȳ))[2])
+        pb = nothing; GC.gc(false)                         # release the stage tape before returning
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), p̄)
+    end
+    return y, psi2_pullback
+end
+
+"""(ψ₁,ψ₂)(k) → the real exact-growth shape stack (N,3,2) (2LPT layout of `exact_shape_stack`)."""
+function shape_stack_2lpt(K::NLPTKernels{T}, psi1::AbstractArray{Complex{T},4},
+                          psi2::AbstractArray{Complex{T},4}) where {T}
+    res = K.res; N = res^3
+    r1 = _vec_irfftn(K, psi1); r2 = _vec_irfftn(K, psi2)
+    return cat(reshape(r1, N, 3), reshape(r2, N, 3); dims=3)
+end
+
+function ChainRulesCore.rrule(cfg::ChainRulesCore.RuleConfig{>:ChainRulesCore.HasReverseMode},
+                              ::typeof(shape_stack_2lpt), K::NLPTKernels{T}, psi1, psi2) where {T}
+    y = shape_stack_2lpt(K, psi1, psi2)           # untaped forward
+    function stack_pullback(ȳ)
+        # stream PER COMPONENT: six single-irfft pullbacks (cat/reshape are views), GC between each —
+        # peak transient is one res-grid transform instead of all six plus the cat pullback.
+        res = K.res; N = res^3
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        p̄1 = similar(psi1); p̄2 = similar(psi2)
+        for c in 1:3
+            for (which, src, dst) in ((1, psi1, p̄1), (2, psi2, p̄2))
+                ȳc = reshape(Ȳ[:, c, which], res, res, res)          # materialize: FFT pullbacks
+                xc = src[:, :, :, c]                                  # reject wrapped views
+                _, pb = ChainRulesCore.rrule_via_ad(cfg, x -> _irfftn(x, res), xc)
+                copyto!(view(dst, :, :, :, c), ChainRulesCore.unthunk(pb(ȳc)[2]))
+                pb = nothing; ȳc = nothing; xc = nothing; GC.gc(false)
+            end
+        end
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), p̄1, p̄2)
+    end
+    return y, stack_pullback
+end
+
+# ── Hand FFT adjoints with lazy weights (replace closure-captured full-size scale arrays) ──────────
+# AbstractFFTs' irfft/rfft rrules capture a FULL-SIZE scale array in every pullback closure — at 512³
+# several live closures cost ~8–10 GB. The adjoints only need a per-mode weight along the halved dim
+# (2 for interior kz, 1 for kz=0/Nyquist) and the 1/N normalization, carried here as a (1,1,nh) vector:
+#   irfft†:  X̄ = rfft(ȳ) .* (w/N)          rfft†:  x̄ = brfft(Ȳ .* (1/w))
+# Verified against finite differences through the full 2LPT loss (F64 rel ~6e-6).
+function _halfdim_weights(ref::AbstractArray, nh::Int, d::Int, ::Type{T}) where {T}
+    wh = ones(T, nh); for k in 2:nh; wh[k] = T(2); end
+    if iseven(d); wh[nh] = T(1); end
+    wv = @ignore_derivatives (y = similar(ref, T, 1, 1, nh); copyto!(y, reshape(wh, 1, 1, nh)); y)
+    return wv
+end
+
+function ChainRulesCore.rrule(::typeof(_irfftn), f::AbstractArray{Complex{T},3}, d::Int) where {T}
+    y = _irfftn(f, d)
+    n1, n2 = size(f, 1), size(f, 2); nh = size(f, 3); N = T(n1) * T(n2) * T(d)
+    function irfftn_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        Ȳm = Ȳ isa Base.ReshapedArray || Ȳ isa SubArray ? collect(Ȳ) : Ȳ
+        wv = _halfdim_weights(f, nh, d, T)
+        f̄ = _rfftn(Ȳm) .* (wv ./ N)
+        return (ChainRulesCore.NoTangent(), f̄, ChainRulesCore.NoTangent())
+    end
+    return y, irfftn_pullback
+end
+
+function ChainRulesCore.rrule(::typeof(_rfftn), x::AbstractArray{T,3}) where {T<:Real}
+    y = _rfftn(x)
+    d = size(x, 3); nh = d ÷ 2 + 1
+    function rfftn_pullback(ȳ)
+        Ȳ = ChainRulesCore.unthunk(ȳ)
+        Ȳm = Ȳ isa Base.ReshapedArray || Ȳ isa SubArray ? collect(Ȳ) : Ȳ
+        wv = _halfdim_weights(x, nh, d, T)
+        x̄ = _brfftn(Ȳm ./ wv, d)
+        return (ChainRulesCore.NoTangent(), x̄)
+    end
+    return y, rfftn_pullback
 end

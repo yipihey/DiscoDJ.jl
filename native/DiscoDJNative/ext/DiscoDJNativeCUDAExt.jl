@@ -20,7 +20,7 @@ module DiscoDJNativeCUDAExt
 using DiscoDJNative
 using DiscoDJNative: FourierGrid, LPTResult, HalfField, NLPTKernels, ICOperator
 using CUDA
-using AbstractFFTs: plan_rfft, plan_irfft, rfft, irfft
+using AbstractFFTs: plan_rfft, plan_irfft, rfft, irfft, brfft
 
 # (res,res,res÷2+1) half-on-dim3  →  device (res÷2+1,res,res) half-on-dim1.
 #
@@ -109,6 +109,7 @@ end
 # stay in the same layout — so nothing else in nlpt_core changes.
 DiscoDJNative._rfftn(x::CuArray) = permutedims(rfft(permutedims(x, (3, 1, 2))), (2, 3, 1))
 DiscoDJNative._irfftn(f::CuArray, n::Int) = permutedims(irfft(permutedims(f, (3, 1, 2)), n), (2, 3, 1))
+DiscoDJNative._brfftn(f::CuArray, n::Int) = permutedims(brfft(permutedims(f, (3, 1, 2)), n), (2, 3, 1))
 
 # Move the faithful spectral kernels / IC map to the device (no layout change —
 # the kernels broadcast against the half-on-dim3 arrays).
