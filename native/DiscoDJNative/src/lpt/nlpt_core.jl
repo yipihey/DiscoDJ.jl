@@ -486,6 +486,101 @@ function ChainRulesCore.rrule(::typeof(fmu2_sym), K::NLPTKernels{T},
     return y, fmu2_sym_pullback
 end
 
+# ── Shared adjoint pieces for the analytic LPT bilinears (all via the FD-validated hand adjoints) ────
+_Aext(K::NLPTKernels, f, i::Int, k::Int) = _irfftn(_dext(K, f, i, k), K.ext)   # ∂ₖ fᵢ  (ext real)
+# (crop∘rfft)† : res-rfft cotangent ā → ext-real cotangent of the pre-crop real product
+_cr_adj(K::NLPTKernels{T}, ā, wv) where {T} =
+    _brfftn((_pad3(ChainRulesCore.unthunk(ā), K.res, K.ext) .* T((K.res / K.ext)^6)) ./ wv, K.ext)
+# accumulate dext†(irfft†(Ā)) for field (component i, axis k) into f̄[:,:,:,i]
+function _dext_accum!(f̄, K::NLPTKernels{T}, Ā, i::Int, k::Int, wv, N) where {T}
+    dk = k == 1 ? K.dx_ext : k == 2 ? K.dy_ext : K.dz_ext
+    @views f̄[:, :, :, i] .+= _crop3(conj.(dk) .* (_rfftn(Ā) .* (wv ./ N)), K.res, K.ext) .* T((K.ext / K.res)^6)
+    return f̄
+end
+
+# ── Analytic adjoint for the μ₃ trilinear (the 3LPT source) ─────────────────────────────────────────
+# The nested `_conv2(…, do_crop=false)` is a de-aliased TRIPLE product (irfft∘rfft round-trips on the ext
+# grid), so  fmu3 = crop( rfft( Σ s·A1_k·B_l·Cc_m ) )  — the Levi-Civita triple product of the nine ext-real
+# fields A1_a=irfft(∂ₐf1₁), B_a=irfft(∂ₐf2₂), Cc_a=irfft(∂ₐf3₃), computed ONCE.  Trilinear ⇒ each arg's vjp
+# is a quadratic map; ChainRules sums the three when called as fmu3(ψ₁,ψ₁,ψ₁).  No Zygote, no tape.
+function ChainRulesCore.rrule(::typeof(fmu3), K::NLPTKernels{T}, f1::AbstractArray{Complex{T},4},
+                              f2::AbstractArray{Complex{T},4}, f3::AbstractArray{Complex{T},4}) where {T}
+    ext = K.ext
+    A1 = ntuple(a -> _Aext(K, f1, 1, a), 3); B = ntuple(a -> _Aext(K, f2, 2, a), 3); Cc = ntuple(a -> _Aext(K, f3, 3, a), 3)
+    μ = A1[1] .* B[2] .* Cc[3] .- A1[1] .* B[3] .* Cc[2] .+ A1[2] .* B[3] .* Cc[1] .-
+        A1[2] .* B[1] .* Cc[3] .+ A1[3] .* B[1] .* Cc[2] .- A1[3] .* B[2] .* Cc[1]
+    y  = _crop3(_rfftn(μ), K.res, ext)
+    nh = ext ÷ 2 + 1; N = T(ext)^3; wv = _halfdim_weights(f1, nh, ext, T)
+    function fmu3_pullback(ā)
+        P̄  = _cr_adj(K, ā, wv)
+        f̄1 = fill!(similar(f1), zero(Complex{T})); f̄2 = fill!(similar(f2), zero(Complex{T})); f̄3 = fill!(similar(f3), zero(Complex{T}))
+        dA1 = (B[2].*Cc[3].-B[3].*Cc[2], B[3].*Cc[1].-B[1].*Cc[3], B[1].*Cc[2].-B[2].*Cc[1])
+        dB  = (A1[3].*Cc[2].-A1[2].*Cc[3], A1[1].*Cc[3].-A1[3].*Cc[1], A1[2].*Cc[1].-A1[1].*Cc[2])
+        dCc = (A1[2].*B[3].-A1[3].*B[2], A1[3].*B[1].-A1[1].*B[3], A1[1].*B[2].-A1[2].*B[1])
+        for a in 1:3
+            _dext_accum!(f̄1, K, P̄ .* dA1[a], 1, a, wv, N)
+            _dext_accum!(f̄2, K, P̄ .* dB[a],  2, a, wv, N)
+            _dext_accum!(f̄3, K, P̄ .* dCc[a], 3, a, wv, N)
+        end
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), f̄1, f̄2, f̄3)
+    end
+    return y, fmu3_pullback
+end
+
+# ── Analytic adjoint for the μ₂&C bilinear (asymmetric 3LPT source + transverse curl) ────────────────
+# Bilinear in (f1,f2) with two outputs: μ₂ = crop(rfft(Σ_{12} s·A1ᵢₖ·A2_jl)) and C_c = crop(rfft(Σ_6 s·…)),
+# with A1ᵢₖ=irfft(∂ₖf1ᵢ), A2_jl=irfft(∂ₗf2ⱼ) shared across all terms.  The vjp accumulates the per-field
+# cotangents Ā1ᵢₖ, Ā2_jl over the 12 μ₂ + 18 C terms (each = ±P̄·partner), then back through dext†/irfft†.
+function ChainRulesCore.rrule(::typeof(fmu2_and_C), K::NLPTKernels{T},
+                              f1::AbstractArray{Complex{T},4}, f2::AbstractArray{Complex{T},4}) where {T}
+    res, ext = K.res, K.ext
+    A1 = [_Aext(K, f1, i, k) for i in 1:3, k in 1:3]      # (3,3) ext real
+    A2 = [_Aext(K, f2, j, l) for j in 1:3, l in 1:3]
+    mu2r = T(_MU2_S[1]) .* A1[_MU2_I[1], _MU2_K[1]] .* A2[_MU2_J[1], _MU2_L[1]]
+    for n in 2:12
+        mu2r = mu2r .+ T(_MU2_S[n]) .* A1[_MU2_I[n], _MU2_K[n]] .* A2[_MU2_J[n], _MU2_L[n]]
+    end
+    Creal = ntuple(c -> begin
+        acc = T(_C_S[1]) .* A1[_cyc(_C_I[1], c-1), _cyc(_C_K[1], c-1)] .* A2[_cyc(_C_J[1], c-1), _cyc(_C_L[1], c-1)]
+        for n in 2:6
+            acc = acc .+ T(_C_S[n]) .* A1[_cyc(_C_I[n], c-1), _cyc(_C_K[n], c-1)] .* A2[_cyc(_C_J[n], c-1), _cyc(_C_L[n], c-1)]
+        end
+        acc
+    end, 3)
+    mu2 = _crop3(_rfftn(mu2r), res, ext)
+    C   = cat(_crop3(_rfftn(Creal[1]), res, ext), _crop3(_rfftn(Creal[2]), res, ext),
+              _crop3(_rfftn(Creal[3]), res, ext); dims=4)
+    nh = ext ÷ 2 + 1; N = T(ext)^3; wv = _halfdim_weights(f1, nh, ext, T)
+    function fmu2C_pullback(ā)
+        ā_ = ChainRulesCore.unthunk(ā)
+        m̄2 = ChainRulesCore.unthunk(ā_[1]); C̄ = ChainRulesCore.unthunk(ā_[2])
+        Pm = m̄2 isa ChainRulesCore.AbstractZero ? nothing : _cr_adj(K, m̄2, wv)
+        PC = ntuple(c -> C̄ isa ChainRulesCore.AbstractZero ? nothing : _cr_adj(K, C̄[:, :, :, c], wv), 3)
+        Ā1 = [fill!(similar(A1[1, 1]), zero(T)) for _ in 1:3, _ in 1:3]
+        Ā2 = [fill!(similar(A2[1, 1]), zero(T)) for _ in 1:3, _ in 1:3]
+        if Pm !== nothing
+            for n in 1:12
+                i, k, j, l, s = _MU2_I[n], _MU2_K[n], _MU2_J[n], _MU2_L[n], T(_MU2_S[n])
+                Ā1[i, k] .+= s .* Pm .* A2[j, l]; Ā2[j, l] .+= s .* Pm .* A1[i, k]
+            end
+        end
+        for c in 1:3
+            PC[c] === nothing && continue
+            for n in 1:6
+                i = _cyc(_C_I[n], c-1); k = _cyc(_C_K[n], c-1); j = _cyc(_C_J[n], c-1); l = _cyc(_C_L[n], c-1); s = T(_C_S[n])
+                Ā1[i, k] .+= s .* PC[c] .* A2[j, l]; Ā2[j, l] .+= s .* PC[c] .* A1[i, k]
+            end
+        end
+        f̄1 = fill!(similar(f1), zero(Complex{T})); f̄2 = fill!(similar(f2), zero(Complex{T}))
+        for i in 1:3, k in 1:3
+            _dext_accum!(f̄1, K, Ā1[i, k], i, k, wv, N)
+            _dext_accum!(f̄2, K, Ā2[i, k], i, k, wv, N)
+        end
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), f̄1, f̄2)
+    end
+    return (mu2, C), fmu2C_pullback
+end
+
 # Linear hand adjoint for ψ₁(k) = −∇φ: avoids taping the three kernel-broadcast operands.
 function ChainRulesCore.rrule(::typeof(_psi1_fourier), K::NLPTKernels{T},
                               fphi::AbstractArray{Complex{T},3}) where {T}
