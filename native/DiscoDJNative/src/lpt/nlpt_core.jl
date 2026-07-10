@@ -547,30 +547,18 @@ function ChainRulesCore.rrule(::typeof(_dext), K::NLPTKernels{T},
     return y, dext_pullback
 end
 
-# ── Staged 2LPT pipeline with per-stage checkpointing (the res-512 unlock) ─────────────────────────
-# Whole-segment checkpointing rematerializes ALL shape intermediates at once during the backward, so the
-# fmu2 term tape and the full segment tape coexist (~44 GB at 512³ F32). Splitting the segment into two
-# independently-checkpointed stages — (ψ₁ → ψ₂) and (ψ₁,ψ₂ → real stack) — means the backward holds only
-# ONE stage's rematerialization at a time. Each stage rrule runs the forward untaped and re-differentiates
-# via `rrule_via_ad` in its pullback (AD-framework-agnostic checkpointing).
+# ── Staged 2LPT pipeline (fully analytic — no checkpointing needed) ────────────────────────────────
+# Every piece here is analytic with a hand rrule: `fmu2_sym` (the quadratic bilinear, above),
+# `_assemble_psi` (a linear Fourier map), and `_vec_irfftn` (per-component `_irfftn` hand adjoints).
+# So plain Zygote composition backprops through the hand rrules with NO re-differentiation and NO
+# segment tape — the analytic `fmu2_sym` closure holds only its 9 shared real fields.  (Previously
+# these two stages carried `rrule_via_ad` checkpoints, which existed solely to bound the *taped*
+# fmu2_sym; the analytic adjoint makes them pure overhead, so they are removed.)
 export psi2_fourier, shape_stack_2lpt
 
 """ψ₂(k) from ψ₁(k): the de-aliased 2LPT source assembled to a displacement (longitudinal)."""
 psi2_fourier(K::NLPTKernels{T}, psi1::AbstractArray{Complex{T},4}) where {T} =
     _assemble_psi(K, fmu2_sym(K, psi1), nothing)
-
-function ChainRulesCore.rrule(cfg::ChainRulesCore.RuleConfig{>:ChainRulesCore.HasReverseMode},
-                              ::typeof(psi2_fourier), K::NLPTKernels{T}, psi1) where {T}
-    y = psi2_fourier(K, psi1)                     # untaped forward
-    function psi2_pullback(ȳ)
-        # differentiate the BODY, not psi2_fourier itself (whose rrule would recurse)
-        _, pb = ChainRulesCore.rrule_via_ad(cfg, p -> _assemble_psi(K, fmu2_sym(K, p), nothing), psi1)
-        p̄ = ChainRulesCore.unthunk(pb(ChainRulesCore.unthunk(ȳ))[2])
-        pb = nothing; GC.gc(false)                         # release the stage tape before returning
-        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), p̄)
-    end
-    return y, psi2_pullback
-end
 
 """(ψ₁,ψ₂)(k) → the real exact-growth shape stack (N,3,2) (2LPT layout of `exact_shape_stack`)."""
 function shape_stack_2lpt(K::NLPTKernels{T}, psi1::AbstractArray{Complex{T},4},
@@ -578,29 +566,6 @@ function shape_stack_2lpt(K::NLPTKernels{T}, psi1::AbstractArray{Complex{T},4},
     res = K.res; N = res^3
     r1 = _vec_irfftn(K, psi1); r2 = _vec_irfftn(K, psi2)
     return cat(reshape(r1, N, 3), reshape(r2, N, 3); dims=3)
-end
-
-function ChainRulesCore.rrule(cfg::ChainRulesCore.RuleConfig{>:ChainRulesCore.HasReverseMode},
-                              ::typeof(shape_stack_2lpt), K::NLPTKernels{T}, psi1, psi2) where {T}
-    y = shape_stack_2lpt(K, psi1, psi2)           # untaped forward
-    function stack_pullback(ȳ)
-        # stream PER COMPONENT: six single-irfft pullbacks (cat/reshape are views), GC between each —
-        # peak transient is one res-grid transform instead of all six plus the cat pullback.
-        res = K.res; N = res^3
-        Ȳ = ChainRulesCore.unthunk(ȳ)
-        p̄1 = similar(psi1); p̄2 = similar(psi2)
-        for c in 1:3
-            for (which, src, dst) in ((1, psi1, p̄1), (2, psi2, p̄2))
-                ȳc = reshape(Ȳ[:, c, which], res, res, res)          # materialize: FFT pullbacks
-                xc = src[:, :, :, c]                                  # reject wrapped views
-                _, pb = ChainRulesCore.rrule_via_ad(cfg, x -> _irfftn(x, res), xc)
-                copyto!(view(dst, :, :, :, c), ChainRulesCore.unthunk(pb(ȳc)[2]))
-                pb = nothing; ȳc = nothing; xc = nothing; GC.gc(false)
-            end
-        end
-        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), p̄1, p̄2)
-    end
-    return y, stack_pullback
 end
 
 # ── Hand FFT adjoints with lazy weights (replace closure-captured full-size scale arrays) ──────────
