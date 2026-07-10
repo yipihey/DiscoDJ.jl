@@ -448,33 +448,42 @@ function lpt_displacement(fphi::AbstractArray{Complex{T},3}, K::NLPTKernels{T},
     return evaluate_core(shapes, cosmo, a; n_order, exact_growth)
 end
 
-# ── Streaming pullback for the de-aliased 2LPT bilinear (the ext-grid tape killer) ──────────────
-# Under generic reverse AD, `fmu2_sym` tapes ~6 ext-grid (ext=3res/2) intermediates PER TERM — ~36 ext
-# arrays, ≈65 GB at res 512 (F32).  This config-rrule runs the forward untaped and, in the pullback,
-# re-differentiates ONE TERM AT A TIME via `rrule_via_ad`: peak backward memory = a single term's tape
-# (6× smaller), each term's tape freed before the next.  AD-framework-agnostic (works under Zygote).
-function ChainRulesCore.rrule(cfg::ChainRulesCore.RuleConfig{>:ChainRulesCore.HasReverseMode},
-                              ::typeof(fmu2_sym), K::NLPTKernels{T},
+# ── Analytic adjoint for the de-aliased 2LPT bilinear (μ₂ is QUADRATIC in Ψ₁ ⇒ vjp = ONE linear map) ──
+# μ₂ is a symmetric quadratic form in Ψ₁.  crop∘rfft is linear, so the six de-aliased products collapse to
+#   μ₂ = crop( rfft( Σ s·Aᵢₖ·A_jl ) ),   Aᵢₖ = irfft(∂ₖΨ₁ᵢ)   (the NINE shared real 2nd-derivative fields),
+# computed ONCE.  The vjp is then a single explicit pass — P̄ = rfft†(crop†(ā)); each field's cotangent
+# Āᵢₖ = P̄·(its partner from the six terms); back through the dext/irfft adjoints — NO Zygote, NO re-diff,
+# NO tape.  ~10 FFTs each way vs the term-by-term streaming rrule's re-diff (≈24 GB pool → ≈2 GB at res 192).
+# The Aᵢₖ, dext†, crop†/pad† and lazy-weight rfft†/irfft† pieces are the FD-validated hand rrules above.
+function ChainRulesCore.rrule(::typeof(fmu2_sym), K::NLPTKernels{T},
                               f1::AbstractArray{Complex{T},4}) where {T}
     res, ext = K.res, K.ext
-    acc = _czeros(f1, res, res, res ÷ 2 + 1)
-    for (i, j, k, l, s) in _MU2_SYM_TERMS
-        acc = acc .+ T(s) .* _conv2(_dext(K, f1, i, k), _dext(K, f1, j, l), res, ext)
-    end
-    project = ChainRulesCore.ProjectTo(f1)
+    A = ntuple(i -> ntuple(k -> _irfftn(_dext(K, f1, i, k), ext), 3), 3)   # A[i][k], ext real (shared)
+    μreal = A[1][1] .* A[2][2] .+ A[1][1] .* A[3][3] .+ A[2][2] .* A[3][3] .-
+            A[1][2] .* A[2][1] .- A[1][3] .* A[3][1] .- A[2][3] .* A[3][2]
+    y  = _crop3(_rfftn(μreal), res, ext)
+    nh = ext ÷ 2 + 1; N = T(ext)^3
+    wv = _halfdim_weights(f1, nh, ext, T)
+    ker(k) = k == 1 ? K.dx_ext : k == 2 ? K.dy_ext : K.dz_ext
+    # ∂μreal/∂Aᵢₖ (the "partner" of field (i,k) summed over the six terms)
+    partner(i, k) =
+        (i, k) == (1, 1) ? (A[2][2] .+ A[3][3]) : (i, k) == (2, 2) ? (A[1][1] .+ A[3][3]) :
+        (i, k) == (3, 3) ? (A[1][1] .+ A[2][2]) : (i, k) == (1, 2) ? (.-A[2][1]) :
+        (i, k) == (2, 1) ? (.-A[1][2]) : (i, k) == (1, 3) ? (.-A[3][1]) :
+        (i, k) == (3, 1) ? (.-A[1][3]) : (i, k) == (2, 3) ? (.-A[3][2]) : (.-A[2][3])
     function fmu2_sym_pullback(ā)
-        Ā = ChainRulesCore.unthunk(ā)
-        f̄ = nothing
-        for (i, j, k, l, s) in _MU2_SYM_TERMS
-            term = f -> T(s) .* _conv2(_dext(K, f, i, k), _dext(K, f, j, l), res, ext)
-            _, pb = ChainRulesCore.rrule_via_ad(cfg, term, f1)
-            tf̄ = ChainRulesCore.unthunk(pb(Ā)[2])
-            f̄ = f̄ === nothing ? tf̄ : (f̄ .+ tf̄)          # term tape freed here before the next
-            pb = nothing; GC.gc(false)                     # release the term tape to the device pool
+        ā_ = ChainRulesCore.unthunk(ā)
+        P̄  = _brfftn((_pad3(ā_, res, ext) .* T((res / ext)^6)) ./ wv, ext)   # crop† then rfft† → μreal cotangent
+        f̄  = fill!(similar(f1), zero(Complex{T}))
+        for i in 1:3, k in 1:3
+            Ā    = P̄ .* partner(i, k)                                        # Aᵢₖ cotangent
+            dcot = _rfftn(Ā) .* (wv ./ N)                                     # irfft† → ∂ₖΨ₁ᵢ cotangent
+            s̄    = _crop3(conj.(ker(k)) .* dcot, res, ext) .* T((ext / res)^6) # dext† (crop side)
+            @views f̄[:, :, :, i] .+= s̄
         end
-        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), project(f̄))
+        return (ChainRulesCore.NoTangent(), ChainRulesCore.NoTangent(), f̄)
     end
-    return acc, fmu2_sym_pullback
+    return y, fmu2_sym_pullback
 end
 
 # Linear hand adjoint for ψ₁(k) = −∇φ: avoids taping the three kernel-broadcast operands.
