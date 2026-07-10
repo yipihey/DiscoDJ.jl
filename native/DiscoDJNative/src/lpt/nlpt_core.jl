@@ -101,9 +101,13 @@ end
 Build the base-grid spectral gradient / inverse-Laplacian kernels and the
 extended-grid (3/2-rule) gradient kernels used by the de-aliasing convolutions.
 """
-function nlpt_kernels(res::Int, boxsize::Real; T::Type{<:AbstractFloat}=Float64)
+# `ext` = de-aliasing grid size (default 3res/2 = the exact 3/2-rule that fully removes the μ₂/μ₃
+# quadratic/cubic aliasing). Pass a smaller ext (down to `res`, no padding) to shrink the de-aliasing
+# FFTs — the memory-dominant cost at high res — at the price of some aliasing in the (small, at the
+# near-linear fixed cube) LPT correction. Must be ≥ res and even.
+function nlpt_kernels(res::Int, boxsize::Real; T::Type{<:AbstractFloat}=Float64, ext::Int = 3 * res ÷ 2)
     bs  = T(boxsize)
-    ext = 3 * res ÷ 2
+    ext ≥ res || error("nlpt_kernels: ext ($ext) must be ≥ res ($res)")
     NLPTKernels{T}(res, ext, bs,
         _grad_kernel(res, bs, 1), _grad_kernel(res, bs, 2), _grad_kernel(res, bs, 3),
         _inv_lap_kernel(res, bs),
