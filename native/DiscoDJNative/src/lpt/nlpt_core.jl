@@ -458,20 +458,22 @@ end
 function ChainRulesCore.rrule(::typeof(fmu2_sym), K::NLPTKernels{T},
                               f1::AbstractArray{Complex{T},4}) where {T}
     res, ext = K.res, K.ext
-    A = ntuple(i -> ntuple(k -> _irfftn(_dext(K, f1, i, k), ext), 3), 3)   # A[i][k], ext real (shared)
-    μreal = A[1][1] .* A[2][2] .+ A[1][1] .* A[3][3] .+ A[2][2] .* A[3][3] .-
-            A[1][2] .* A[2][1] .- A[1][3] .* A[3][1] .- A[2][3] .* A[3][2]
-    y  = _crop3(_rfftn(μreal), res, ext)
+    # Forward via the plain function so its 9 shared ext-real fields A[i][k] are LOCAL to it and
+    # released on return — the pullback RECOMPUTES them from f1 (9 cheap irffts). This keeps the
+    # ~9×ext-real block (~7 GB at res 384) out of residence through the rest of the forward+backward
+    # pass, lowering the gradient peak (the res-512 unlock + the res-384 GC-creep fix). +9 ext-irffts
+    # in the backward; FD-identical (recompute is exact).
+    y  = fmu2_sym(K, f1)
     nh = ext ÷ 2 + 1; N = T(ext)^3
     wv = _halfdim_weights(f1, nh, ext, T)
-    ker(k) = k == 1 ? K.dx_ext : k == 2 ? K.dy_ext : K.dz_ext
-    # ∂μreal/∂Aᵢₖ (the "partner" of field (i,k) summed over the six terms)
-    partner(i, k) =
-        (i, k) == (1, 1) ? (A[2][2] .+ A[3][3]) : (i, k) == (2, 2) ? (A[1][1] .+ A[3][3]) :
-        (i, k) == (3, 3) ? (A[1][1] .+ A[2][2]) : (i, k) == (1, 2) ? (.-A[2][1]) :
-        (i, k) == (2, 1) ? (.-A[1][2]) : (i, k) == (1, 3) ? (.-A[3][1]) :
-        (i, k) == (3, 1) ? (.-A[1][3]) : (i, k) == (2, 3) ? (.-A[3][2]) : (.-A[2][3])
     function fmu2_sym_pullback(ā)
+        A = ntuple(i -> ntuple(k -> _irfftn(_dext(K, f1, i, k), ext), 3), 3)   # recompute A[i][k]
+        ker(k) = k == 1 ? K.dx_ext : k == 2 ? K.dy_ext : K.dz_ext
+        partner(i, k) =                                                        # ∂μreal/∂Aᵢₖ (6-term sum)
+            (i, k) == (1, 1) ? (A[2][2] .+ A[3][3]) : (i, k) == (2, 2) ? (A[1][1] .+ A[3][3]) :
+            (i, k) == (3, 3) ? (A[1][1] .+ A[2][2]) : (i, k) == (1, 2) ? (.-A[2][1]) :
+            (i, k) == (2, 1) ? (.-A[1][2]) : (i, k) == (1, 3) ? (.-A[3][1]) :
+            (i, k) == (3, 1) ? (.-A[1][3]) : (i, k) == (2, 3) ? (.-A[3][2]) : (.-A[2][3])
         ā_ = ChainRulesCore.unthunk(ā)
         P̄  = _brfftn((_pad3(ā_, res, ext) .* T((res / ext)^6)) ./ wv, ext)   # crop† then rfft† → μreal cotangent
         f̄  = fill!(similar(f1), zero(Complex{T}))
