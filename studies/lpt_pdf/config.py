@@ -10,7 +10,7 @@ R_SMOOTH = [7.0, 14.0, 28.0, 42.0]   # top-hat smoothing radii (0.5, 1, 2, 3 R_F
 A_FINAL = 1.0
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RESULTS = os.path.join(HERE, "results")
+RESULTS = os.environ.get("LPTPDF_RESULTS", os.path.join(HERE, "_scratch", "results"))  # copied to results/ when final
 SCRATCH = os.environ.get("LPTPDF_SCRATCH", os.path.join(HERE, "_scratch"))
 os.makedirs(RESULTS, exist_ok=True)
 os.makedirs(SCRATCH, exist_ok=True)
