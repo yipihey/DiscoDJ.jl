@@ -107,7 +107,7 @@ def sigma2_theory(R_s):
 
 
 def tree_level():
-    Rg = np.geomspace(3, 80, 400)
+    Rg = np.geomspace(3, 80, 120)
     s2 = sigma2_theory(Rg)
     g1 = np.gradient(np.log(s2), np.log(Rg))
     g2 = np.gradient(g1, np.log(Rg))
@@ -189,6 +189,13 @@ def main():
     print_tables(summary, lpt, nbres)
 
 
+def _xlim(tag, R, kind, floor=1e-3, pad=0.08):
+    b, p = pdf_from_npz(tag, R, kind)
+    xc = 0.5 * (b[1:] + b[:-1])
+    m = np.where(p > floor)[0]
+    return xc[m[0]] - pad, xc[m[-1]] + pad
+
+
 def _pdf_axes(nrow=2):
     fig, ax = plt.subplots(nrow, 4, figsize=(12, 5.2), sharex=True,
                            gridspec_kw=dict(height_ratios=[2.2, 1], hspace=0.06, wspace=0.28))
@@ -210,7 +217,7 @@ def plot_family(S, lst, colors, label, fname, kind):
         ax[0, j].set_ylim(1e-3, 5); ax[0, j].set_title(f"$R_s$ = {R:g} Mpc/h", fontsize=9)
         ax[1, j].set_ylim(-0.1, 0.1); ax[1, j].axhline(0, color="#8a8984", lw=0.8)
         ax[1, j].set_xlabel(r"$\log_{10}(1+\delta_R)$")
-        ax[0, j].set_xlim(-1.1, 1.1)
+        ax[0, j].set_xlim(*_xlim(ref, R, kind))
     ax[0, 0].set_ylabel("PDF (%s-weighted)" % ("volume" if kind == "vol" else "mass"))
     ax[1, 0].set_ylabel(f"ratio to {label(ref)} − 1")
     ax[0, 0].legend(fontsize=7, loc="lower center")
@@ -249,7 +256,8 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
                     ax[i, j].set_xlabel(r"$\log_{10}(1+\delta_R)$")
             ax[i, 0].set_ylabel(f"{'volume' if kind == 'vol' else 'mass'} PDF\nratio to fiducial − 1")
         ax[0, 0].legend(fontsize=6.5, loc="upper left")
-        ax[0, 0].set_xlim(-1.1, 1.1)
+        for j, R in enumerate(C.R_SMOOTH):
+            ax[1, j].set_xlim(*_xlim(base, R, "vol"))
         fig.savefig(os.path.join(FIG, "conv_nbody_numerics.png")); plt.close(fig)
 
     # 2LPT vs N-body: PDFs + ratio with convergence bands
@@ -272,7 +280,7 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
                 xc = 0.5 * (b[1:] + b[:-1]); m = p2 > 1e-3
                 e = np.abs(p1[m] / p2[m] - 1)
                 ax[1, j].fill_between(xc[m], -e, e, color=col, alpha=0.25, lw=0)
-            ax[0, j].set_ylim(1e-3, 5); ax[0, j].set_xlim(-1.1, 1.1)
+            ax[0, j].set_ylim(1e-3, 5); ax[0, j].set_xlim(*_xlim(pairs[0][2], R, kind))
             ax[0, j].set_title(f"$R_s$ = {R:g} Mpc/h", fontsize=9)
             ax[1, j].set_ylim(-0.3, 0.3); ax[1, j].axhline(0, color="#8a8984", lw=0.8)
             ax[1, j].set_xlabel(r"$\log_{10}(1+\delta_R)$")
@@ -281,6 +289,27 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
         ax[0, 0].legend(fontsize=7, loc="lower center")
         ax[1, 0].legend(fontsize=6, loc="upper left")
         fig.savefig(os.path.join(FIG, f"compare_{kind}.png")); plt.close(fig)
+
+    # quantile comparison: 2LPT / N-body - 1 for density quantiles, with the
+    # resolution-convergence estimate of each family as error bars
+    fig, ax = plt.subplots(1, 4, figsize=(12, 3.3), sharey=True, gridspec_kw=dict(wspace=0.08))
+    for j, R in enumerate(C.R_SMOOTH):
+        for w, mk, off in (("V", "o", -0.12), ("M", "s", 0.12)):
+            for name, tl, tn in pairs:
+                y = S[tl][R]["q" + w] / S[tn][R]["q" + w] - 1
+                eL = np.abs(S[lpt[-2]][R]["q" + w] / S[lpt[-1]][R]["q" + w] - 1)
+                eN = np.abs(S[nbres[-2]][R]["q" + w] / S[nbres[-1]][R]["q" + w] - 1)
+                xi = np.arange(len(QS)) + off + (0.06 if name == "paired" else 0)
+                ax[j].errorbar(xi, 100 * y, yerr=100 * np.hypot(eL, eN), fmt=mk, ms=4,
+                               color=C_LPT if w == "V" else C_NB, mfc="white" if name == "paired" else None,
+                               capsize=2, lw=1,
+                               label=f"{'volume' if w == 'V' else 'mass'}-weighted ({name})")
+        ax[j].axhline(0, color="#8a8984", lw=0.8)
+        ax[j].set_xticks(range(len(QS)), [f"{100*q:g}%" for q in QS], rotation=45, fontsize=7)
+        ax[j].set_title(f"$R_s$ = {R:g} Mpc/h", fontsize=9); ax[j].set_xlabel("quantile of $1+\\delta_R$")
+    ax[0].set_ylabel("2LPT / N-body − 1  [%]")
+    ax[0].legend(fontsize=6.5, loc="lower right")
+    fig.savefig(os.path.join(FIG, "compare_quantiles.png")); plt.close(fig)
 
     # moments vs resolution
     fig, ax = plt.subplots(1, 3, figsize=(12, 3.4), gridspec_kw=dict(wspace=0.3))
