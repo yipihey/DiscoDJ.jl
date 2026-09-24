@@ -197,7 +197,7 @@ def _xlim(tag, R, kind, floor=1e-3, pad=0.08):
 
 
 def _pdf_axes(nrow=2):
-    fig, ax = plt.subplots(nrow, 4, figsize=(12, 5.2), sharex=True,
+    fig, ax = plt.subplots(nrow, 4, figsize=(12, 5.2), sharex="col",
                            gridspec_kw=dict(height_ratios=[2.2, 1], hspace=0.06, wspace=0.28))
     return fig, ax
 
@@ -234,7 +234,7 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
     base = "nb_N128_m2_s100_ai0.04_log"
     others = [t for t in nb_tests if t.startswith("nb_N128") and t != base]
     if others:
-        fig, ax = plt.subplots(2, 4, figsize=(12, 4.6), sharex=True, gridspec_kw=dict(hspace=0.08, wspace=0.28))
+        fig, ax = plt.subplots(2, 4, figsize=(12, 4.6), sharex="col", gridspec_kw=dict(hspace=0.08, wspace=0.28))
         cols = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"]
         for i, kind in enumerate(("vol", "mass")):
             for j, R in enumerate(C.R_SMOOTH):
@@ -255,7 +255,8 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
                 else:
                     ax[i, j].set_xlabel(r"$\log_{10}(1+\delta_R)$")
             ax[i, 0].set_ylabel(f"{'volume' if kind == 'vol' else 'mass'} PDF\nratio to fiducial − 1")
-        ax[0, 0].legend(fontsize=6.5, loc="upper left")
+        h, l = ax[0, 0].get_legend_handles_labels()
+        fig.legend(h, l, fontsize=7, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.08))
         for j, R in enumerate(C.R_SMOOTH):
             ax[1, j].set_xlim(*_xlim(base, R, "vol"))
         fig.savefig(os.path.join(FIG, "conv_nbody_numerics.png")); plt.close(fig)
@@ -337,7 +338,7 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
         ax[0].plot([M[t]["N"] for t in lst], [100 * M[t]["cross_final"] for t in lst], "o--", color=col, label=nm + " (at z=0)", alpha=0.6)
         t = lst[-1]
         ax[1].plot(M[t]["cross_hist_a"], 100 * np.array(M[t]["cross_hist"]), color=col, label=f"{nm} {M[t]['N']}³")
-    ax[0].axhline(1.0, color="#e34948", lw=0.8, ls=":"); ax[0].text(64, 1.03, "1% target", fontsize=7, color="#52514e")
+    ax[0].axhline(1.0, color="#e34948", lw=0.8, ls=":"); ax[0].text(64, 0.95, "1% target", fontsize=7, color="#52514e")
     ax[0].set_xscale("log", base=2); ax[0].set_xlabel("particles per dimension"); ax[0].set_ylabel("shell-crossed mass [%]")
     ax[1].set_xlabel("scale factor a"); ax[1].set_ylabel("ever-crossed mass [%]")
     ax[0].legend(fontsize=7); ax[1].legend(fontsize=7)
