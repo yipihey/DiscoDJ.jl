@@ -53,6 +53,19 @@ def fields(tag):
 
 
 def stats(tag):
+    """Quantiles, moments and fine CDFs of a run (cached next to its density)."""
+    src = os.path.join(C.SCRATCH, tag + "_rho.npy")
+    cache = os.path.join(C.SCRATCH, tag + "_stats.npz")
+    if os.path.exists(cache) and os.path.getmtime(cache) > os.path.getmtime(src):
+        z = np.load(cache)
+        return {R: {k: z[f"R{R:g}_{k}"] for k in ("qV", "qM", "var", "S3", "S4", "cdfV", "cdfM")}
+                for R in C.R_SMOOTH}
+    out = _stats(tag)
+    np.savez(cache, **{f"R{R:g}_{k}": v for R, d in out.items() for k, v in d.items()})
+    return out
+
+
+def _stats(tag):
     rho, sm = fields(tag)
     w = rho.ravel().astype(np.float64)
     out = {}
@@ -182,10 +195,63 @@ def main():
             field=fc[R]) for R in C.R_SMOOTH}
         comp[name]["runs"] = [tl, tn]
     summary["comparison"] = comp
+
+    # ---------------- nLPT orders (same ICs) ----------------
+    orders = [m for m in ORDERS if f"{m}_N256" in S]
+    nl = {}
+    if orders:
+        nl["convergence"] = {}
+        for m in ORDERS_ALL:
+            lst = sorted([t for t in tags if t.startswith(m + "_N") and t[len(m) + 2:].isdigit()],
+                         key=lambda t: M[t]["N"])
+            if len(lst) < 2:
+                continue
+            ref = lst[-1]
+            nl["convergence"][m] = {"reference": ref, **{t: {f"R{R:g}": dict(
+                dq_V=qdiff(t, ref, R, "V"), dq_M=qdiff(t, ref, R, "M"),
+                dvar=S[t][R]["var"] / S[ref][R]["var"] - 1) for R in C.R_SMOOTH} for t in lst[:-1]}}
+            for extra in (f"{m}_N256_nodealias", f"{m}_N384_nodealias"):
+                if extra in S:
+                    nl["convergence"][m][extra] = {f"R{R:g}": dict(
+                        dq_V=qdiff(extra, ref, R, "V"), dq_M=qdiff(extra, ref, R, "M"),
+                        dvar=S[extra][R]["var"] / S[ref][R]["var"] - 1) for R in C.R_SMOOTH}
+        # the old (non-de-aliased, independent code path) 2LPT vs the new engine
+        if "2lpt_N256" in S:
+            nl["old_2lpt_N512_vs_new_2lpt_N256"] = {f"R{R:g}": dict(
+                dq_V=qdiff(lpt_ref, "2lpt_N256", R, "V"), dq_M=qdiff(lpt_ref, "2lpt_N256", R, "M"))
+                for R in C.R_SMOOTH}
+        nl["vs_nbody"] = {}
+        for name, suf, tn in [("fixed", "", nb_ref), ("paired", "_paired", "nb_N256_m2_s100_ai0.04_log_paired")]:
+            if tn not in S:
+                continue
+            nl["vs_nbody"][name] = {}
+            for m in ORDERS_ALL:
+                tl = f"{m}_N256{suf}"
+                if tl not in S:
+                    continue
+                fc = field_compare(tl, tn)[0]
+                nl["vs_nbody"][name][m] = {f"R{R:g}": dict(
+                    q_ratio_V=(S[tl][R]["qV"] / S[tn][R]["qV"]).tolist(),
+                    q_ratio_M=(S[tl][R]["qM"] / S[tn][R]["qM"]).tolist(),
+                    KS_V=ks(tl, tn, R, "V"), KS_M=ks(tl, tn, R, "M"),
+                    var_ratio=S[tl][R]["var"] / S[tn][R]["var"],
+                    S3=[S[tl][R]["S3"], S[tn][R]["S3"]], S4=[S[tl][R]["S4"], S[tn][R]["S4"]],
+                    field=fc[R]) for R in C.R_SMOOTH}
+                nl["vs_nbody"][name][m]["cross_ever"] = M[tl]["cross_ever"]
+            nl["vs_nbody"][name]["nbody_cross_ever"] = M[tn]["cross_ever"]
+        # EdS-growth approximation: nLPT_eds vs exact-growth nLPT
+        nl["eds_vs_exact"] = {m: {f"R{R:g}": dict(dq_V=qdiff(f"{m}_eds_N256", f"{m}_N256", R, "V"),
+                                                  dq_M=qdiff(f"{m}_eds_N256", f"{m}_N256", R, "M"),
+                                                  dvar=S[f"{m}_eds_N256"][R]["var"] / S[f"{m}_N256"][R]["var"] - 1)
+                                  for R in C.R_SMOOTH}
+                              for m in ("2lpt", "3lpt", "4lpt") if f"{m}_eds_N256" in S}
+    summary["nlpt"] = nl
     with open(os.path.join(C.RESULTS, "summary.json"), "w") as f:
         json.dump(summary, f, indent=1, default=float)
 
     make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree)
+    if orders:
+        make_nlpt_figures(S, M, tags, orders, nb_ref, tree)
     print_tables(summary, lpt, nbres)
 
 
@@ -357,6 +423,107 @@ def make_figures(S, M, lpt, nbres, nb_tests, pairs, fieldpairs, tree):
             ax[j].grid(False)
         ax[0].set_ylabel(r"$\log_{10}\rho_{\rm 2LPT} - \log_{10}\rho_{\rm N\!-\!body}$")
         fig.savefig(os.path.join(FIG, "field_level.png")); plt.close(fig)
+
+
+ORDERS = ["1lpt", "2lpt", "3lpt", "4lpt"]
+ORDERS_ALL = ORDERS + ["2lpt_eds", "3lpt_eds", "4lpt_eds"]
+OLAB = {"1lpt": "Zel'dovich", "2lpt": "2LPT", "3lpt": "3LPT", "4lpt": "4LPT"}
+OCOL = {"1lpt": "#1baf7a", "2lpt": "#2a78d6", "3lpt": "#4a3aa7", "4lpt": "#e87ba4"}
+OMK = {"1lpt": "v", "2lpt": "o", "3lpt": "D", "4lpt": "^"}
+
+
+def make_nlpt_figures(S, M, tags, orders, nb_ref, tree):
+    tpair = "nb_N256_m2_s100_ai0.04_log_paired"
+    # (1) quantile ratios to N-body, per order, fixed (filled) and paired (open)
+    fig, ax = plt.subplots(2, 4, figsize=(12, 6.2), sharey="row", gridspec_kw=dict(wspace=0.08, hspace=0.45))
+    for r, w in enumerate(("V", "M")):
+        for j, R in enumerate(C.R_SMOOTH):
+            for oi, m in enumerate(orders):
+                for suf, tn, filled in (("", nb_ref, True), ("_paired", tpair, False)):
+                    tl = f"{m}_N256{suf}"
+                    if tl not in S or tn not in S:
+                        continue
+                    y = 100 * (S[tl][R]["q" + w] / S[tn][R]["q" + w] - 1)
+                    xi = np.arange(len(QS)) + (oi - 1.5) * 0.17
+                    ax[r, j].plot(xi, y, OMK[m], ms=4.5, color=OCOL[m], mfc=OCOL[m] if filled else "white",
+                                  ls="-" if filled else "none", lw=0.8,
+                                  label=f"{OLAB[m]}" if filled else None)
+            ax[r, j].axhline(0, color="#8a8984", lw=0.8)
+            ax[r, j].set_xticks(range(len(QS)), [f"{100*q:g}%" for q in QS], rotation=45, fontsize=7)
+            ax[r, j].set_title(f"$R_s$ = {R:g} Mpc/h  ({'volume' if w == 'V' else 'mass'})", fontsize=9)
+            ax[r, j].set_ylim(-35, 25)
+        ax[r, 0].set_ylabel("nLPT / N-body − 1  [%]\nat fixed quantile of $1+\\delta_R$")
+    ax[0, 0].legend(fontsize=7, loc="lower left", ncol=2)
+    fig.text(0.5, -0.02, "filled: fixed amplitudes · open: paired phases (θ+π)", ha="center", fontsize=8, color="#52514e")
+    fig.savefig(os.path.join(FIG, "orders_quantiles.png")); plt.close(fig)
+
+    # (2) PDF ratio to N-body, per order
+    for kind in ("vol", "mass"):
+        fig, ax = plt.subplots(1, 4, figsize=(12, 3.3), gridspec_kw=dict(wspace=0.28))
+        for j, R in enumerate(C.R_SMOOTH):
+            b, pn = pdf_from_npz(nb_ref, R, kind)
+            xc = 0.5 * (b[1:] + b[:-1]); msk = pn > 1e-3
+            for m in orders:
+                _, pl = pdf_from_npz(f"{m}_N256", R, kind)
+                ax[j].plot(xc[msk], pl[msk] / pn[msk] - 1, color=OCOL[m], label=OLAB[m])
+            e = np.abs(pdf_from_npz("nb_N192_m2_s100_ai0.04_log", R, kind)[1][msk] / pn[msk] - 1)
+            ax[j].fill_between(xc[msk], -e, e, color=C_NB, alpha=0.25, lw=0, label="N-body 192³ vs 256³")
+            ax[j].axhline(0, color="#8a8984", lw=0.8); ax[j].set_ylim(-0.4, 0.4)
+            ax[j].set_xlim(*_xlim(nb_ref, R, kind))
+            ax[j].set_title(f"$R_s$ = {R:g} Mpc/h", fontsize=9); ax[j].set_xlabel(r"$\log_{10}(1+\delta_R)$")
+        ax[0].set_ylabel(f"{'volume' if kind == 'vol' else 'mass'} PDF: nLPT / N-body − 1")
+        ax[0].legend(fontsize=7, loc="lower center")
+        fig.savefig(os.path.join(FIG, f"orders_pdf_ratio_{kind}.png")); plt.close(fig)
+
+    # (3) moments vs LPT order (N-body as horizontal line)
+    fig, ax = plt.subplots(1, 3, figsize=(12, 3.3), gridspec_kw=dict(wspace=0.3))
+    xo = np.arange(1, len(orders) + 1)
+    for k, (key, ttl) in enumerate([("var", r"$\sigma^2_{\rm nLPT}/\sigma^2_{\rm N-body}$"),
+                                    ("S3", r"$S_3^{\rm nLPT}/S_3^{\rm N-body}$"),
+                                    ("S4", r"$S_4^{\rm nLPT}/S_4^{\rm N-body}$")]):
+        for j, R in enumerate(C.R_SMOOTH):
+            if key == "S4" and R == 42.0:
+                continue                      # S4 at 42 Mpc/h is realisation noise (sign flips)
+            y = [S[f"{m}_N256"][R][key] / S[nb_ref][R][key] for m in orders]
+            col = BLUES[1 + 2 * j] if j < 3 else BLUES[-1]
+            ax[k].plot(xo, y, "o-", color=col, ms=4, label=f"$R_s$={R:g}")
+        ax[k].axhline(1, color=C_NB, lw=1.2, label="N-body" if k == 0 else None)
+        ax[k].set_xticks(xo, [OLAB[m] for m in orders]); ax[k].set_title(ttl, fontsize=9)
+    ax[0].legend(fontsize=7)
+    fig.savefig(os.path.join(FIG, "orders_moments.png")); plt.close(fig)
+
+    # (4) resolution convergence of 3LPT and 4LPT (quantile shift vs N)
+    fig, ax = plt.subplots(1, 2, figsize=(10, 3.4), sharey=True, gridspec_kw=dict(wspace=0.08))
+    for a_, m in zip(ax, ("3lpt", "4lpt")):
+        lst = sorted([t for t in tags if t.startswith(m + "_N") and t[len(m) + 2:].isdigit()], key=lambda t: M[t]["N"])
+        if len(lst) < 2:
+            continue
+        ref = lst[-1]
+        for j, R in enumerate(C.R_SMOOTH):
+            Ns = [M[t]["N"] for t in lst[:-1]]
+            for w, ls in (("V", "-"), ("M", "--")):
+                y = [max(np.max(np.abs(S[t][R]["q" + w][1:-1] / S[ref][R]["q" + w][1:-1] - 1)), 1e-6) for t in lst[:-1]]
+                a_.plot(Ns, 100 * np.array(y), ls, marker="o", ms=3.5, color=BLUES[1 + 2 * j] if j < 3 else BLUES[-1],
+                        label=f"$R_s$={R:g} ({'vol' if w == 'V' else 'mass'})")
+        a_.set_xscale("log", base=2); a_.set_yscale("log"); a_.set_xlabel("particles per dimension")
+        a_.set_title(f"{OLAB[m]}: max quantile shift vs {M[ref]['N']}³ (de-aliased)", fontsize=9)
+    ax[0].set_ylabel("max |Δq/q| over 1–99% [%]"); ax[0].legend(fontsize=6.5, ncol=2)
+    fig.savefig(os.path.join(FIG, "orders_convergence.png")); plt.close(fig)
+
+    # (5) shell crossing vs order
+    fig, ax = plt.subplots(1, 2, figsize=(10, 3.4), gridspec_kw=dict(wspace=0.3))
+    for m in orders:
+        lst = sorted([t for t in tags if t.startswith(m + "_N") and t[len(m) + 2:].isdigit()], key=lambda t: M[t]["N"])
+        ax[0].plot([M[t]["N"] for t in lst], [100 * M[t]["cross_ever"] for t in lst], OMK[m] + "-", color=OCOL[m], label=OLAB[m])
+        t = f"{m}_N256"
+        ax[1].plot(M[t]["cross_hist_a"], 100 * np.array(M[t]["cross_hist"]), color=OCOL[m], label=OLAB[m])
+    nbl = sorted([t for t in tags if t.startswith("nb_") and "_m2_s100_ai0.04_log" in t and "paired" not in t], key=lambda t: M[t]["N"])
+    ax[0].plot([M[t]["N"] for t in nbl], [100 * M[t]["cross_ever"] for t in nbl], "s-", color=C_NB, label="N-body")
+    ax[1].plot(M[nb_ref]["cross_hist_a"], 100 * np.array(M[nb_ref]["cross_hist"]), color=C_NB, label="N-body 256³")
+    ax[0].set_xscale("log", base=2); ax[0].set_xlabel("particles per dimension"); ax[0].set_ylabel("ever shell-crossed mass [%]")
+    ax[1].set_xlabel("scale factor a"); ax[1].set_ylabel("ever shell-crossed mass [%]")
+    ax[0].legend(fontsize=7); ax[1].legend(fontsize=7)
+    fig.savefig(os.path.join(FIG, "orders_shell_crossing.png")); plt.close(fig)
 
 
 def print_tables(s, lpt, nbres):

@@ -2,6 +2,7 @@
 
   python run.py lpt   N [--paired]
   python run.py nbody N [--mesh M] [--steps S] [--ai A] [--spacing log|a] [--paired]
+  python run.py nlpt  N [--paired] [--no-dealias]   # 1LPT..4LPT (+ EdS-growth variants)
 
 Each run writes results/<tag>.npz (PDFs, moments, shell-crossing fractions)
 and _scratch/<tag>_rho.npy (CIC density on the common analysis mesh).
@@ -60,6 +61,37 @@ def run_lpt(a):
     print(tag, "crossed ever %.4g final %.4g" % (hist[-1], final), flush=True)
 
 
+def run_nlpt(a):
+    import nlpt
+    n = a.N
+    suffix = ("_nodealias" if a.no_dealias else "") + ("_paired" if a.paired else "")
+    t0 = time.time()
+    cosmo = Cosmology()
+    ph = core.master_phases(C.N_MASTER, C.SEED, C.PHASES)
+    dk = core.delta_k(cosmo, core.subgrid_modes(ph, n), n, C.L, C.R_F, a.paired)
+    shapes = nlpt.compute_shapes(dk, n, C.L, dealias=not a.no_dealias, n_order=4)
+    del dk
+    print(f"shapes N={n} {time.time() - t0:.0f}s", flush=True)
+    a_hist = np.linspace(0.1, C.A_FINAL, 37)
+    for name, model in nlpt.models(cosmo).items():
+        tag = f"{name}_N{n}{suffix}"
+        flag = np.zeros((n, n, n, 6), np.uint8)
+        hist = []
+        for aa in a_hist:
+            x = nlpt.positions(model, shapes, aa, C.L)
+            hist.append(core.update_crossing_flags(x, C.L, flag))
+        now = np.zeros_like(flag)
+        final = core.update_crossing_flags(x, C.L, now)
+        del flag, now
+        meta = dict(kind="nlpt", model=name, N=n, paired=a.paired,
+                    dealias=not a.no_dealias, L=C.L, R_F=C.R_F,
+                    cross_ever=float(hist[-1]), cross_final=float(final),
+                    cross_hist_a=a_hist.tolist(), cross_hist=[float(h) for h in hist],
+                    seconds=time.time() - t0)
+        analyse_and_save(tag, x, meta)
+        print(tag, "crossed ever %.4g final %.4g" % (hist[-1], final), flush=True)
+
+
 def run_nbody(a):
     n = a.N
     tag = (f"nb_N{n}_m{a.mesh}_s{a.steps}_ai{a.ai:g}_{a.spacing}"
@@ -93,12 +125,13 @@ def run_nbody(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("kind", choices=["lpt", "nbody"])
+    ap.add_argument("kind", choices=["lpt", "nbody", "nlpt"])
     ap.add_argument("N", type=int)
     ap.add_argument("--mesh", type=int, default=2)
     ap.add_argument("--steps", type=int, default=100)
     ap.add_argument("--ai", type=float, default=0.04)
     ap.add_argument("--spacing", default="log", choices=["log", "a"])
     ap.add_argument("--paired", action="store_true")
+    ap.add_argument("--no-dealias", action="store_true")
     a = ap.parse_args()
-    run_lpt(a) if a.kind == "lpt" else run_nbody(a)
+    {"lpt": run_lpt, "nbody": run_nbody, "nlpt": run_nlpt}[a.kind](a)

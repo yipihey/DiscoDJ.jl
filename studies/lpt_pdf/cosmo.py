@@ -29,23 +29,43 @@ class Cosmology:
 
     # ---------------- growth ----------------
     def _growth_tables(self):
+        """Exact LCDM growth factors up to third order (DISCO-DJ conventions):
+        D1, D2 (~ -3/7 D1^2), D3a (~ 1/3 D1^3), D3b (~ -10/21 D1^3) and the
+        transverse D3c (~ 1/7 D1^3), each normalised by D1(a=1)^n.
+
+          L[D] = D'' + (3/a + E'/E) D' - src D,  src = 1.5 Om / (a^5 E^2)
+          L[D2]  = -src D1^2
+          L[D3a] =  2 src D1^3
+          L[D3b] =  2 src (D1 D2 - D1^3)
+          dD3c/da = D2 D1' - D1 D2'
+        """
         a0 = 1e-3
         def rhs(a, y):
-            D1, dD1, D2, dD2 = y
+            D1, dD1, D2, dD2, D3a, dD3a, D3b, dD3b, D3c = y
             fric = 3.0 / a + self.dlnE_da(a)
             src = 1.5 * self.Om / (a**5 * self.E(a)**2)
             return [dD1, -fric * dD1 + src * D1,
-                    dD2, -fric * dD2 + src * D2 - src * D1**2]
+                    dD2, -fric * dD2 + src * D2 - src * D1**2,
+                    dD3a, -fric * dD3a + src * D3a + 2 * src * D1**3,
+                    dD3b, -fric * dD3b + src * D3b + 2 * src * (D1 * D2 - D1**3),
+                    D2 * dD1 - D1 * dD2]
         # EdS growing modes at a0 (radiation ignored, consistent with E(a))
-        y0 = [a0, 1.0, -3/7 * a0**2, -6/7 * a0]
+        y0 = [a0, 1.0, -3/7 * a0**2, -6/7 * a0,
+              1/3 * a0**3, a0**2, -10/21 * a0**3, -10/7 * a0**2, 1/7 * a0**3]
         ag = np.geomspace(a0, 1.0, 4000)
-        s = solve_ivp(rhs, (a0, 1.0), y0, t_eval=ag, rtol=1e-11, atol=1e-14,
+        s = solve_ivp(rhs, (a0, 1.0), y0, t_eval=ag, rtol=1e-11, atol=1e-16,
                       method="DOP853")
         self._a = ag
         D1_1 = s.y[0, -1]
         # normalise so that D1(a=1) = 1 (P(k) below is the a=1 spectrum)
         self._D1, self._dD1 = s.y[0] / D1_1, s.y[1] / D1_1
         self._D2, self._dD2 = s.y[2] / D1_1**2, s.y[3] / D1_1**2
+        self._D3a, self._D3b, self._D3c = (s.y[4] / D1_1**3, s.y[6] / D1_1**3,
+                                           s.y[8] / D1_1**3)
+
+    def D3(self, a):
+        """(D3a, D3b, D3c) at a."""
+        return tuple(np.interp(a, self._a, t) for t in (self._D3a, self._D3b, self._D3c))
 
     def D1(self, a):
         return np.interp(a, self._a, self._D1)
