@@ -13,7 +13,7 @@ import config as C
 import core
 from cosmo import Cosmology, W_TH
 
-FIG = os.path.join(C.HERE, "figures")
+FIG = os.environ.get("LPTPDF_FIGURES", os.path.join(C.SCRATCH, "figures"))
 os.makedirs(FIG, exist_ok=True)
 
 # palette (dataviz reference instance): categorical slots + blue/orange ramps
