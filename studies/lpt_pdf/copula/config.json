@@ -1,0 +1,25 @@
+{
+  "_comment": "Defaults filling the placeholders of the copula task; every run logs this file.",
+  "box_L": 300.0,
+  "R_F": 14.0,
+  "phase_seed": 1,
+  "lpt_orders": ["2lpt", "4lpt"],
+  "za_for_test_d": "1lpt",
+  "N_list": [64, 128, 256],
+  "z_list": [24.0, 1.0, 0.0],
+  "a_initial": 0.04,
+  "refine_levels": [0, 1],
+  "R_list": [0.0, 1.5, 3.0, 7.0, 14.0],
+  "sheet_mesh": 512,
+  "tie_seeds": [11, 12, 13],
+  "xi_bins": {"rmin": 0.5, "rmax": 150.0, "nbins": 36},
+  "nbody": {"mesh_factor": 2, "steps": 100, "spacing": "log"},
+  "test_d": {"extra_seeds": [101, 102, 103, 104, 105, 106, 107, 108], "N_band": 128, "refine_band": 1,
+              "N_test": 256, "refine_test": 1, "mc_samples": 20000000, "mc_seed": 7,
+              "quantiles": [0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 0.995]},
+  "criteria": {
+    "a_min_pearson": 0.999, "a_max_rms_dy": 0.05,
+    "b_max_abs_dxi": 1e-10,
+    "d_nsigma": 3.0
+  }
+}

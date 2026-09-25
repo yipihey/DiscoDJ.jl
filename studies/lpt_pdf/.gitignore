@@ -1,2 +1,5 @@
 _scratch/
 __pycache__/
+# staged until step results are final (un-ignored when reported)
+copula/results/
+copula/figures/
