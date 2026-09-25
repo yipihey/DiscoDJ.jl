@@ -485,7 +485,7 @@ def make_nlpt_figures(S, M, tags, orders, nb_ref, tree):
             if key == "S4" and R == 42.0:
                 continue                      # S4 at 42 Mpc/h is realisation noise (sign flips)
             y = [S[f"{m}_N256"][R][key] / S[nb_ref][R][key] for m in orders]
-            col = BLUES[1 + 2 * j] if j < 3 else BLUES[-1]
+            col = BLUES[(0, 2, 4, 6)[j]]
             ax[k].plot(xo, y, "o-", color=col, ms=4, label=f"$R_s$={R:g}")
         ax[k].axhline(1, color=C_NB, lw=1.2, label="N-body" if k == 0 else None)
         ax[k].set_xticks(xo, [OLAB[m] for m in orders]); ax[k].set_title(ttl, fontsize=9)
@@ -503,7 +503,7 @@ def make_nlpt_figures(S, M, tags, orders, nb_ref, tree):
             Ns = [M[t]["N"] for t in lst[:-1]]
             for w, ls in (("V", "-"), ("M", "--")):
                 y = [max(np.max(np.abs(S[t][R]["q" + w][1:-1] / S[ref][R]["q" + w][1:-1] - 1)), 1e-6) for t in lst[:-1]]
-                a_.plot(Ns, 100 * np.array(y), ls, marker="o", ms=3.5, color=BLUES[1 + 2 * j] if j < 3 else BLUES[-1],
+                a_.plot(Ns, 100 * np.array(y), ls, marker="o", ms=3.5, color=BLUES[(0, 2, 4, 6)[j]],
                         label=f"$R_s$={R:g} ({'vol' if w == 'V' else 'mass'})")
         a_.set_xscale("log", base=2); a_.set_yscale("log"); a_.set_xlabel("particles per dimension")
         a_.set_title(f"{OLAB[m]}: max quantile shift vs {M[ref]['N']}³ (de-aliased)", fontsize=9)
