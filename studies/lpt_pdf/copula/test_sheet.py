@@ -1,4 +1,9 @@
-"""Unit tests of the sheet / Gaussianization machinery (run before validation)."""
+"""Unit tests of the analysis machinery (run before validation).
+
+sheet.py is an independent numba implementation of the phase-space sheet, kept as a
+reference oracle: `test_julia_crosscheck` requires DiscoDJNative's periodic sheet kernels
+(the production path, via fields.Snapshot) to reproduce it on a real 4LPT snapshot.
+"""
 import numpy as np
 from common import CFG
 import sheet, gauss
@@ -117,9 +122,32 @@ def test_xi_bruteforce():
     return ok
 
 
+def test_julia_crosscheck():
+    import os
+    from fields import Snapshot, product_path
+    import sheet as nsheet
+    from fields import L as LB, NG
+    s = Snapshot("4lpt", 64, 0.0, 0)
+    psi = np.load(__import__("common").snap_path("4lpt", 64, 0.0))
+    V, flip = nsheet.elements(psi, LB)
+    rho = nsheet.sheet_density(psi, LB, NG)
+    import core
+    from cosmo import W_TH
+    kx, ky, kz = core.kgrid(NG, LB, np.float64)
+    f3 = core.irfftn(core.rfftn(rho) * W_TH(np.sqrt(kx**2 + ky**2 + kz**2) * 3.0), NG)
+    v3 = nsheet.sample_centroids(psi, LB, f3)
+    dV = np.max(np.abs(s.V / V - 1)); dR = np.max(np.abs(s.values(3.0) / v3 - 1))
+    same_flip = s.nflip == int(flip.sum())
+    odd = np.all(s.nstream % 2 == 1)
+    print(f"  Julia vs numba (4LPT N64 z0): max|dV/V| {dV:.1e}, max|d rho_3/rho_3| {dR:.1e}, "
+          f"flipped {s.nflip} vs {int(flip.sum())}, all stream counts odd: {odd}")
+    return dV < 1e-10 and dR < 1e-6 and same_flip and odd
+
+
 if __name__ == "__main__":
     a = test_volume_and_density()
     b = test_gauss_xi()
     c = test_mask_plane_wave()
     d = test_xi_bruteforce()
-    print("PASS" if a and b and c and d else "FAIL")
+    e = test_julia_crosscheck()
+    print("PASS" if a and b and c and d and e else "FAIL")

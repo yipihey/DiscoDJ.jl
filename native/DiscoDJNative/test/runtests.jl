@@ -652,4 +652,6 @@ mean(x) = sum(x) / length(x)
         @test count(sl.valid) > 0 && all(isfinite, sl.a_cross[sl.valid])
     end
 
+    # ── Periodic-box sheet (element geometry, exact stream counts, mesh density) ──
+    include("sheet_periodic_tests.jl")
 end

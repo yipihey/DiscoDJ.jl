@@ -203,7 +203,7 @@ def wq(x, w, qs):
 
 
 def za_quantiles(n, level, z, seed, qs):
-    s = Snapshot("1lpt", n, z, level, seed=seed if seed != CFG["phase_seed"] else None)
+    s = Snapshot("1lpt", n, z, level, seed=seed if seed != CFG["phase_seed"] else None, with_R=False)
     lr = np.log10(s.Vq / s.V)
     out = {}
     for cond, sel in (("mask", ~s.ms), ("detpos", s.V > 0)):
@@ -278,3 +278,6 @@ if __name__ == "__main__":
         test_c(int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), sd)
     elif t == "d":
         test_d()
+    elif t == "cleanup":
+        from fields import cleanup
+        cleanup(int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))

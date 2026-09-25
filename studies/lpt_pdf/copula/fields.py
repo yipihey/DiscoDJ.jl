@@ -1,58 +1,75 @@
-"""Per-element products of one snapshot: element volumes, flip / multistream flags and
-smoothed sheet densities at the element centroids."""
-import os, time
+"""Per-element products of one snapshot, computed by DiscoDJNative's periodic sheet kernels
+(native/DiscoDJNative/src/field/sheet_periodic.jl) through sheet_products.jl.
+
+Element  = Lagrangian cube of the (refined) lattice, 6 tetrahedra.
+Mask     = single-stream elements: no inverted tetrahedron AND exact stream count 1 at the
+           element centroid (number of sheet tetrahedra containing it).
+Values   = R = 0: element stream density Vq / V_e;  R > 0: top-hat smoothed sheet density
+           (all streams) at the element centroid.
+"""
+import os, subprocess, time
+import h5py
 import numpy as np
 
 from common import CFG, snap_path, SCRATCH
-import sheet
-from cosmo import W_TH
-import core
 
 L = CFG["box_L"]
 NG = CFG["sheet_mesh"]
+HERE = os.path.dirname(os.path.abspath(__file__))
+DJN = os.path.normpath(os.path.join(HERE, "..", "..", "..", "native", "DiscoDJNative"))
+JULIA = os.environ.get("JULIA", "/opt/jl/bin/julia")
+JENV = dict(os.environ, JULIA_DEPOT_PATH=os.environ.get("JULIA_DEPOT_PATH", "/opt/jdepot"),
+            JULIA_PKG_SERVER=os.environ.get("JULIA_PKG_SERVER", ""))
 
 
-def load_psi(model, n, z, level, seed=None):
-    psi = np.load(snap_path(model, n, z, seed))
-    return sheet.refine(psi, level)
+def product_path(model, n, z, level, seed=None, tag="full"):
+    s = "" if seed in (None, CFG["phase_seed"]) else f"_seed{seed}"
+    return os.path.join(SCRATCH, f"prod_{tag}_{model}_N{n}_z{z:g}_l{level}{s}.h5")
+
+
+def make_product(model, n, z, level, seed=None, with_R=True):
+    tag = "full" if with_R else "geom"
+    out = product_path(model, n, z, level, seed, tag)
+    if os.path.exists(out):
+        return out
+    Rs = ",".join(f"{R:g}" for R in CFG["R_list"] if R > 0) if with_R else ""
+    cmd = [JULIA, "-t", str(os.cpu_count()), f"--project={DJN}", os.path.join(HERE, "sheet_products.jl"),
+           snap_path(model, n, z, seed), str(level), str(NG), str(L), Rs, out + ".tmp"]
+    t0 = time.time()
+    r = subprocess.run(cmd, env=JENV, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"sheet_products failed ({model} N{n} z{z} l{level}):\n{r.stdout}\n{r.stderr}")
+    os.replace(out + ".tmp", out)
+    print(f"  [julia] {os.path.basename(out)} {time.time() - t0:.0f}s", flush=True)
+    return out
 
 
 class Snapshot:
-    """Geometry of one (model, N, z, refinement, seed) sheet; smoothed fields on demand."""
+    """Sheet products of one (model, N, z, refinement, seed)."""
 
-    def __init__(self, model, n, z, level, seed=None, need_mesh=True):
-        t0 = time.time()
+    def __init__(self, model, n, z, level, seed=None, with_R=True):
         self.model, self.n0, self.z, self.level = model, n, z, level
-        self.psi = load_psi(model, n, z, level, seed)
-        self.n = self.psi.shape[1]
+        self.path = make_product(model, n, z, level, seed, with_R)
+        with h5py.File(self.path, "r") as f:
+            self.V = f["V"][...]
+            nflip = f["nflip"][...]
+            self.nstream = f["nstream"][...]
+            self.attrs = {k: (v.tolist() if hasattr(v, "tolist") else v) for k, v in f.attrs.items()}
+        self.n = self.V.shape[0]
         self.Vq = (L / self.n)**3
-        self.V, flip = sheet.elements(self.psi, L)
-        self.nflip = int(flip.sum())
-        self.ms = sheet.multistream_elements(self.psi, L, flip, NG)
-        del flip
-        self._rhok = None
-        self.need_mesh = need_mesh
-        self.t_geom = time.time() - t0
-
-    def _mesh(self):
-        if self._rhok is None:
-            t0 = time.time()
-            rho = sheet.sheet_density(self.psi, L, NG)
-            self.mesh_mean = float(rho.mean())
-            self._rhok = core.rfftn(rho)
-            self.t_mesh = time.time() - t0
-        return self._rhok
+        self.nflip = int(np.count_nonzero(nflip))
+        self.ms = (nflip > 0) | (self.nstream != 1)       # not single-stream
+        self.mesh_mean = self.attrs.get("mesh_mean_density")
 
     def values(self, R):
-        """rho_R at each element: R = 0 -> element stream density Vq / V_e;
-        R > 0 -> top-hat (radius R) smoothed sheet density at the element centroid."""
         if R == 0:
             return self.Vq / self.V
-        rk = self._mesh()
-        kx, ky, kz = core.kgrid(NG, L, np.float64)
-        k = np.sqrt(kx**2 + ky**2 + kz**2)
-        f = core.irfftn(rk * W_TH(k * R), NG)
-        return sheet.sample_centroids(self.psi, L, f)
+        with h5py.File(self.path, "r") as f:
+            return f[f"rhoR_{float(R)}"][...]
 
-    def drop_psi(self):
-        self.psi = None
+
+def cleanup(n, z, level):
+    """Delete the (large) product files of one (N, z, level) once all tests used them."""
+    import glob
+    for p in glob.glob(os.path.join(SCRATCH, f"prod_*_N{n}_z{z:g}_l{level}*.h5")):
+        os.remove(p)

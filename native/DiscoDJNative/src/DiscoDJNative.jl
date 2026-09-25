@@ -80,5 +80,6 @@ include("analysis/bispectrum.jl")
 
 # ── Sheet query: density + deformation eigenvalues at arbitrary points ─────────
 include("field/sheet_query.jl")  # our-ICs → evolve sheet → fast point query (ρ, ∂x/∂q eigenvalues)
+include("field/sheet_periodic.jl")  # periodic-box sheet: element volumes/flips, exact stream counts, mesh density
 
 end # module
