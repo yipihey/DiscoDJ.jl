@@ -343,6 +343,15 @@ mean(x) = sum(x) / length(x)
         # general order: order 4 runs and is finite
         @test all(isfinite, compute_core(fphi, K; n_order=4)["psi_4"])
 
+        # fast engine (shared ext derivative fields + fused KA sources, the default) == the
+        # term-by-term engine (mode=:lean), forward and — below — gradients
+        for n in (2, 3, 4)
+            f_, l_ = compute_core(fphi, K; n_order=n), compute_core(fphi, K; n_order=n, mode=:lean)
+            @test maximum(rel(f_[k], l_[k]) for k in keys(l_)) < 1e-12
+        end
+        xf, xl = compute_core_exact(fphi, K; n_order=3), compute_core_exact(fphi, K; n_order=3, mode=:lean)
+        @test maximum(rel(xf[k], xl[k]) for k in keys(xl)) < 1e-12
+
         # evaluate_core: exact-growth & EdS displacement converge in the high-z limit
         c = Cosmology("Planck18EEBAOSN")
         ψ_eds = lpt_displacement(fphi, K, c, 0.01; n_order=3, exact_growth=false)
@@ -357,6 +366,15 @@ mean(x) = sum(x) / length(x)
             for i in rand(MersenneTwister(5), 1:length(white), 4)
                 gfd = FiniteDifferences.grad(fdm, t -> (w = copy(white); w[i] = t; lossc(w)), white[i])[1]
                 @test isapprox(gc[i], gfd; rtol=1e-4, atol=1e-20)
+            end
+            # 4LPT (EdS) gradient: fast engine vs lean engine vs finite differences
+            loss4(w, m) = sum(abs2, compute_core(rfft(w, [3, 1, 2]) .* 1e-2, K; n_order=4, mode=m)["psi_4"])
+            g4f = Zygote.gradient(w -> loss4(w, :fast), white)[1]
+            g4l = Zygote.gradient(w -> loss4(w, :lean), white)[1]
+            @test rel(g4f, g4l) < 1e-12
+            for i in rand(MersenneTwister(9), 1:length(white), 3)
+                gfd = FiniteDifferences.grad(fdm, t -> (w = copy(white); w[i] = t; loss4(w, :fast)), white[i])[1]
+                @test isapprox(g4f[i], gfd; rtol=1e-6)
             end
         end
     end

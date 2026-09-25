@@ -124,32 +124,30 @@ end
 # is redundant here and omitted (parity is unaffected, verified numerically).
 
 """Pad an rfft field `(orig,orig,orig÷2+1)` into the extended `(ext,ext,ext÷2+1)`
-layout (high modes → 0), with the (ext/orig)³ amplitude rescale."""
+layout (high modes → 0, Nyquist planes dropped), with the (ext/orig)³ amplitude rescale.
+Block copies (not a `cat` chain); differentiated through its hand `rrule`."""
 function _pad3(ff::AbstractArray{Complex{T},3}, orig::Int, ext::Int) where {T}
     h = orig ÷ 2
-    # dim 1 (full): [lo | zeros | hi]
-    a1 = cat(ff[1:h, :, :], _czeros(ff, ext - 2h + 1, orig, h + 1),
-             ff[h+2:orig, :, :]; dims=1)                              # (ext, orig, h+1)
-    # dim 2 (full)
-    a2 = cat(a1[:, 1:h, :], _czeros(ff, ext, ext - 2h + 1, h + 1),
-             a1[:, h+2:orig, :]; dims=2)                              # (ext, ext, h+1)
-    # dim 3 (half): only the lower block, zero-pad up to ext÷2+1
-    a3 = cat(a2[:, :, 1:h], _czeros(ff, ext, ext, ext ÷ 2 + 1 - h); dims=3)
-    return a3 .* T((ext / orig)^3)
+    out = fill!(similar(ff, ext, ext, ext ÷ 2 + 1), zero(Complex{T}))
+    lo = 1:h; hs = h+2:orig; hd = ext-h+2:ext
+    for (xs, xd) in ((lo, lo), (hs, hd)), (ys, yd) in ((lo, lo), (hs, hd))
+        @views out[xd, yd, 1:h] .= ff[xs, ys, 1:h]
+    end
+    out .*= T((ext / orig)^3)
+    return out
 end
 
 """Crop an extended rfft field back to `(orig,orig,orig÷2+1)` (inverse block map of
 `_pad3`, Nyquist planes → 0), with the (orig/ext)³ amplitude rescale."""
 function _crop3(ff::AbstractArray{Complex{T},3}, orig::Int, ext::Int) where {T}
     h = orig ÷ 2
-    nz = size(ff, 3)
-    # dim 1 (full): [lo | Nyquist=0 | hi]
-    a1 = cat(ff[1:h, :, :], _czeros(ff, 1, ext, nz), ff[ext-h+2:ext, :, :]; dims=1)   # (orig, ext, nz)
-    # dim 2 (full)
-    a2 = cat(a1[:, 1:h, :], _czeros(ff, orig, 1, nz), a1[:, ext-h+2:ext, :]; dims=2)  # (orig, orig, nz)
-    # dim 3 (half): lower block + zero Nyquist plane
-    a3 = cat(a2[:, :, 1:h], _czeros(ff, orig, orig, orig ÷ 2 + 1 - h); dims=3)
-    return a3 .* T((orig / ext)^3)
+    out = fill!(similar(ff, orig, orig, orig ÷ 2 + 1), zero(Complex{T}))
+    lo = 1:h; hs = ext-h+2:ext; hd = h+2:orig
+    for (xs, xd) in ((lo, lo), (hs, hd)), (ys, yd) in ((lo, lo), (hs, hd))
+        @views out[xd, yd, 1:h] .= ff[xs, ys, 1:h]
+    end
+    out .*= T((orig / ext)^3)
+    return out
 end
 
 """
@@ -300,14 +298,20 @@ end
 
 # ── General-order compute_core (EdS growth coefficients) ──────────────────────
 """
-    compute_core(fphi_ini, K; n_order) -> Dict("psi_1"=>…, "psi_2"=>…, …)
+    compute_core(fphi_ini, K; n_order, no_transverse=false, mode=:fast) -> Dict("psi_1"=>…, …)
 
 General n-order nLPT with EdS growth coefficients baked into each order (the JAX
 `compute_core`).  Returns the real-space displacement shape fields ψ_n; combine
 with `D₁(a)ⁿ` (see `evaluate`).  Longitudinal + transverse modes, de-aliased.
+
+`mode=:fast` (default) uses the shared-derivative-field engine with fused KernelAbstractions
+source kernels (nlpt_fast.jl); `mode=:lean` the term-by-term engine below (same mathematics,
+fewer simultaneously live extended-grid fields, many more FFTs).  Both are differentiable.
 """
 function compute_core(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernels{T};
-                      n_order::Int=2, no_transverse::Bool=false) where {T}
+                      n_order::Int=2, no_transverse::Bool=false, mode::Symbol=:fast) where {T}
+    mode === :fast && return _compute_core_fast(fphi_ini, K; n_order, no_transverse)
+    mode === :lean || error("mode must be :fast or :lean")
     res, ext = K.res, K.ext
     # JAX zeros φ's DC mode here; redundant — every use of φ multiplies by a
     # gradient kernel (DC = 0), so we pass fphi_ini through untouched.
@@ -359,14 +363,16 @@ end
 
 # ── compute_core_exact (orders 1–3, separate growth-shape fields) ─────────────
 """
-    compute_core_exact(fphi_ini, K; n_order) -> Dict
+    compute_core_exact(fphi_ini, K; n_order, mode=:fast) -> Dict
 
 Exact-growth nLPT (JAX `compute_core_exact`): returns the growth-factor-free shape
 fields `psi_1`, `psi_2_ex`, `psi_3a_ex`, `psi_3b_ex`, `psi_3c_ex` in real space.
 Combine with D₁, D₂plus, D₃plusa/b/c (see `evaluate`).
 """
 function compute_core_exact(fphi_ini::AbstractArray{Complex{T},3}, K::NLPTKernels{T};
-                            n_order::Int=3) where {T}
+                            n_order::Int=3, mode::Symbol=:fast) where {T}
+    mode === :fast && return _compute_core_exact_fast(fphi_ini, K; n_order)
+    mode === :lean || error("mode must be :fast or :lean")
     res, ext = K.res, K.ext
     psi1 = _psi1_fourier(K, fphi_ini)   # φ DC irrelevant (killed by gradient kernel)
 

@@ -6,7 +6,7 @@ set -ex
 export JULIA_DEPOT_PATH=${JULIA_DEPOT_PATH:-/opt/jdepot} JULIA_PKG_SERVER=${JULIA_PKG_SERVER:-}
 JL="${JULIA:-/opt/jl/bin/julia} -t auto --project=$(dirname "$0")"
 S=../_scratch/copula
-for N in 128 256; do
+for N in 64 128 256; do
   B=$(python3 snapshots.py fphi $N)
   $JL djn_snapshots.jl $B $N $S 1lpt,2lpt,4lpt,nbody
 done

@@ -57,6 +57,7 @@ include("lpt/nlpt.jl")
 include("lpt/evaluate.jl")
 include("lpt/nlpt_ad.jl")        # differentiable (AD-traceable) nLPT path
 include("lpt/nlpt_core.jl")      # faithful general-order nLPT port (parity reference)
+include("lpt/nlpt_fast.jl")      # fast engine: shared ext derivative fields + fused KA source kernels
 
 # ── N-body (port of DISCO-DJ run_nbody: PM force + DKD BullFrog/FastPM/symplectic steppers) ──
 include("nbody/pm.jl")
