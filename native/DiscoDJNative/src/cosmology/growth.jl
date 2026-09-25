@@ -54,7 +54,7 @@ function _rk4_growth(c::Cosmology, lna, y, dlna)
 end
 
 # ── Build growth tables (called from compute_timetables) ──────────────────────
-function _compute_growth_tables(c::Cosmology{T}, a_table::Vector{T}) where {T}
+function _compute_growth_tables(c::Cosmology{T}, a_table::Vector{T}; full::Bool=false) where {T}
     n = length(a_table)
     amin = a_table[1]
     # EdS initial conditions deep in matter domination.
@@ -64,8 +64,8 @@ function _compute_growth_tables(c::Cosmology{T}, a_table::Vector{T}) where {T}
          log(T(10//21)*amin^3), T(3),        # D3b ~ -10/21 a³
          log(T(1//7)*amin^3))                # D3c ~ +1/7 a³
     lna = log.(a_table)
-    D1=Vector{T}(undef,n); D2=similar(D1); D3a=similar(D1); D3b=similar(D1); D3c=similar(D1); F1=similar(D1)
-    setrow!(i, yy) = (D1[i]=exp(yy[1]); F1[i]=yy[2]; D2[i]=-exp(yy[3]);
+    D1=Vector{T}(undef,n); D2=similar(D1); D3a=similar(D1); D3b=similar(D1); D3c=similar(D1); F1=similar(D1); F2=similar(D1); F3a=similar(D1); F3b=similar(D1)
+    setrow!(i, yy) = (D1[i]=exp(yy[1]); F1[i]=yy[2]; F2[i]=yy[4]; F3a[i]=yy[6]; F3b[i]=yy[8]; D2[i]=-exp(yy[3]);
                       D3a[i]=exp(yy[5]); D3b[i]=-exp(yy[7]); D3c[i]=exp(yy[9]))
     setrow!(1, y)
     for i in 2:n
@@ -79,7 +79,20 @@ function _compute_growth_tables(c::Cosmology{T}, a_table::Vector{T}) where {T}
     D3a ./= D1_at1^3
     D3b ./= D1_at1^3
     D3c ./= D1_at1^3
+    full && return D1, D2, D3a, D3b, D3c, F1, F2, F3a, F3b, D1_at1
     return D1, D2, D3a, D3b, D3c, F1
+end
+
+# Superconformal time on the timetable grid, exactly DISCO-DJ's `compute_superconft`:
+# reverse cumulative trapezoid of 1/(E a³), shifted so that it vanishes at the last grid point (a = 1).
+function _superconft_table(c::Cosmology{T}, a::Vector{T}) where {T}
+    f = [one(T) / (hubble_E(c, ai) * ai^3) for ai in a]
+    n = length(a)
+    s = zeros(T, n)
+    for i in n-1:-1:1
+        s[i] = s[i+1] - (a[i+1] - a[i]) * (f[i] + f[i+1]) / 2
+    end
+    return s .- s[end]
 end
 
 # ── Public evaluation functions ───────────────────────────────────────────────

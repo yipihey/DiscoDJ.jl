@@ -10,7 +10,8 @@ Modules (load order matters for dependencies):
 - LPT:       nLPT displacement fields with KA + Threads dual backends
 - Lightcone: past-lightcone catalogues, refresh, sky maps
 - Analysis:  power spectrum, cross-spectrum, bispectrum
-- Nbody:     PM N-body (BullFrog/FastPM) — deferred
+- Nbody:     PM N-body — faithful port of DISCO-DJ run_nbody (BullFrog/FastPM/symplectic DKD,
+             PM force with CIC/TSC/PCS, deconvolution, interlacing, sheet resampling), KA kernels
 """
 module DiscoDJNative
 
@@ -40,6 +41,7 @@ _free!(x) = nothing
 include("cosmology/Cosmology.jl")
 include("cosmology/transfer.jl")
 include("cosmology/growth.jl")
+include("nbody/timetables.jl")     # jnp.interp-exact timetable lookups for the N-body steppers
 
 # ── Initial conditions ───────────────────────────────────────────────────────
 include("ics/ngenic.jl")
@@ -55,6 +57,10 @@ include("lpt/nlpt.jl")
 include("lpt/evaluate.jl")
 include("lpt/nlpt_ad.jl")        # differentiable (AD-traceable) nLPT path
 include("lpt/nlpt_core.jl")      # faithful general-order nLPT port (parity reference)
+
+# ── N-body (port of DISCO-DJ run_nbody: PM force + DKD BullFrog/FastPM/symplectic steppers) ──
+include("nbody/pm.jl")
+include("nbody/run_nbody.jl")
 
 # ── Field deposit (differentiable density estimators) ─────────────────────────
 include("field/sheet_deposit.jl")  # CIC + tetrahedral CDM-sheet deposit (+ rrule)

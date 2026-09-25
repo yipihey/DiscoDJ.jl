@@ -37,6 +37,11 @@ Base.@kwdef struct Cosmology{T<:AbstractFloat}
     _D3a_table::Vector{T} = T[]   # D3plusa (~ +1/3 D1³)
     _D3b_table::Vector{T} = T[]   # D3plusb (~ -10/21 D1³)
     _D3c_table::Vector{T} = T[]   # D3plusc (transverse, ~ +1/7 D1³)
+    _f2_table::Vector{T}  = T[]   # d ln D2 / d ln a (N-body steppers: D2plusda = f2·D2/a)
+    _f3a_table::Vector{T} = T[]   # d ln D3a / d ln a
+    _f3b_table::Vector{T} = T[]   # d ln D3b / d ln a
+    _superconft_table::Vector{T} = T[]   # superconformal time ∫ da/(a³E), 0 at a = 1
+    _D1_unnormed_at_1::T  = T(NaN)       # unnormalised D1(a=1) (DISCO-DJ "Dplus_unnormed_at_1")
 end
 
 Omega_m(c::Cosmology) = c.Omega_c + c.Omega_b
@@ -96,7 +101,8 @@ function compute_timetables(c::Cosmology{T}; n_pts::Int=2500, a_ini::T=T(1e-10))
     # Physical chi(a) = chi_total - chi_fwd(a): chi(a=1)=0, chi(a_ini)=max
     chi_table = chi_fwd[end] .- chi_fwd
     # Growth factors via the DISCO-DJ ODE system (growth.jl)
-    D1, D2, D3a, D3b, D3c, f1 = _compute_growth_tables(c, a_table)
+    D1, D2, D3a, D3b, D3c, f1, f2, f3a, f3b, D1_at1 = _compute_growth_tables(c, a_table; full=true)
+    sct = _superconft_table(c, a_table)
     return Cosmology{T}(
         Omega_c = c.Omega_c, Omega_b = c.Omega_b, h = c.h,
         sigma8 = c.sigma8, n_s = c.n_s, Omega_k = c.Omega_k,
@@ -104,6 +110,7 @@ function compute_timetables(c::Cosmology{T}; n_pts::Int=2500, a_ini::T=T(1e-10))
         _a_table = a_table, _chi_table = chi_table,
         _D1_table = D1, _D2_table = D2, _f1_table = f1,
         _D3a_table = D3a, _D3b_table = D3b, _D3c_table = D3c,
+        _f2_table = f2, _f3a_table = f3a, _f3b_table = f3b, _superconft_table = sct, _D1_unnormed_at_1 = D1_at1,
     )
 end
 

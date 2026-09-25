@@ -145,3 +145,40 @@ JULIA_NUM_THREADS=32 JULIA_CUDA_HARD_MEMORY_LIMIT=38GiB \
 # Tests (47 CPU; +12 GPU when CUDA is functional)
 julia --project=. test/runtests.jl
 ```
+
+## N-body (`src/nbody/`)
+
+A faithful port of DISCO-DJ's `run_nbody(method="pm")` (JAX, `yipihey/disco-dj`), written with
+KernelAbstractions so the scatter/gather kernels run on CPU and CUDA (FFTs through the pipeline's
+`_rfftn`/`_irfftn`, overridden by the CUDA extension; Metal.jl has no FFT, so a host FFT would be
+needed there).
+
+```julia
+c = Cosmology("Planck18EEBAOSN")
+shapes = compute_core(fphi, nlpt_kernels(res, L); n_order=2)        # DISCO-DJ nLPT
+Ψ0, Π0 = nbody_ics_lpt(c, shapes, 0.05; n_order=2)                  # Ψ and Π = dΨ/dD at a_ini
+X, P, a = run_nbody(c, Ψ0, Π0; boxsize=L, a_ini=0.05, a_end=1.0, n_steps=10,
+                    res_pm=2res, stepper=:bullfrog, time_var=:D)
+```
+
+Ported: steppers `:bullfrog`, `:fastpm`, `:symplectic` (drift–kick–drift, DISCO-DJ coefficients);
+time variables `:a`, `:log_a`, `:D`, `:superconft` or an explicit a-grid; PM force options
+`worder` 2/3/4, `deconvolve`, `antialias` −1/0/1/2/3, gradient and inverse-Laplacian kernels of
+order 0/2/4/6, `n_resample` sheet resampling (`:fourier`, `:linear`); LPT and BullFrog initial
+conditions; `collect_all`, `return_all_a`, `return_displacement`, `step_callback`.
+Not ported: `nufftpm`, `treepm`, the 1-D exact force, Diffrax and the custom-VJP adjoint.
+
+**Parity:** `test/nbody_parity_tests.jl` compares against reference data exported from the JAX
+code (`test/reference/export_jax_nbody_reference.py`, float64, 12 configurations): timetables
+≲ 4e-15, LPT initial conditions ≲ 5e-16, PM accelerations ≲ 1.2e-14, stepper coefficients
+≲ 6e-15, and full runs (Ψ, P) ≲ 3e-14.
+
+**Upstream bug (not ported):** DISCO-DJ's `interpolate_field(which="linear")` evaluates the
+resampled sheet at grid index `(q/L_unit + dshift·L/res)/L·res`, mixing box units; it is only
+correct for `boxsize = 1`.  The port uses the intended index `i + dshift`; the parity test for
+`resampling=:linear` compares against the JAX code with that line corrected.
+
+**Cold-lattice instability (inherited, by design of the options):** an `ik` gradient
+(`grad_kernel_order=0`) with `deconvolve=true` on a PM mesh finer than the particle lattice
+amplifies lattice modes from round-off; use the default 4th-order gradient without
+deconvolution, or the BullFrog-IC settings (interlacing + sheet resampling).

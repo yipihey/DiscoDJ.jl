@@ -654,4 +654,7 @@ mean(x) = sum(x) / length(x)
 
     # ── Periodic-box sheet (element geometry, exact stream counts, mesh density) ──
     include("sheet_periodic_tests.jl")
+
+    # ── N-body port: parity with the JAX DISCO-DJ run_nbody + linear growth ──
+    include("nbody_parity_tests.jl")
 end
