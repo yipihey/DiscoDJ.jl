@@ -25,7 +25,7 @@
 # which is only correct for boxsize = 1.  This port evaluates at the intended grid index i + dshift;
 # the parity test compares against the JAX code with that one line corrected.
 
-export PMConfig, pm_acceleration
+export PMConfig, PMSolver, pm_acceleration, pm_acceleration!, pm_acceleration_reference
 
 """
     PMConfig(; res_pm, n_part, boxsize, worder=2, deconvolve=false, antialias=0,
@@ -94,7 +94,11 @@ end
     end
 end
 
-"""    pm_scatter!(mesh, X::(Np,3), res, L, worder)  — accumulate unit masses (no normalisation)"""
+"""    pm_scatter!(mesh, X::(Np,3), res, L, worder)  — accumulate unit masses (no normalisation)
+
+KernelAbstractions kernel with atomic adds on every backend.  (A lock-free CPU variant — counting
+sort into stencil-wide x-slab chunks, even/odd passes — was measured 2–4× slower: particles in
+Lagrangian order already give coherent, low-contention atomics.)"""
 function pm_scatter!(mesh::AbstractArray{T,3}, X::AbstractMatrix{T}, res::Int, L, worder::Int) where {T}
     be = get_backend(mesh)
     _pm_scatter!(be)(mesh, X, res, T(L), Val(worder); ndrange=size(X, 1))
@@ -242,12 +246,12 @@ function _aa_shifts(aa::Int, dhalf::Float64)
 end
 
 """
-    pm_acceleration(psi::(n,n,n,3), cfg::PMConfig; kernels=PMKernels(cfg, T, psi)) -> (n,n,n,3)
+    pm_acceleration_reference(psi, cfg; kernels) -> (n,n,n,3)
 
-DISCO-DJ `calc_acc_PM(psi, …)`: particles at X = q + ψ, returns −∇φ (∇²φ = δ) at the particles,
-with all the options of `PMConfig`."""
-function pm_acceleration(psi::AbstractArray{T,4}, cfg::PMConfig;
-                         kernels::PMKernels = PMKernels(cfg, T, psi)) where {T}
+Straightforward (allocating, one inverse FFT per force component) transcription of DISCO-DJ
+`calc_acc_PM`; kept as the reference the optimised `PMSolver` path is tested against."""
+function pm_acceleration_reference(psi::AbstractArray{T,4}, cfg::PMConfig;
+                                   kernels::PMKernels = PMKernels(cfg, T, psi)) where {T}
     n = cfg.n_part; @assert size(psi, 1) == n
     L = cfg.boxsize; res = cfg.res_pm
     q1 = _lagr1d(n, L, T)
@@ -295,3 +299,231 @@ end
 
 # set the DC mode of a Fourier field to zero without scalar indexing on device arrays
 CUDA_safe_setdc!(f) = (view(f, 1:1, 1:1, 1:1) .= 0; f)
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# Optimised PM solver (same mathematics, round-off-level differences only)
+#
+#  * one combined Fourier multiplier  Kφ = invlap · [deconvolution] · 1/(ρ̄·n_sets·N_FFT), DC = 0
+#    (the "−1" of δ = mesh/ρ̄ − 1 only touches the DC mode, which DISCO-DJ zeroes)
+#  * FFTW plans + preallocated buffers on the CPU (unnormalised brfft; 1/N folded into Kφ)
+#  * finite-difference gradients (order 2/4/6): ONE inverse FFT of φ, then the equivalent
+#    real-space central-difference stencil — i(8 sin kh − sin 2kh)/6h ≡ [8(φ₊₁−φ₋₁) − (φ₊₂−φ₋₂)]/12h
+#    exactly (circulant identity) — instead of three inverse FFTs
+#  * ik gradient (order 0): three inverse FFTs as before, fused multiply kernel
+#  * one fused 3-component gather (weights computed once per particle)
+#  * sheet resampling: ψ̂ transformed once per force evaluation, not once per resampling offset
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+@kernel function _k_mulK!(out, @Const(fd), @Const(Kφ))
+    i, j, k = @index(Global, NTuple)
+    @inbounds out[i, j, k] = fd[i, j, k] * Kφ[i, j, k]
+end
+
+@kernel function _k_mulKg!(out, @Const(fd), @Const(Kφ), @Const(g), ax::Int)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        gv = ax == 1 ? g[i] : ax == 2 ? g[j] : g[k]
+        out[i, j, k] = -(gv * Kφ[i, j, k] * fd[i, j, k])
+    end
+end
+
+# F[.,c] = −D_c φ with the order-2/4/6 central-difference stencil (periodic), 1/h folded in c1..c3.
+# `nb[i, s+4]` = mod1(i + s, res) for s = −3..3 (precomputed: no integer division in the kernel).
+@kernel function _k_fdgrad!(F, @Const(φ), @Const(nb), c1, c2, c3)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        F[1, i, j, k] = -(c1 * (φ[nb[i, 5], j, k] - φ[nb[i, 3], j, k]) + c2 * (φ[nb[i, 6], j, k] - φ[nb[i, 2], j, k]) +
+                          c3 * (φ[nb[i, 7], j, k] - φ[nb[i, 1], j, k]))
+        F[2, i, j, k] = -(c1 * (φ[i, nb[j, 5], k] - φ[i, nb[j, 3], k]) + c2 * (φ[i, nb[j, 6], k] - φ[i, nb[j, 2], k]) +
+                          c3 * (φ[i, nb[j, 7], k] - φ[i, nb[j, 1], k]))
+        F[3, i, j, k] = -(c1 * (φ[i, j, nb[k, 5]] - φ[i, j, nb[k, 3]]) + c2 * (φ[i, j, nb[k, 6]] - φ[i, j, nb[k, 2]]) +
+                          c3 * (φ[i, j, nb[k, 7]] - φ[i, j, nb[k, 1]]))
+    end
+end
+
+@kernel function _k_gather3!(acc, @Const(F), @Const(X), res::Int, L, ::Val{W}) where {W}
+    p = @index(Global)
+    @inbounds begin
+        T = eltype(X)
+        gx = mod(X[p, 1], L) / L * res; gy = mod(X[p, 2], L) / L * res; gz = mod(X[p, 3], L) / L * res
+        bx = _wbase(Val(W), gx); by = _wbase(Val(W), gy); bz = _wbase(Val(W), gz)
+        s1 = zero(T); s2 = zero(T); s3 = zero(T)
+        for oz in _wlo(Val(W)):_whi(Val(W))
+            wz = _wk(Val(W), abs(gz - T(bz + oz))); kz = mod(bz + oz, res) + 1
+            for oy in _wlo(Val(W)):_whi(Val(W))
+                wy = _wk(Val(W), abs(gy - T(by + oy))); ky = mod(by + oy, res) + 1
+                for ox in _wlo(Val(W)):_whi(Val(W))
+                    wx = _wk(Val(W), abs(gx - T(bx + ox))); kx = mod(bx + ox, res) + 1
+                    w = wx * wy * wz
+                    s1 += F[1, kx, ky, kz] * w; s2 += F[2, kx, ky, kz] * w; s3 += F[3, kx, ky, kz] * w
+                end
+            end
+        end
+        acc[p, 1] += s1; acc[p, 2] += s2; acc[p, 3] += s3
+    end
+end
+
+"""
+    PMSolver(cfg::PMConfig, like::AbstractArray{T,4})
+
+Preallocated workspace for the DISCO-DJ PM force (see `pm_acceleration!`): combined Fourier
+multiplier, gradient kernels, meshes, FFT buffers and (on the CPU) FFTW plans."""
+struct PMSolver{T, AR3, AC3, AR4, AR4p, AGV, P1, P2}
+    cfg::PMConfig
+    Kφ::AR3                     # (res,res,res÷2+1) combined real multiplier
+    g::NTuple{3,AGV}            # 1-D ik gradient kernels (order 0)
+    mesh::AR3                   # (res,res,res)
+    fd::AC3; cbuf::AC3          # (res,res,res÷2+1)
+    φ::AR3                      # (res,res,res) potential (FD path)
+    F::AR4                      # (3,res,res,res) force meshes (components interleaved per node)
+    X::AR4p; Xs::AR4p; acc::AR4p  # particle work arrays (n,n,n,3)
+    pf::P1; pb::P2              # FFTW plans (CPU) or nothing
+    nb::AbstractMatrix{Int32}   # periodic neighbour table for the FD stencil (res × 7)
+    rs::Any                     # Fourier-resampling workspace (particle grid) or nothing
+end
+
+function PMSolver(cfg::PMConfig, like::AbstractArray{T,4}) where {T}
+    res = cfg.res_pm; n = cfg.n_part; nh = res ÷ 2 + 1
+    kf, kh = _pm_kvecs(res, cfg.boxsize, T)
+    K = PMKernels(cfg, T, Array(like[1:1, 1:1, 1:1, 1:1]))          # host copies of the kernels
+    nsets = cfg.n_resample^3
+    Kφ = K.invlap .* (K.mak === nothing ? one(T) : K.mak) ./ T(n^3 / res^3) ./ T(nsets) ./ T(res)^3
+    Kφ[1, 1, 1] = zero(T)
+    dev(x) = (y = similar(like, eltype(x), size(x)); copyto!(y, x); y)
+    gk = (dev(_grad1d(kf, 0, false)), dev(_grad1d(kf, 0, false)), dev(_grad1d(kh, 0, true)))
+    mesh = similar(like, T, res, res, res); φ = similar(mesh)
+    fd = similar(like, Complex{T}, res, res, nh); cbuf = similar(fd)
+    F = similar(like, T, 3, res, res, res)
+    X = similar(like, T, n, n, n, 3); Xs = similar(X); acc = similar(X)
+    pf = pb = nothing
+    if like isa Array
+        pf = FFTW.plan_rfft(mesh, [3, 1, 2]; flags=FFTW.ESTIMATE)
+        pb = FFTW.plan_brfft(cbuf, res, [3, 1, 2]; flags=FFTW.ESTIMATE)
+    end
+    nb = dev(Int32[mod1(i + s, res) for i in 1:res, s in -3:3])
+    rs = nothing
+    if cfg.n_resample > 1 && cfg.resampling == :fourier
+        ψhat = similar(like, Complex{T}, n, n, n ÷ 2 + 1, 3); cb = similar(like, Complex{T}, n, n, n ÷ 2 + 1)
+        rb = similar(like, T, n, n, n); Xr = similar(X)
+        pfn = like isa Array ? FFTW.plan_rfft(rb, [3, 1, 2]; flags=FFTW.ESTIMATE) : nothing
+        pbn = like isa Array ? FFTW.plan_brfft(cb, n, [3, 1, 2]; flags=FFTW.ESTIMATE) : nothing
+        rs = (ψhat=ψhat, cb=cb, rb=rb, Xr=Xr, pf=pfn, pb=pbn)
+    end
+    PMSolver{T, typeof(mesh), typeof(fd), typeof(F), typeof(X), typeof(gk[1]), typeof(pf), typeof(pb)}(
+        cfg, dev(Kφ), gk, mesh, fd, cbuf, φ, F, X, Xs, acc, pf, pb, nb, rs)
+end
+
+_fwd!(S::PMSolver) = S.pf === nothing ? (S.fd .= _rfftn(S.mesh)) : mul!(S.fd, S.pf, S.mesh)
+_bwd!(out, S::PMSolver) = S.pb === nothing ? (out .= _brfftn(S.cbuf, S.cfg.res_pm)) : mul!(out, S.pb, S.cbuf)
+
+function _fd_coeffs(order::Int, h)
+    order == 2 && return (1 / (2h), 0.0, 0.0)
+    order == 4 && return (8 / (12h), -1 / (12h), 0.0)
+    order == 6 && return (45 / (60h), -9 / (60h), 1 / (60h))
+    error("grad_order must be 0, 2, 4 or 6")
+end
+
+# ── Fourier sheet resampling on the particle grid (planned FFTs, fused threaded kernels) ──────────
+# ψ = mod(X − q + L/2, L) − L/2 is transformed ONCE per force evaluation; each resampling offset d
+# then needs one phase multiply (separable: exp(2πi Σ m_d d_d / n) = pₓ pᵧ p_z) and one inverse FFT
+# per component.  Same result as `_spawn` up to round-off.
+@kernel function _k_wrap_psi!(out, @Const(X), @Const(q), c::Int, L)
+    i, j, k = @index(Global, NTuple)
+    @inbounds out[i, j, k] = mod(X[i, j, k, c] - q[c == 1 ? i : c == 2 ? j : k] + L / 2, L) - L / 2
+end
+@kernel function _k_phase!(out, @Const(ψh), @Const(px), @Const(py), @Const(pz), scale)
+    i, j, k = @index(Global, NTuple)
+    @inbounds out[i, j, k] = ψh[i, j, k] * (px[i] * py[j] * pz[k] * scale)
+end
+@kernel function _k_place!(Xr, @Const(npsi), @Const(q), c::Int, shift, L)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Xr[i, j, k, c] = mod(q[c == 1 ? i : c == 2 ? j : k] + npsi[i, j, k] + shift + L, L)
+end
+
+function _resample_prepare!(S::PMSolver{T}, Xs, q) where {T}
+    R = S.rs; n = S.cfg.n_part; L = T(S.cfg.boxsize); be = get_backend(Xs)
+    for c in 1:3
+        _k_wrap_psi!(be)(R.rb, Xs, q, c, L; ndrange=(n, n, n)); synchronize(be)
+        R.pf === nothing ? (R.ψhat[:, :, :, c] .= _rfftn(R.rb)) : mul!(view(R.ψhat, :, :, :, c), R.pf, R.rb)
+    end
+end
+
+function _resample_offset!(S::PMSolver{T}, d, q) where {T}
+    R = S.rs; n = S.cfg.n_part; L = T(S.cfg.boxsize); be = get_backend(R.rb)
+    mf = T[(m < n ÷ 2 ? m : m - n) / n for m in 0:n-1]; mh = T[m / n for m in 0:n÷2]
+    dev(x) = (y = similar(R.rb, eltype(x), size(x)); copyto!(y, x); y)
+    px = dev(exp.(im .* T(2π) .* mf .* T(d[1]))); py = dev(exp.(im .* T(2π) .* mf .* T(d[2])))
+    pz = dev(exp.(im .* T(2π) .* mh .* T(d[3])))
+    for c in 1:3
+        _k_phase!(be)(R.cb, view(R.ψhat, :, :, :, c), px, py, pz, one(T) / T(n)^3; ndrange=(n, n, n ÷ 2 + 1))
+        synchronize(be)
+        R.pb === nothing ? (R.rb .= _brfftn(R.cb, n)) : mul!(R.rb, R.pb, R.cb)
+        _k_place!(be)(R.Xr, R.rb, q, c, T(d[c] * S.cfg.boxsize / n), L; ndrange=(n, n, n)); synchronize(be)
+    end
+    return R.Xr
+end
+
+function _acc_single!(S::PMSolver{T}, Xs, qd) where {T}
+    cfg = S.cfg; n = cfg.n_part; res = cfg.res_pm; L = cfg.boxsize; W = cfg.worder
+    be = get_backend(S.mesh)
+    fill!(S.mesh, zero(T))
+    pm_scatter!(S.mesh, reshape(Xs, n^3, 3), res, L, W)
+    if cfg.n_resample > 1
+        if cfg.resampling == :fourier
+            q = qd[1][:]                                   # 1-D lattice coordinates (device)
+            _resample_prepare!(S, Xs, q)
+            for d in _resample_shifts(cfg.n_resample)
+                Xr = _resample_offset!(S, d, q)
+                pm_scatter!(S.mesh, reshape(Xr, n^3, 3), res, L, W)
+            end
+        else
+            for d in _resample_shifts(cfg.n_resample)
+                pm_scatter!(S.mesh, reshape(_spawn(Xs, d, cfg, Xs), n^3, 3), res, L, W)
+            end
+        end
+    end
+    _fwd!(S)
+    nh = res ÷ 2 + 1
+    if cfg.grad_order == 0
+        for ax in 1:3
+            _k_mulKg!(be)(S.cbuf, S.fd, S.Kφ, S.g[ax], ax; ndrange=(res, res, nh)); synchronize(be)
+            _bwd!(S.φ, S)
+            S.F[ax, :, :, :] .= S.φ
+        end
+    else
+        _k_mulK!(be)(S.cbuf, S.fd, S.Kφ; ndrange=(res, res, nh)); synchronize(be)
+        _bwd!(S.φ, S)
+        c1, c2, c3 = T.(_fd_coeffs(cfg.grad_order, L / res))
+        _k_fdgrad!(be)(S.F, S.φ, S.nb, c1, c2, c3; ndrange=(res, res, res)); synchronize(be)
+    end
+    _k_gather3!(be)(reshape(S.acc, n^3, 3), S.F, reshape(Xs, n^3, 3), res, T(L), Val(W); ndrange=n^3)
+    synchronize(be)
+end
+
+"""
+    pm_acceleration!(S::PMSolver, psi) -> S.acc
+
+DISCO-DJ `calc_acc_PM` using the preallocated solver `S`; returns (a reference to) `S.acc`."""
+function pm_acceleration!(S::PMSolver{T}, psi::AbstractArray{T,4}) where {T}
+    cfg = S.cfg; n = cfg.n_part; L = cfg.boxsize
+    q1 = _lagr1d(n, L, T)
+    dev(x) = (y = similar(psi, eltype(x), size(x)); copyto!(y, x); y)
+    qd = (dev(reshape(q1, n, 1, 1)), dev(reshape(q1, 1, n, 1)), dev(reshape(q1, 1, 1, n)))
+    for c in 1:3; S.X[:, :, :, c] .= view(psi, :, :, :, c) .+ qd[c]; end
+    shifts = _aa_shifts(cfg.antialias, 0.5 * L / cfg.res_pm)
+    fill!(S.acc, zero(T))
+    for s in shifts
+        for c in 1:3; S.Xs[:, :, :, c] .= view(S.X, :, :, :, c) .+ T(s[c]); end
+        _acc_single!(S, S.Xs, qd)
+    end
+    length(shifts) > 1 && (S.acc ./= length(shifts))
+    return S.acc
+end
+
+"""
+    pm_acceleration(psi::(n,n,n,3), cfg::PMConfig; solver=PMSolver(cfg, psi)) -> (n,n,n,3)
+
+DISCO-DJ `calc_acc_PM(psi, …)`: particles at X = q + ψ, returns −∇φ (∇²φ = δ) at the particles,
+with all the options of `PMConfig` (a copy of the solver's output buffer)."""
+pm_acceleration(psi::AbstractArray{T,4}, cfg::PMConfig; solver::PMSolver = PMSolver(cfg, psi)) where {T} =
+    copy(pm_acceleration!(solver, psi))

@@ -173,6 +173,17 @@ code (`test/reference/export_jax_nbody_reference.py`, float64, 12 configurations
 ≲ 4e-15, LPT initial conditions ≲ 5e-16, PM accelerations ≲ 1.2e-14, stepper coefficients
 ≲ 6e-15, and full runs (Ψ, P) ≲ 3e-14.
 
+**Performance.** `run_nbody` builds one `PMSolver` workspace per run: a single combined Fourier
+multiplier (inverse Laplacian × deconvolution × normalisation), FFTW plans and preallocated
+buffers on the CPU, a fused 3-component gather, and — for the finite-difference gradients
+(orders 2/4/6) — one inverse FFT of the potential followed by the equivalent real-space
+central-difference stencil (i(8 sin kh − sin 2kh)/6h ≡ [8(φ₊₁−φ₋₁) − (φ₊₂−φ₋₂)]/12h exactly),
+instead of three inverse FFTs.  Sheet resampling transforms ψ once per force evaluation.  Same
+results as the straightforward transcription (`pm_acceleration_reference`) to ≤ 2e-14; on 4 CPU
+threads, 128³ particles / 256³ mesh: force 3.3 s → 0.9 s, full BullFrog step ≈ 3.6 s → 0.82 s
+(Float64) / 0.65 s (Float32).  The CPU mass assignment keeps the KernelAbstractions atomic
+kernel: a lock-free slab-sorted variant was measured 2–4× slower.
+
 **Upstream bug (not ported):** DISCO-DJ's `interpolate_field(which="linear")` evaluates the
 resampled sheet at grid index `(q/L_unit + dshift·L/res)/L·res`, mixing box units; it is only
 correct for `boxsize = 1`.  The port uses the intended index `i + dshift`; the parity test for

@@ -134,8 +134,8 @@ function run_nbody(c::Cosmology, psi_ini::AbstractArray{T,4}, pi_ini::AbstractAr
     cfg = PMConfig(res_pm=res_pm, n_part=n, boxsize=L, worder=worder, deconvolve=deconvolve,
                    antialias=antialias, grad_order=grad_kernel_order, lap_order=laplace_kernel_order,
                    n_resample=n_resample, resampling=resampling_method)
-    K = PMKernels(cfg, T, psi_ini)
-    acc(x) = pm_acceleration(x, cfg; kernels=K)
+    solver = PMSolver(cfg, psi_ini)
+    acc(x) = pm_acceleration!(solver, x)          # returns the solver's buffer (no allocation)
 
     Psi = copy(psi_ini)
     Mom = T.(_pi_to_v(c, stepper, pi_ini, a_ini))
