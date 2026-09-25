@@ -1,7 +1,7 @@
 # Per-element phase-space-sheet products of one displacement snapshot, computed with
 # DiscoDJNative's periodic sheet kernels (src/field/sheet_periodic.jl).
 #
-#   julia -t auto --project=<DiscoDJNative> sheet_products.jl <psi.npy> <level> <ng> <L> <R1,R2,..> <out.h5>
+#   julia -t auto --project=<this directory> sheet_products.jl <psi.npy> <level> <ng> <L> <R1,R2,..> <out.h5>
 #
 # Output (HDF5, element arrays in C order (i,j,k) of the refined Lagrangian lattice, i.e. the
 # same indexing as the numpy snapshot):
@@ -15,20 +15,7 @@
 #   attrs    diagnostics (mesh mean density, fraction of even stream counts, timings)
 using DiscoDJNative, HDF5, FFTW
 
-function read_npy(path)
-    open(path) do io
-        magic = read(io, 6); @assert magic == UInt8[0x93, 'N', 'U', 'M', 'P', 'Y']
-        major = read(io, UInt8); read(io, UInt8)
-        hlen = major == 1 ? Int(read(io, UInt16)) : Int(read(io, UInt32))
-        hdr = String(read(io, hlen))
-        occursin("'<f8'", hdr) || error("expected little-endian float64: $hdr")
-        occursin("'fortran_order': False", hdr) || error("expected C order")
-        shp = Tuple(parse.(Int, split(match(r"\(([^)]*)\)", hdr)[1], ",", keepempty=false)))
-        raw = Array{Float64}(undef, reverse(shp)...)
-        read!(io, raw)
-        return raw                     # Julia dims = reversed numpy dims
-    end
-end
+include(joinpath(@__DIR__, "npy.jl"))
 
 W_TH(x) = x < 1e-4 ? 1 - x^2 / 10 : 3 * (sin(x) - x * cos(x)) / x^3
 

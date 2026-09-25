@@ -33,7 +33,7 @@ def make_product(model, n, z, level, seed=None, with_R=True):
     if os.path.exists(out):
         return out
     Rs = ",".join(f"{R:g}" for R in CFG["R_list"] if R > 0) if with_R else ""
-    cmd = [JULIA, "-t", str(os.cpu_count()), f"--project={DJN}", os.path.join(HERE, "sheet_products.jl"),
+    cmd = [JULIA, "-t", str(os.cpu_count()), f"--project={HERE}", os.path.join(HERE, "sheet_products.jl"),
            snap_path(model, n, z, seed), str(level), str(NG), str(L), Rs, out + ".tmp"]
     t0 = time.time()
     r = subprocess.run(cmd, env=JENV, capture_output=True, text=True)

@@ -3,8 +3,13 @@
   python snapshots.py nbody N        # PM run from 2LPT ICs at a_initial, saves every z in z_list
   python snapshots.py lpt N          # 1LPT, 2LPT, 4LPT (nlpt engine, de-aliased) at every z
   python snapshots.py za N --seed S  # Zel'dovich only, extra phase seeds (test 1d band)
+  python snapshots.py fphi N [--seed S]   # export the IC potential for DiscoDJNative (djn_snapshots.jl)
+
+The production snapshots come from DiscoDJNative (Julia): `djn_snapshots.jl` computes nLPT with
+compute_core / compute_core_exact and the N-body with the port of DISCO-DJ run_nbody, from the
+potential written by `fphi`.  The numpy LPT / PM paths above remain as cross-checks.
 """
-import argparse, json, time
+import argparse, json, os, time
 import numpy as np
 
 from common import CFG, a_of_z, snap_path, SCRATCH
@@ -77,9 +82,25 @@ def run_lpt(n, models=("1lpt", "2lpt", "4lpt"), seed=None):
         print(f"{m} N={n} seed={seed} saved", flush=True)
 
 
+def export_fphi(n, seed=None):
+    """phi_hat with lap phi = delta (a = 1), rfftn layout (z halved), as DISCO-DJ's `fphi`."""
+    seed = CFG["phase_seed"] if seed is None else seed
+    cosmo = Cosmology()
+    dk = linear_field(cosmo, n, seed).astype(np.complex128)
+    kx, ky, kz = core.kgrid(n, L, np.float64)
+    k2 = kx**2 + ky**2 + kz**2
+    k2[0, 0, 0] = 1
+    fphi = -dk / k2
+    fphi[0, 0, 0] = 0
+    base = os.path.join(SCRATCH, f"fphi_N{n}" + ("" if seed == CFG["phase_seed"] else f"_seed{seed}"))
+    np.save(base + "_re.npy", fphi.real.copy())
+    np.save(base + "_im.npy", fphi.imag.copy())
+    return base
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("kind", choices=["nbody", "lpt", "za"])
+    ap.add_argument("kind", choices=["nbody", "lpt", "za", "fphi"])
     ap.add_argument("N", type=int)
     ap.add_argument("--seed", type=int, default=None)
     a = ap.parse_args()
@@ -87,5 +108,7 @@ if __name__ == "__main__":
         run_nbody(a.N)
     elif a.kind == "lpt":
         run_lpt(a.N)
+    elif a.kind == "fphi":
+        print(export_fphi(a.N, a.seed))
     else:
         run_lpt(a.N, models=("1lpt",), seed=a.seed)
