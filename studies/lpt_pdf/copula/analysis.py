@@ -154,10 +154,10 @@ def standardize(z, w):
     return (z - mu) / sd
 
 
-def xi_grid(vals, mask, w, n):
+def xi_grid(vals, mask, w, n, den=None):
     g = np.zeros(mask.shape); g[mask] = vals
     ww = np.where(mask, w, 0.0)
-    return gauss.xi_lagrangian(g, mask, ww, L, EDGES)
+    return gauss.xi_lagrangian(g, mask, ww, L, EDGES, den=den)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -231,6 +231,19 @@ def _eulerian_phase(n, level, z, lpt, res_pair):
     res_pair["mask_frac_eul"] = float(E.mean())
     rho_raw = {"n": _load_eul("nbody", n, z, level, ("rho",))["rho"][E],
                "l": _load_eul(lpt, n, z, level, ("rho",))["rho"][E]}
+    # node weights do not depend on R: pair-weight denominators are computed once per weighting
+    W = {}
+    for w in ("mass", "vol"):
+        wn = np.ones(E.sum()) if w == "vol" else rho_raw["n"]
+        wl = np.ones(E.sum()) if w == "vol" else rho_raw["l"]
+        gnE = np.zeros(E.shape); gnE[E] = wn
+        dn_ = gauss.xi_denominator(E, gnE, L, EDGES); del gnE
+        if w == "vol":
+            dl_ = dn_
+        else:
+            glE = np.zeros(E.shape); glE[E] = wl
+            dl_ = gauss.xi_denominator(E, glE, L, EDGES); del glE
+        W[w] = (wn, wl, dn_, dl_)
     for R in CFG["R_list"]:
         d = res_pair["R"][f"{R:g}"]
         vals = {}
@@ -238,35 +251,41 @@ def _eulerian_phase(n, level, z, lpt, res_pair):
             rho = _load_eul(model, n, z, level, ("rho",))["rho"]
             vals[tag] = smooth_mesh(rho, R)[E]; del rho
         for w in ("mass", "vol"):
-            wn = np.ones(vals["n"].size) if w == "vol" else rho_raw["n"]
-            wl = np.ones(vals["l"].size) if w == "vol" else rho_raw["l"]
+            wn, wl, DN, DL = W[w]
             gnE = np.zeros(E.shape); gnE[E] = wn
             glE = np.zeros(E.shape); glE[E] = wl
             # ---- step 4: Eulerian Gaussianized xi and the LABELLED asymmetric remaps
             ynE = gauss.gaussianize(vals["n"], None if w == "vol" else wn, SEED)[0]
             ylE = gauss.gaussianize(vals["l"], None if w == "vol" else wl, SEED)[0]
-            xnE = xi_grid(ynE, E, gnE, NG); xlE = xi_grid(ylE, E, glE, NG)
+            xnE = xi_grid(ynE, E, gnE, NG, DN); xlE = xi_grid(ylE, E, glE, NG, DL)
             del ynE, ylE
             dn = vals["n"] / (np.sum(wn * vals["n"]) / np.sum(wn)) - 1
             dl = vals["l"] / (np.sum(wl * vals["l"]) / np.sum(wl)) - 1
-            xd = {"lpt": xi_grid(dl, E, glE, NG), "nbody": xi_grid(dn, E, gnE, NG)}
-            xd["remap_lpt_to_nb"] = xi_grid(wquant_map(dl, wl, dn, wn), E, glE, NG)   # LPT ranks, N-body marginal
-            xd["remap_nb_to_lpt"] = xi_grid(wquant_map(dn, wn, dl, wl), E, gnE, NG)   # N-body ranks, LPT marginal
+            xd = {"lpt": xi_grid(dl, E, glE, NG, DL), "nbody": xi_grid(dn, E, gnE, NG, DN)}
+            xd["remap_lpt_to_nb"] = xi_grid(wquant_map(dl, wl, dn, wn), E, glE, NG, DL)   # LPT ranks, N-body marginal
+            xd["remap_nb_to_lpt"] = xi_grid(wquant_map(dn, wn, dl, wl), E, gnE, NG, DN)   # N-body ranks, LPT marginal
             del dn, dl
             # ---- step 5 ingredients: label transport Z_ab(x) = y_a(e_b(x)), standardized on E
             xZ = {}
             for a_tag in ("l", "n"):
                 ya = np.load(_tmp(f"y_{lpt}_{a_tag}_{w}_R{R:g}")).astype(np.float64)
-                for b_tag, eb, gE, wE in (("l", elE, glE, wl), ("n", enE, gnE, wn)):
-                    xZ[a_tag + b_tag] = xi_grid(standardize(ya[eb], wE), E, gE, NG)
+                for b_tag, eb, gE, wE, DE in (("l", elE, glE, wl, DL), ("n", enE, gnE, wn, DN)):
+                    xZ[a_tag + b_tag] = xi_grid(standardize(ya[eb], wE), E, gE, NG, DE)
                 del ya
             d[w].update(xiE_lpt=xlE, xiE_nb=xnE, xi_delta=xd, xi_Z=xZ)
             del gnE, glE
             gc.collect()
         del vals
         print(f"  [E] N={n} l={level} z={z:g} {lpt} R={R:g}", flush=True)
-    del E, enE, elE, rho_raw
+    del E, enE, elE, rho_raw, W
     gc.collect()
+
+
+def _drop(model, n, z, level):
+    for p in (os.path.join(SCRATCH, f"eul_{model}_N{n}_z{z:g}_l{level}.h5"),
+              os.path.join(SCRATCH, f"prod_full_{model}_N{n}_z{z:g}_l{level}.h5")):
+        if os.path.exists(p):
+            os.remove(p)
 
 
 def run(n, level, z):
@@ -278,8 +297,10 @@ def run(n, level, z):
         _lagrangian_phase(n, level, z, lpt, pr)
         _eulerian_phase(n, level, z, lpt, pr)
         res["pairs"][lpt] = pr
-    for p in glob.glob(_tmp("*")):
-        os.remove(p)
+        for p in glob.glob(_tmp("*")):
+            os.remove(p)
+        _drop(lpt, n, z, level)                     # bound disk: this LPT order is done
+    _drop("nbody", n, z, level)
     fn = os.path.join(STEPS, f"steps_N{n}_l{level}_z{z:g}.npz")
     np.savez_compressed(fn, result=np.array(json.dumps(res, default=_tojson)))
     print(f"wrote {fn} ({time.time() - t0:.0f}s)", flush=True)
@@ -296,3 +317,6 @@ def _tojson(x):
 if __name__ == "__main__":
     if sys.argv[1] == "run":
         run(int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]))
+    elif sys.argv[1] == "collect":
+        import steps_collect
+        steps_collect.main()

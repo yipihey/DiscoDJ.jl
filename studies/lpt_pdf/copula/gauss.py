@@ -65,9 +65,11 @@ def xi_bins(cfg):
 
 
 @nb.njit(cache=True)
-def _radial_bin(cf, cg, L, lrmin, dlog, nbins, num, den, rw):
-    n0, n1, n2 = cf.shape
+def _radial_bin(c, L, lrmin, dlog, nbins, out, rw):
+    """out[b] += sum of c over lattice lags in bin b; rw[b] += c * r (if rw is non-empty)."""
+    n0, n1, n2 = c.shape
     d = L / n0
+    dor = rw.size > 0
     for i in range(n0):
         x = (i if i <= n0 // 2 else i - n0) * d
         for j in range(n1):
@@ -80,32 +82,44 @@ def _radial_bin(cf, cg, L, lrmin, dlog, nbins, num, den, rw):
                 b = int(np.floor((np.log(r) - lrmin) / dlog))
                 if b < 0 or b >= nbins:
                     continue
-                num[b] += cf[i, j, k]
-                den[b] += cg[i, j, k]
-                rw[b] += cg[i, j, k] * r
+                out[b] += c[i, j, k]
+                if dor:
+                    rw[b] += c[i, j, k] * r
 
 
-def xi_lagrangian(y_grid, mask, w_grid, L, edges):
+def xi_denominator(mask, w_grid, L, edges):
+    """Pair-weight counts of (mask, w) per bin; reusable by xi_lagrangian for any y on the same
+    mask and weights.  Returns dict(den, rw, zero)."""
+    n = mask.shape[0]
+    G = rfftn(np.where(mask, w_grid, 0.0))
+    np.abs(G, out=G); G *= G
+    cg = irfftn(G, n); del G
+    nb_ = len(edges) - 1
+    den = np.zeros(nb_); rw = np.zeros(nb_)
+    lr = np.log(edges)
+    _radial_bin(cg, L, lr[0], lr[1] - lr[0], nb_, den, rw)
+    return dict(den=den, rw=rw, zero=float(cg[0, 0, 0]))
+
+
+def xi_lagrangian(y_grid, mask, w_grid, L, edges, den=None):
     """Masked weighted xi(|dq|) on the element lattice (log-spaced `edges`).
 
     y_grid, w_grid: (n,n,n) arrays (values outside mask ignored); mask: bool (n,n,n).
+    den: optional xi_denominator(mask, w_grid, L, edges) to reuse across calls.
     Returns dict(r = pair-weighted mean separation per bin, xi, pairs_w, zero_lag)."""
     n = y_grid.shape[0]
-    g = np.where(mask, w_grid, 0.0)
-    G = rfftn(g)
-    g *= np.where(mask, y_grid, 0.0)          # g is now f = M w y
+    if den is None:
+        den = xi_denominator(mask, w_grid, L, edges)
+    g = np.where(mask, w_grid * y_grid, 0.0)  # f = M w y
     F = rfftn(g)
     del g
     np.abs(F, out=F); F *= F
     cf = irfftn(F, n); del F
-    np.abs(G, out=G); G *= G
-    cg = irfftn(G, n); del G
-    zero = cf[0, 0, 0] / cg[0, 0, 0]
     nb_ = len(edges) - 1
-    num = np.zeros(nb_); den = np.zeros(nb_); rw = np.zeros(nb_)
+    num = np.zeros(nb_)
     lr = np.log(edges)
-    _radial_bin(cf, cg, L, lr[0], lr[1] - lr[0], nb_, num, den, rw)
+    _radial_bin(cf, L, lr[0], lr[1] - lr[0], nb_, num, np.zeros(0))
     with np.errstate(invalid="ignore", divide="ignore"):
-        xi = num / den
-        rc = rw / den
-    return dict(r=rc, xi=xi, pairs_w=den, zero_lag=float(zero))
+        xi = num / den["den"]
+        rc = den["rw"] / den["den"]
+    return dict(r=rc, xi=xi, pairs_w=den["den"], zero_lag=float(cf[0, 0, 0] / den["zero"]))
