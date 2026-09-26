@@ -203,12 +203,26 @@ def wq(x, w, qs):
 
 
 def za_quantiles(n, level, z, seed, qs):
+    """Quantiles of log10(Vq/V) of the ZA sheet; cached per realisation as JSON in the scratch dir.
+    Band (extra-seed) products are deleted after use to bound disk (they are cheap to regenerate)."""
+    from common import SCRATCH
+    cache = os.path.join(SCRATCH, f"zaq_N{n}_l{level}_z{z:g}_seed{seed}.json")
+    if os.path.exists(cache):
+        c = json.load(open(cache))
+        if np.allclose(c["qs"], qs):
+            return {k: dict(mass=np.array(v["mass"]), vol=np.array(v["vol"]), frac=v["frac"])
+                    for k, v in c["out"].items()}
     s = Snapshot("1lpt", n, z, level, seed=seed if seed != CFG["phase_seed"] else None, with_R=False)
-    lr = np.log10(s.Vq / s.V)
+    with np.errstate(invalid="ignore"):          # V < 0 (flipped) elements are excluded by both selections
+        lr = np.log10(s.Vq / s.V)
     out = {}
     for cond, sel in (("mask", ~s.ms), ("detpos", s.V > 0)):
         x = lr[sel]; V = s.V[sel]
         out[cond] = dict(mass=np.quantile(x, qs), vol=wq(x, V, qs), frac=float(sel.mean()))
+    json.dump(dict(qs=list(qs), out={k: dict(mass=list(v["mass"]), vol=list(v["vol"]), frac=v["frac"])
+                                    for k, v in out.items()}), open(cache, "w"))
+    if seed in CFG["test_d"]["extra_seeds"]:
+        os.remove(s.path)
     return out
 
 
@@ -278,6 +292,11 @@ if __name__ == "__main__":
         test_c(int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), sd)
     elif t == "d":
         test_d()
+    elif t == "dseed":                              # one band realisation: cache its quantiles
+        td = CFG["test_d"]
+        for z in (1.0, 0.0):
+            za_quantiles(td["N_band"], td["refine_band"], z, int(sys.argv[2]), np.array(td["quantiles"]))
+        print(f"dseed {sys.argv[2]} done", flush=True)
     elif t == "cleanup":
         from fields import cleanup
         cleanup(int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4]))

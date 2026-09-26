@@ -10,7 +10,7 @@ for N in 64 128 256; do
   B=$(python3 snapshots.py fphi $N)
   $JL djn_snapshots.jl $B $N $S 1lpt,2lpt,4lpt,nbody
 done
-for SEED in 101 102 103 104 105 106 107 108; do          # Zel'dovich band realisations (test 1d)
+for SEED in 101 102 103 104 105 106 107 108; do          # Zel'dovich band realisations (test 1d; run_test_d_band.sh makes the rest on the fly)
   B=$(python3 snapshots.py fphi 128 --seed $SEED)
   $JL djn_snapshots.jl $B 128 $S 1lpt _seed$SEED
 done
