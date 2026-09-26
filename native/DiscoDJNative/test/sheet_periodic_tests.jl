@@ -85,6 +85,21 @@ using Test, DiscoDJNative, Random
         @test all(isodd.(r.nstream))                      # generic points: odd stream count
     end
 
+    @testset "element location at mesh nodes" begin
+        n = 16; ng = 32; ψ = wavy(n; amp=0.4)
+        loc = sheet_locate_mesh_periodic(ψ, L, ng)
+        m = sheet_mesh_periodic(ψ, L, ng)
+        @test loc.nstream == m.nstream
+        el = sheet_elements_periodic(ψ, L)
+        # the located element's stream density equals the sheet density at single-stream nodes
+        ρe = (L / n)^3 ./ el.V
+        sel = findall(==(1), loc.nstream)
+        # sheet density at a node = that tetrahedron's density; element density = its volume average,
+        # so compare loosely: same element ⇒ density within the element's tet spread
+        @test all(1 .<= loc.element[sel] .<= n^3)
+        @test isapprox(sum(ρe[loc.element[sel]]) / length(sel), sum(m.density[sel]) / length(sel); rtol=2e-2)
+    end
+
     @testset "band-limited refinement is exact" begin
         n = 16; L2 = 50.0; kv = (1, 2, 3)
         f(x, y, z) = 0.3 * sin(2π * (kv[1]*x + kv[2]*y + kv[3]*z) / L2)

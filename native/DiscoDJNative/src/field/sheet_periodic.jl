@@ -26,7 +26,7 @@
 #
 # Forward-only analysis tools (not on the AD tape); CPU and CUDA via KernelAbstractions.
 
-export sheet_elements_periodic, PeriodicCellList, sheet_query_periodic, sheet_mesh_periodic,
+export sheet_elements_periodic, PeriodicCellList, sheet_query_periodic, sheet_mesh_periodic, sheet_locate_mesh_periodic,
        refine_displacement, sample_trilinear_periodic, tet_orientation_signs
 
 """    tet_orientation_signs() -> NTuple{6,Int}
@@ -243,6 +243,50 @@ function sheet_mesh_periodic(ψ::AbstractArray{T,4}, L::Real, ng::Int) where {T}
     _mesh_periodic!(backend)(dens, nstr, ψ, off, n, dq, ng, T(L / ng), dq^3; ndrange=(6, n, n, n))
     synchronize(backend)
     return (density=dens, nstream=nstr)
+end
+
+# ── element identity at mesh nodes (Eulerian "label" transport) ───────────────
+@kernel function _locate_mesh_periodic!(elem, nstr, @Const(ψ), @Const(off), n::Int, dq, ng::Int, h)
+    t, i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        y1 = _pvert(ψ, off, t, 1, i, j, k, n, dq); y2 = _pvert(ψ, off, t, 2, i, j, k, n, dq)
+        y3 = _pvert(ψ, off, t, 3, i, j, k, n, dq); y4 = _pvert(ψ, off, t, 4, i, j, k, n, dq)
+        e1x = y2[1]-y1[1]; e1y = y2[2]-y1[2]; e1z = y2[3]-y1[3]
+        e2x = y3[1]-y1[1]; e2y = y3[2]-y1[2]; e2z = y3[3]-y1[3]
+        e3x = y4[1]-y1[1]; e3y = y4[2]-y1[2]; e3z = y4[3]-y1[3]
+        c23x = e2y*e3z-e2z*e3y; c23y = e2z*e3x-e2x*e3z; c23z = e2x*e3y-e2y*e3x
+        detf = e1x*c23x + e1y*c23y + e1z*c23z
+        if detf != 0
+            inv = one(detf) / detf
+            eid = Int32(i + n * (j - 1 + n * (k - 1)))           # column-major element index
+            xa = ceil(Int, min(y1[1], y2[1], y3[1], y4[1]) / h); xb = floor(Int, max(y1[1], y2[1], y3[1], y4[1]) / h)
+            ya = ceil(Int, min(y1[2], y2[2], y3[2], y4[2]) / h); yb = floor(Int, max(y1[2], y2[2], y3[2], y4[2]) / h)
+            za = ceil(Int, min(y1[3], y2[3], y3[3], y4[3]) / h); zb = floor(Int, max(y1[3], y2[3], y3[3], y4[3]) / h)
+            for z in za:zb, y in ya:yb, x in xa:xb
+                dx = x * h - y1[1]; dy = y * h - y1[2]; dz = z * h - y1[3]
+                if _inside(dx, dy, dz, e1x, e1y, e1z, e2x, e2y, e2z, e3x, e3y, e3z, c23x, c23y, c23z, inv)
+                    I = mod(x, ng) + 1; J = mod(y, ng) + 1; K = mod(z, ng) + 1
+                    KernelAbstractions.@atomic nstr[I, J, K] += Int32(1)
+                    elem[I, J, K] = eid                          # meaningful only where nstr == 1
+                end
+            end
+        end
+    end
+end
+
+"""
+    sheet_locate_mesh_periodic(ψ, L, ng) -> (; element, nstream)
+
+For every mesh node `(I−1, J−1, K−1)·L/ng`: the stream multiplicity and, where it is 1
+(single-stream), the column-major linear index of the Lagrangian element (cube) whose
+tetrahedron contains the node.  Where `nstream > 1` the element is an arbitrary one of them."""
+function sheet_locate_mesh_periodic(ψ::AbstractArray{T,4}, L::Real, ng::Int) where {T}
+    n = size(ψ, 1); backend = get_backend(ψ); off = _offsets_on(ψ)
+    elem = KernelAbstractions.zeros(backend, Int32, ng, ng, ng)
+    nstr = KernelAbstractions.zeros(backend, Int32, ng, ng, ng)
+    _locate_mesh_periodic!(backend)(elem, nstr, ψ, off, n, T(L / n), ng, T(L / ng); ndrange=(6, n, n, n))
+    synchronize(backend)
+    return (element=elem, nstream=nstr)
 end
 
 # ── band-limited refinement of ψ (Fourier zero-padding) ───────────────────────

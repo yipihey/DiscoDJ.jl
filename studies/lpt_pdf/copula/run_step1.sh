@@ -1,9 +1,8 @@
 #!/bin/bash
 # Step 1 (validation) of the copula study: one command per test / resolution / z / refinement.
-# Sheet products come from DiscoDJNative (Julia) and are deleted after each (N, z, level) group.
+# Snapshots: DiscoDJNative (make_snapshots.sh). Sheet products come from DiscoDJNative (Julia) and are deleted after each (N, z, level) group.
 # Every call writes results/step1/<test>_*.json with the full config and seeds.
 set -ex
-until grep -q "nbody N=256 z=0 saved" ../_scratch/copula/make_snapshots.log; do sleep 30; done
 python3 validate.py d                                   # Zel'dovich (own snapshots, geometry only)
 for N in 64 128 256; do
   for LV in 0 1; do
