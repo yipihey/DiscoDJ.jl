@@ -13,7 +13,16 @@ differences:
   particle number  S(N_hi, level 0) vs S(N_lo, level 0), N_hi = the largest N available
   sheet refinement S(N_ref, level 1) vs S(N_ref, level 0), N_ref = the largest N with level 1
   tolerance        tol = max(TOL_REL |S| + TOL_ABS, 3 x tie-seed floor of step 1c)
-  A separation bin (or k bin) is CONVERGED only if both comparisons pass for BOTH runs; the
+  PRE-SET run-level test (reported, 'run-level'): a bin passes if each run's statistic passes.
+  It turned out to be vacuous: the LPT - N-body differences (dxi_y ~ 1e-3, 1 - rho ~ 1e-4) are
+  far below its tolerance.  After seeing the level-0 z = 0 runs (N = 64, 128, 256; before any
+  refinement result) convergence was therefore moved to the DIFFERENCES themselves (used for
+  every 'converged' flag and grey band):
+    xi       D = xi[NB] - xi[LPT]:  |D_a - D_b| <= TOL_D_REL |D_hi| + TOL_D_ABS
+    r(k)     1 - r(k):              |d(1-r)|    <= TOL_D_REL (1-r)_hi + TOL_D_ABS
+    scalars  1 - rho_S, 1 - eta^2, 1 - R2_iso: relative TOL_D_REL (+ TOL_D_ABS);
+             non-monotone part: absolute NONMONO_ABS (it is estimator-limited, see report)
+  A separation bin (or k bin) is CONVERGED only if both comparisons pass; the
   converged range is the contiguous range adjoining the large-scale end (xi: r >= r_conv; r(k):
   k <= k_conv).  Scalars (Spearman, eta^2, R2_iso) use TOL_SCALAR.  Headline numbers are from the
   N_hi, level-0 run; refinement at N_hi is assumed no worse than at N_ref (stated in the report).
@@ -42,7 +51,8 @@ from common import CFG, OUT, FIG
 STEPS = os.path.join(OUT, "steps")
 S1 = os.path.join(OUT, "step1")
 L = CFG["box_L"]
-TOL_REL, TOL_ABS, TOL_SCALAR, TOL_RK = 0.02, 0.002, 0.005, 0.01
+TOL_REL, TOL_ABS, TOL_SCALAR, TOL_RK = 0.02, 0.002, 0.005, 0.01      # pre-set, run-level (vacuous)
+TOL_D_REL, TOL_D_ABS, NONMONO_ABS = 0.25, 1e-5, 1e-6                # on the differences (used)
 INK, GRID = "#0b0b0b", "#e4e3df"
 C_NB, C_2, C_4 = "#eb6834", "#2a78d6", "#e87ba4"
 C_PAIR = {"2lpt": C_2, "4lpt": C_4}
@@ -110,8 +120,8 @@ def get(D, n, l, z, lpt, R, w):
         return None
 
 
-def xi_conv(D, pl, z, lpt, R, w, key_lpt, key_nb, sub=None):
-    """Converged-bin mask for a xi statistic (both runs, both comparisons)."""
+def xi_conv_run(D, pl, z, lpt, R, w, key_lpt, key_nb, sub=None):
+    """PRE-SET run-level test: converged-bin mask for a xi statistic (both runs, both comparisons)."""
     _, _, n_hi, n_lo, n_ref = pl
     ok = None
     for key, model in ((key_lpt, lpt), (key_nb, "nbody")):
@@ -134,6 +144,26 @@ def xi_conv(D, pl, z, lpt, R, w, key_lpt, key_nb, sub=None):
     return adjoining(ok, from_end=True)
 
 
+def xi_conv(D, pl, z, lpt, R, w, key_lpt, key_nb, sub=None):
+    """Converged-bin mask on the difference D = xi[NB] - xi[LPT] (particle and refinement)."""
+    _, _, n_hi, n_lo, n_ref = pl
+
+    def dif(n, l):
+        g = get(D, n, l, z, lpt, R, w) if n else None
+        if g is None:
+            return None
+        h = g if sub is None else g[sub]
+        return arr(h[key_nb]["xi"]) - arr(h[key_lpt]["xi"])
+    hi = dif(n_hi, 0)
+    ok = np.isfinite(hi)
+    for a, b in ((hi, dif(n_lo, 0)), (dif(n_ref, 1), dif(n_ref, 0))):
+        if a is None or b is None:
+            ok &= False
+            continue
+        ok &= np.isfinite(a) & np.isfinite(b) & (np.abs(a - b) <= TOL_D_REL * np.abs(hi) + TOL_D_ABS)
+    return adjoining(ok, from_end=True)
+
+
 def scalar_conv(D, pl, z, lpt, R, w, key):
     _, _, n_hi, n_lo, n_ref = pl
     vals = {}
@@ -143,7 +173,10 @@ def scalar_conv(D, pl, z, lpt, R, w, key):
     hi = vals[(n_hi, 0)]
     dp = abs(hi - vals[(n_lo, 0)]) if vals[(n_lo, 0)] is not None else np.inf
     dr = abs(vals[(n_ref, 1)] - vals[(n_ref, 0)]) if None not in (vals[(n_ref, 1)], vals[(n_ref, 0)]) else np.inf
-    return dict(value=hi, d_particle=dp, d_refine=dr, converged=bool(max(dp, dr) <= TOL_SCALAR))
+    # departures are 1 - value (value -> 1); the non-monotone part is itself a departure
+    tol = NONMONO_ABS if key == "nonmonotone" else TOL_D_REL * abs(1 - hi) + TOL_D_ABS
+    return dict(value=hi, departure=(hi if key == "nonmonotone" else 1 - hi), d_particle=dp, d_refine=dr,
+                tol=tol, converged=bool(max(dp, dr) <= tol), converged_preset=bool(max(dp, dr) <= TOL_SCALAR))
 
 
 def rk_conv(D, pl, z, lpt, R, w):
@@ -159,7 +192,7 @@ def rk_conv(D, pl, z, lpt, R, w):
             continue
         rb_i = np.interp(k_hi, kb, rb, left=np.nan, right=np.nan)
         ra_i = np.interp(k_hi, ka, ra, left=np.nan, right=np.nan)
-        ok &= np.abs(ra_i - rb_i) <= TOL_RK
+        ok &= np.abs(ra_i - rb_i) <= TOL_D_REL * np.abs(1 - r_hi) + TOL_D_ABS
     return k_hi, r_hi, adjoining(ok, from_end=False)
 
 
@@ -207,14 +240,17 @@ def main():
              f"> {MASK_NOTE}", "",
              f"Headline run: N = {n_hi}, sheet level 0. Particle-number convergence: N = {n_hi} vs {n_lo} "
              f"(level 0). Sheet-refinement convergence: N = {n_ref}, level 1 vs 0. "
-             f"Tolerances: xi bins |dS| <= max({TOL_REL}|S| + {TOL_ABS}, 3 x tie-seed floor); "
-             f"r(k) |dr| <= {TOL_RK}; scalars |dS| <= {TOL_SCALAR}.", ""]
+             f"Convergence acts on the LPT - N-body DIFFERENCES: |dD| <= {TOL_D_REL}|D| + {TOL_D_ABS:g} "
+             f"(xi: D = xi_NB - xi_LPT; r(k): 1 - r; scalars: 1 - value; non-monotone part: <= {NONMONO_ABS:g} absolute). "
+             f"The pre-set run-level tolerances (xi: {TOL_REL}|S| + {TOL_ABS}; scalars {TOL_SCALAR}) exceed the "
+             "differences themselves and are shown for reference only; the change was made after seeing the "
+             "level-0 z = 0 runs and before any refinement result.", ""]
 
     # ---------------- steps 2 + 3 tables ----------------
     for w in ("mass", "vol"):
         lines += [f"## Step 3: element-paired ranks ({w}-weighted), N = {n_hi}", "",
-                  "| z | pair | R | Spearman | eta^2 | R2_iso | non-monotone | converged |",
-                  "|---|---|---|---|---|---|---|---|"]
+                  "| z | pair | R | 1 - Spearman | 1 - eta^2 | 1 - R2_iso | non-monotone (eta^2 - R2_iso) | converged (differences) | converged (pre-set) |",
+                  "|---|---|---|---|---|---|---|---|---|"]
         for z in zs:
             for lpt in lpts:
                 for R in Rs:
@@ -222,16 +258,18 @@ def main():
                         continue
                     s = {k: scalar_conv(D, pl, z, lpt, R, w, k) for k in ("spearman", "eta2", "r2_iso", "nonmonotone")}
                     summ["scalars"][f"{w}|z{z:g}|{lpt}|R{R:g}"] = s
-                    c = all(v["converged"] for v in s.values())
-                    lines.append(f"| {z:g} | {lpt} vs N-body | {R:g} | {s['spearman']['value']:.5f} | "
-                                 f"{s['eta2']['value']:.5f} | {s['r2_iso']['value']:.5f} | "
-                                 f"{s['nonmonotone']['value']:.2e} | {'yes' if c else 'NO'} |")
+                    c = [k for k, v in s.items() if not v["converged"]]
+                    c0 = all(v["converged_preset"] for v in s.values())
+                    lines.append(f"| {z:g} | {lpt} vs N-body | {R:g} | {1 - s['spearman']['value']:.2e} | "
+                                 f"{1 - s['eta2']['value']:.2e} | {1 - s['r2_iso']['value']:.2e} | "
+                                 f"{s['nonmonotone']['value']:.1e} | {'yes' if not c else 'NO (' + ', '.join(c) + ')'} | "
+                                 f"{'yes' if c0 else 'NO'} |")
         lines.append("")
 
     for w in ("mass", "vol"):
         lines += [f"## Step 2: Lagrangian copula xi_y ({w}-weighted), N = {n_hi}", "",
-                  "| z | pair | R | r_conv [Mpc/h] | max abs(xi_NB - xi_LPT) (r >= r_conv) at r | k_conv [h/Mpc] | min r(k) (k <= k_conv) |",
-                  "|---|---|---|---|---|---|---|"]
+                  "| z | pair | R | r_conv [Mpc/h] | max abs(xi_NB - xi_LPT) (r >= r_conv) at r | k_conv [h/Mpc] | max 1 - r(k) (k <= k_conv) | r_conv pre-set run-level |",
+                  "|---|---|---|---|---|---|---|---|"]
         for z in zs:
             for lpt in lpts:
                 for R in Rs:
@@ -248,9 +286,12 @@ def main():
                         md, mr = float(dx[i]), float(r[i])
                     else:
                         md, mr = np.nan, np.nan
-                    mrk = float(np.nanmin(rk[kc])) if kc.any() else np.nan
-                    summ["lagr"][f"{w}|z{z:g}|{lpt}|R{R:g}"] = dict(r_conv=rc, max_dxi=md, at_r=mr, k_conv=kcv, min_rk=mrk)
-                    lines.append(f"| {z:g} | {lpt} | {R:g} | {rc:.3g} | {md:+.2e} at {mr:.3g} | {kcv:.3g} | {mrk:.5f} |")
+                    mrk = float(np.nanmax(1 - rk[kc])) if kc.any() else np.nan
+                    cv0 = xi_conv_run(D, pl, z, lpt, R, w, "xi_lpt", "xi_nb")
+                    rc0 = float(np.nanmin(r[cv0])) if cv0.any() else np.inf
+                    summ["lagr"][f"{w}|z{z:g}|{lpt}|R{R:g}"] = dict(r_conv=rc, max_dxi=md, at_r=mr, k_conv=kcv,
+                                                                   max_1_minus_rk=mrk, r_conv_preset=rc0)
+                    lines.append(f"| {z:g} | {lpt} | {R:g} | {rc:.3g} | {md:+.2e} at {mr:.3g} | {kcv:.3g} | {mrk:.2e} | {rc0:.3g} |")
         lines.append("")
 
     # ---------------- step 4 + 5 tables ----------------
