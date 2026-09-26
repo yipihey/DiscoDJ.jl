@@ -130,7 +130,9 @@ def main():
                   f"(seeds {CFG['test_d']['extra_seeds']}) at N = {CFG['test_d']['N_band']}, level {CFG['test_d']['refine_band']}. "
                   f"Criterion: the study realisation at N = {CFG['test_d']['N_test']}, level {CFG['test_d']['refine_test']}, "
                   f"and the mean of the band realisations lie within {CFG['criteria']['d_nsigma']:g}σ "
-                  "(σ = band scatter; σ/√8 for the mean) of theory at every quantile. Primary condition: the "
+                  f"(σ = band scatter; σ/√{len(CFG['test_d']['extra_seeds'])} for the mean) of theory at every quantile. "
+                  "The first run used 8 band seeds and failed at z = 0 (mass, q = 0.9: 3.75σ); on request the band "
+                  "was enlarged to 32 seeds with the criterion unchanged (see report). Primary condition: the "
                   "single-stream mask; 'det J > 0' (V_e > 0) shown for reference.", "",
                   "| z | condition | weighting | max |nσ| study (N=256,l1) | max |nσ| band mean | pass |",
                   "|---:|---|---|---:|---:|:---:|"]
