@@ -21,7 +21,9 @@ Definitions (fixed before any science result was looked at):
           bins of u_LPT (variance explained by ANY function), R2_iso = variance explained by the
           best MONOTONE function (isotonic regression of the bin means); non-monotone part
           eta^2 - R2_iso.
-  Step 4  Eulerian: point-sampled AHK sheet density on the ng^3 mesh, top-hat smoothed at R.
+  Step 4  Eulerian: point-sampled AHK sheet density on the ng^3 mesh (ng = CFG["eulerian_mesh"],
+          256: 1.17 Mpc/h; 512 does not fit in 15 GB), top-hat smoothed at R (R = 1.5 is
+          mesh-limited).
           Eulerian mask E = nodes single-stream in both runs AND covered in both runs by
           elements of M.  Volume weighting: equal node weights; mass weighting: node weight =
           unsmoothed sheet density.  xi_y^E with the mask-window correction corr(wEy)/corr(wE).
@@ -41,7 +43,7 @@ import core
 from cosmo import W_TH
 
 L = CFG["box_L"]
-NG = CFG["sheet_mesh"]
+NG = CFG["eulerian_mesh"]          # Eulerian analysis mesh (step 4-5); see config _comment_eulerian_mesh
 SEED = CFG["tie_seeds"][0]
 EDGES = gauss.xi_bins(CFG)
 STEPS = os.path.join(OUT, "steps")
@@ -52,7 +54,7 @@ os.makedirs(STEPS, exist_ok=True)
 # helpers
 # ---------------------------------------------------------------------------------------------
 def eul_product(model, n, z, level):
-    out = os.path.join(SCRATCH, f"eul_{model}_N{n}_z{z:g}_l{level}.h5")
+    out = os.path.join(SCRATCH, f"eul_{model}_N{n}_z{z:g}_l{level}_ng{NG}.h5")
     if os.path.exists(out):
         return out
     cmd = [JULIA, "-t", str(os.cpu_count()), f"--project={HERE}", os.path.join(HERE, "eulerian_products.jl"),
@@ -233,9 +235,10 @@ def _eulerian_phase(n, level, z, lpt, res_pair):
                "l": _load_eul(lpt, n, z, level, ("rho",))["rho"][E]}
     # node weights do not depend on R: pair-weight denominators are computed once per weighting
     W = {}
+    one = np.ones(int(E.sum()))
     for w in ("mass", "vol"):
-        wn = np.ones(E.sum()) if w == "vol" else rho_raw["n"]
-        wl = np.ones(E.sum()) if w == "vol" else rho_raw["l"]
+        wn = one if w == "vol" else rho_raw["n"]
+        wl = one if w == "vol" else rho_raw["l"]
         gnE = np.zeros(E.shape); gnE[E] = wn
         dn_ = gauss.xi_denominator(E, gnE, L, EDGES); del gnE
         if w == "vol":
@@ -277,12 +280,12 @@ def _eulerian_phase(n, level, z, lpt, res_pair):
             gc.collect()
         del vals
         print(f"  [E] N={n} l={level} z={z:g} {lpt} R={R:g}", flush=True)
-    del E, enE, elE, rho_raw, W
+    del E, enE, elE, rho_raw, W, one
     gc.collect()
 
 
 def _drop(model, n, z, level):
-    for p in (os.path.join(SCRATCH, f"eul_{model}_N{n}_z{z:g}_l{level}.h5"),
+    for p in (os.path.join(SCRATCH, f"eul_{model}_N{n}_z{z:g}_l{level}_ng{NG}.h5"),
               os.path.join(SCRATCH, f"prod_full_{model}_N{n}_z{z:g}_l{level}.h5")):
         if os.path.exists(p):
             os.remove(p)

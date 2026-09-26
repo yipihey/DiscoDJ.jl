@@ -118,5 +118,7 @@
     "deconvolve": false,
     "antialias": 0,
     "ics": "2LPT exact growth at a_initial (nbody_ics_lpt)"
-  }
+  },
+  "eulerian_mesh": 256,
+  "_comment_eulerian_mesh": "Eulerian analysis mesh for steps 4-5. 512^3 (the sheet_mesh used for the Lagrangian R>0 values) exceeded 15 GB RAM at N=256 (OOM); 256^3 = 1.17 Mpc/h spacing, so Eulerian R=1.5 is mesh-limited."
 }
