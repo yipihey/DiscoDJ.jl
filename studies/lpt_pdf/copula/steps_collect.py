@@ -55,6 +55,7 @@ S1 = os.path.join(OUT, "step1")
 L = CFG["box_L"]
 TOL_REL, TOL_ABS, TOL_SCALAR, TOL_RK = 0.02, 0.002, 0.005, 0.01      # pre-set, run-level (vacuous)
 TOL_D_REL, TOL_D_ABS, NONMONO_ABS = 0.25, 1e-5, 1e-6                # on the differences (used)
+SHARE_MIN = 1e-5  # |T|, |Dy| below this: shares not quoted
 R_STAR = 10.0     # Mpc/h: reference separation of the attribution table
 NOISE_R = 70.0     # Mpc/h: D carries no signal beyond (5 R_F); its resolution scatter there = noise floor
 INK, GRID = "#0b0b0b", "#e4e3df"
@@ -325,7 +326,7 @@ def main():
                   "converged bin above it (column r). T = xi_delta[NB] - xi_delta[LPT] (delta space); "
                   "Dy = xi_y^E[NB] - xi_y^E[LPT] (score space). Shares are fractions of T resp. Dy; orderings "
                   "A/B (marginal first / copula first) and 1/2 (Lagrangian copula first / mapping first) bracket "
-                  "the non-uniqueness. 'unconv.': no converged bin at r >= r*.", "",
+                  "the non-uniqueness. 'unconv.': no converged bin at r >= r*; '~0': |T| or |Dy| < 1e-5, shares not quoted.", "",
                   "| z | pair | R | r_c | r | T | marg. A | marg. B | copula A | copula B | Dy | Lagr. cop. 1 | Lagr. cop. 2 | mapping 1 | mapping 2 | residual |",
                   "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for z in zs:
@@ -346,8 +347,9 @@ def main():
                         continue
                     i = int(cand[np.argmin(a["r"][cand])])
                     T, Dy = a["T"][i], a["Dy"][i]
-                    fT = lambda k: f"{a[k][i] / T:+.2f}"
-                    fY = lambda k: f"{a[k][i] / Dy:+.2f}"
+                    # shares of a total that is itself at the noise level are meaningless: blanked
+                    fT = lambda k: f"{a[k][i] / T:+.2f}" if abs(T) >= SHARE_MIN else "~0"
+                    fY = lambda k: f"{a[k][i] / Dy:+.2f}" if abs(Dy) >= SHARE_MIN else "~0"
                     lines.append(f"| {z:g} | {lpt} | {R:g} | {rc:.3g} | {a['r'][i]:.3g} | {T:+.2e} | {fT('Marg_A')} | {fT('Marg_B')} | "
                                  f"{fT('Cop_A')} | {fT('Cop_B')} | {Dy:+.2e} | {fY('Lag_1')} | {fY('Lag_2')} | "
                                  f"{fY('Map_1')} | {fY('Map_2')} | {fY('Resid')} |")
@@ -447,6 +449,8 @@ def main():
         ax[0].set_yscale("log"); ax[1].set_yscale("log")
         ax[0].set_xlabel("R [Mpc/h]"); ax[1].set_xlabel("R [Mpc/h]")
         ax[0].set_ylabel("1 - Spearman"); ax[1].set_ylabel("η² - R²_iso (non-monotone)")
+        ax[1].text(0.02, 0.04, "points at 1e-8: exactly 0 (1000 quantile-bin means are monotone)",
+                   transform=ax[1].transAxes, fontsize=7, color="#6b6a66")
         ax[0].legend(fontsize=7)
         fig.suptitle(f"Step 3: element-paired ranks, {w}-weighted (faint: lower N). {MASK_NOTE}", fontsize=8)
         savefig(fig, f"steps_3_ranks_{w}")
