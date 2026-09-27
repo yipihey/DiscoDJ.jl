@@ -18,7 +18,7 @@ differences:
   far below its tolerance.  After seeing the level-0 z = 0 runs (N = 64, 128, 256; before any
   refinement result) convergence was therefore moved to the DIFFERENCES themselves (used for
   every 'converged' flag and grey band):
-    xi       D = xi[NB] - xi[LPT]:  |D_a - D_b| <= TOL_D_REL |D_hi| + noise
+    xi       D = xi[NB] - xi[LPT]:  |D_a - D_b| <= TOL_D_REL max_{r/2<=r'<=2r}|D_hi(r')| + noise
     r(k)     1 - r(k):              |d(1-r)|    <= TOL_D_REL (1-r)_hi + noise
              noise = max(TOL_D_ABS, largest resolution change of D at r >= NOISE_R, resp.
              of 1 - r at k <= 2 pi / NOISE_R), where D has no signal (measured, per statistic)
@@ -55,6 +55,7 @@ S1 = os.path.join(OUT, "step1")
 L = CFG["box_L"]
 TOL_REL, TOL_ABS, TOL_SCALAR, TOL_RK = 0.02, 0.002, 0.005, 0.01      # pre-set, run-level (vacuous)
 TOL_D_REL, TOL_D_ABS, NONMONO_ABS = 0.25, 1e-5, 1e-6                # on the differences (used)
+R_STAR = 10.0     # Mpc/h: reference separation of the attribution table
 NOISE_R = 70.0     # Mpc/h: D carries no signal beyond (5 R_F); its resolution scatter there = noise floor
 INK, GRID = "#0b0b0b", "#e4e3df"
 C_NB, C_2, C_4 = "#eb6834", "#2a78d6", "#e87ba4"
@@ -169,10 +170,15 @@ def xi_conv(D, pl, z, lpt, R, w, key_lpt, key_nb, sub=None):
     # numerical scatter of D: largest resolution change at r >= NOISE_R, where D carries no signal
     big = np.isfinite(r) & (r >= NOISE_R)
     noise = max([TOL_D_ABS] + [float(np.nanmax(np.abs(a - b)[big])) for a, b in pairs if np.any(big & np.isfinite(a - b))])
+    # relative part scales with the LOCAL amplitude of D (max |D| within a factor 2 in r), so
+    # that a zero crossing of D does not shrink the tolerance to the noise floor
+    ah = np.nan_to_num(np.abs(hi))
+    env = np.array([ah[np.isfinite(r) & (r >= ri / 2) & (r <= 2 * ri)].max() if np.isfinite(ri) else 0.0
+                    for ri in r])
     ok = np.isfinite(hi)
     for a, b in pairs:
         # a bin that cannot be compared (absent at the lower resolution) is not converged
-        ok &= np.isfinite(a) & np.isfinite(b) & (np.abs(a - b) <= TOL_D_REL * np.abs(hi) + noise)
+        ok &= np.isfinite(a) & np.isfinite(b) & (np.abs(a - b) <= TOL_D_REL * env + noise)
     return adjoining(ok, from_end=True, skip=~np.isfinite(hi))
 
 
@@ -315,10 +321,13 @@ def main():
     # ---------------- step 4 + 5 tables ----------------
     for w in ("mass", "vol"):
         lines += [f"## Steps 4-5: Eulerian (mask E) xi and attribution ({w}-weighted), N = {n_hi}", "",
-                  "Values at the smallest converged separation r_c and averaged over r >= r_c "
-                  "(pair-weighted bins). T = xi_delta[NB] - xi_delta[LPT].", "",
-                  "| z | pair | R | r_c | T(r_c) | Marg_A | Cop_A | Cop_B | Marg_B | Dy(r_c) | Lag_1 | Map_1 | Map_2 | Lag_2 | Resid |",
-                  "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
+                  f"Evaluated at the reference separation r* = {R_STAR:g} Mpc/h (nearest bin), or at the smallest "
+                  "converged bin above it (column r). T = xi_delta[NB] - xi_delta[LPT] (delta space); "
+                  "Dy = xi_y^E[NB] - xi_y^E[LPT] (score space). Shares are fractions of T resp. Dy; orderings "
+                  "A/B (marginal first / copula first) and 1/2 (Lagrangian copula first / mapping first) bracket "
+                  "the non-uniqueness. 'unconv.': no converged bin at r >= r*.", "",
+                  "| z | pair | R | r_c | r | T | marg. A | marg. B | copula A | copula B | Dy | Lagr. cop. 1 | Lagr. cop. 2 | mapping 1 | mapping 2 | residual |",
+                  "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for z in zs:
             for lpt in lpts:
                 for R in Rs:
@@ -330,14 +339,18 @@ def main():
                     cvy = xi_conv(D, pl, z, lpt, R, w, "xiE_lpt", "xiE_nb")
                     cv = cvd & cvy
                     summ["attrib"][f"{w}|z{z:g}|{lpt}|R{R:g}"] = {k: v for k, v in a.items()} | dict(converged=cv)
-                    if not cv.any():
-                        lines.append(f"| {z:g} | {lpt} | {R:g} | none | " + " | ".join(["-"] * 11) + " |")
+                    rc = float(np.nanmin(a["r"][cv])) if cv.any() else np.inf
+                    cand = np.where(cv & (a["r"] >= R_STAR / 1.2))[0]
+                    if not len(cand):
+                        lines.append(f"| {z:g} | {lpt} | {R:g} | {rc:.3g} | unconv. | " + " | ".join(["-"] * 11) + " |")
                         continue
-                    i = int(np.nanargmin(np.where(cv, a["r"], np.inf)))
-                    f = lambda k: f"{a[k][i]:+.2e}"
-                    lines.append(f"| {z:g} | {lpt} | {R:g} | {a['r'][i]:.3g} | {f('T')} | {f('Marg_A')} | {f('Cop_A')} | "
-                                 f"{f('Cop_B')} | {f('Marg_B')} | {f('Dy')} | {f('Lag_1')} | {f('Map_1')} | {f('Map_2')} | "
-                                 f"{f('Lag_2')} | {f('Resid')} |")
+                    i = int(cand[np.argmin(a["r"][cand])])
+                    T, Dy = a["T"][i], a["Dy"][i]
+                    fT = lambda k: f"{a[k][i] / T:+.2f}"
+                    fY = lambda k: f"{a[k][i] / Dy:+.2f}"
+                    lines.append(f"| {z:g} | {lpt} | {R:g} | {rc:.3g} | {a['r'][i]:.3g} | {T:+.2e} | {fT('Marg_A')} | {fT('Marg_B')} | "
+                                 f"{fT('Cop_A')} | {fT('Cop_B')} | {Dy:+.2e} | {fY('Lag_1')} | {fY('Lag_2')} | "
+                                 f"{fY('Map_1')} | {fY('Map_2')} | {fY('Resid')} |")
         lines.append("")
 
     # ---------------- figures ----------------
