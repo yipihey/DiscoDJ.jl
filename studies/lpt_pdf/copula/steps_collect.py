@@ -18,8 +18,10 @@ differences:
   far below its tolerance.  After seeing the level-0 z = 0 runs (N = 64, 128, 256; before any
   refinement result) convergence was therefore moved to the DIFFERENCES themselves (used for
   every 'converged' flag and grey band):
-    xi       D = xi[NB] - xi[LPT]:  |D_a - D_b| <= TOL_D_REL |D_hi| + TOL_D_ABS
-    r(k)     1 - r(k):              |d(1-r)|    <= TOL_D_REL (1-r)_hi + TOL_D_ABS
+    xi       D = xi[NB] - xi[LPT]:  |D_a - D_b| <= TOL_D_REL |D_hi| + noise
+    r(k)     1 - r(k):              |d(1-r)|    <= TOL_D_REL (1-r)_hi + noise
+             noise = max(TOL_D_ABS, largest resolution change of D at r >= NOISE_R, resp.
+             of 1 - r at k <= 2 pi / NOISE_R), where D has no signal (measured, per statistic)
     scalars  1 - rho_S, 1 - eta^2, 1 - R2_iso: relative TOL_D_REL (+ TOL_D_ABS);
              non-monotone part: absolute NONMONO_ABS (it is estimator-limited, see report)
   A separation bin (or k bin) is CONVERGED only if both comparisons pass; the
@@ -53,6 +55,7 @@ S1 = os.path.join(OUT, "step1")
 L = CFG["box_L"]
 TOL_REL, TOL_ABS, TOL_SCALAR, TOL_RK = 0.02, 0.002, 0.005, 0.01      # pre-set, run-level (vacuous)
 TOL_D_REL, TOL_D_ABS, NONMONO_ABS = 0.25, 1e-5, 1e-6                # on the differences (used)
+NOISE_R = 70.0     # Mpc/h: D carries no signal beyond (5 R_F); its resolution scatter there = noise floor
 INK, GRID = "#0b0b0b", "#e4e3df"
 C_NB, C_2, C_4 = "#eb6834", "#2a78d6", "#e87ba4"
 C_PAIR = {"2lpt": C_2, "4lpt": C_4}
@@ -91,11 +94,14 @@ def conv_mask(hi, lo, floor):
     return np.abs(hi - lo) <= tol
 
 
-def adjoining(ok, from_end):
-    """Contiguous True run adjoining one end (large scales); returns a boolean array."""
+def adjoining(ok, from_end, skip=None):
+    """Contiguous True run adjoining one end (large scales); bins flagged in `skip` (empty bins)
+    neither stop the run nor count as converged."""
     out = np.zeros_like(ok)
     idx = range(len(ok) - 1, -1, -1) if from_end else range(len(ok))
     for i in idx:
+        if skip is not None and skip[i]:
+            continue
         if not ok[i]:
             break
         out[i] = True
@@ -155,13 +161,19 @@ def xi_conv(D, pl, z, lpt, R, w, key_lpt, key_nb, sub=None):
         h = g if sub is None else g[sub]
         return arr(h[key_nb]["xi"]) - arr(h[key_lpt]["xi"])
     hi = dif(n_hi, 0)
+    g0 = get(D, n_hi, 0, z, lpt, R, w)
+    r = arr((g0 if sub is None else g0[sub])[key_lpt]["r"])
+    pairs = [(hi, dif(n_lo, 0)), (dif(n_ref, 1), dif(n_ref, 0))]
+    if any(a is None or b is None for a, b in pairs):
+        return np.zeros(hi.shape, bool)
+    # numerical scatter of D: largest resolution change at r >= NOISE_R, where D carries no signal
+    big = np.isfinite(r) & (r >= NOISE_R)
+    noise = max([TOL_D_ABS] + [float(np.nanmax(np.abs(a - b)[big])) for a, b in pairs if np.any(big & np.isfinite(a - b))])
     ok = np.isfinite(hi)
-    for a, b in ((hi, dif(n_lo, 0)), (dif(n_ref, 1), dif(n_ref, 0))):
-        if a is None or b is None:
-            ok &= False
-            continue
-        ok &= np.isfinite(a) & np.isfinite(b) & (np.abs(a - b) <= TOL_D_REL * np.abs(hi) + TOL_D_ABS)
-    return adjoining(ok, from_end=True)
+    for a, b in pairs:
+        # a bin that cannot be compared (absent at the lower resolution) is not converged
+        ok &= np.isfinite(a) & np.isfinite(b) & (np.abs(a - b) <= TOL_D_REL * np.abs(hi) + noise)
+    return adjoining(ok, from_end=True, skip=~np.isfinite(hi))
 
 
 def scalar_conv(D, pl, z, lpt, R, w, key):
@@ -185,15 +197,21 @@ def rk_conv(D, pl, z, lpt, R, w):
         g = get(D, n, l, z, lpt, R, w) if n else None
         return (arr(g["spectra"]["k"]), arr(g["spectra"]["r"])) if g else (None, None)
     k_hi, r_hi = rk(n_hi, 0)
-    ok = np.isfinite(r_hi)
+    fin = np.isfinite(r_hi) & np.isfinite(k_hi)
+    diffs = []
     for (ka, ra), (kb, rb) in ((rk(n_hi, 0), rk(n_lo, 0)), (rk(n_ref, 1), rk(n_ref, 0))):
         if ra is None or rb is None:
-            ok &= False
-            continue
-        rb_i = np.interp(k_hi, kb, rb, left=np.nan, right=np.nan)
-        ra_i = np.interp(k_hi, ka, ra, left=np.nan, right=np.nan)
-        ok &= np.abs(ra_i - rb_i) <= TOL_D_REL * np.abs(1 - r_hi) + TOL_D_ABS
-    return k_hi, r_hi, adjoining(ok, from_end=False)
+            return k_hi, r_hi, np.zeros(k_hi.shape, bool)
+        fa, fb = np.isfinite(ra) & np.isfinite(ka), np.isfinite(rb) & np.isfinite(kb)
+        ra_i = np.interp(k_hi, ka[fa], ra[fa], left=np.nan, right=np.nan)
+        rb_i = np.interp(k_hi, kb[fb], rb[fb], left=np.nan, right=np.nan)
+        diffs.append(np.abs(ra_i - rb_i))
+    small_k = fin & (k_hi <= 2 * np.pi / NOISE_R)
+    noise = max([TOL_D_ABS] + [float(np.nanmax(d[small_k])) for d in diffs if np.any(small_k & np.isfinite(d))])
+    ok = fin.copy()
+    for d in diffs:
+        ok &= np.isfinite(d) & (d <= TOL_D_REL * np.abs(1 - r_hi) + noise)
+    return k_hi, r_hi, adjoining(ok, from_end=False, skip=~fin)
 
 
 def attribution(g):
