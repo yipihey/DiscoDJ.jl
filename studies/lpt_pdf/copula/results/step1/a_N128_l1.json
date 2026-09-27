@@ -1,0 +1,350 @@
+{
+ "N": 128,
+ "level": 1,
+ "z": 24.0,
+ "masks": {
+  "nbody": {
+   "nflip": 0,
+   "ms_frac": 0.0
+  },
+  "2lpt": {
+   "nflip": 0,
+   "ms_frac": 0.0
+  },
+  "4lpt": {
+   "nflip": 0,
+   "ms_frac": 0.0
+  }
+ },
+ "pairs": {
+  "2lpt_vs_nbody": {
+   "R0": {
+    "ym": {
+     "pearson": 0.9999999999999998,
+     "rms_dy": 7.024303661294431e-10,
+     "max_abs_dy": 1.841742357733267e-06,
+     "p99_abs_dy": 0.0,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 0
+    },
+    "yv": {
+     "pearson": 1.0,
+     "rms_dy": 7.029592831894412e-10,
+     "max_abs_dy": 1.8434175950154952e-06,
+     "p99_abs_dy": 3.552713678800501e-15,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 0
+    }
+   },
+   "R1.5": {
+    "ym": {
+     "pearson": 0.9999999999999999,
+     "rms_dy": 1.6691758870841943e-10,
+     "max_abs_dy": 1.8863221451503875e-07,
+     "p99_abs_dy": 0.0,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 2
+    },
+    "yv": {
+     "pearson": 1.0,
+     "rms_dy": 1.6689470426440366e-10,
+     "max_abs_dy": 1.8864027251375148e-07,
+     "p99_abs_dy": 3.552713678800501e-15,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 2
+    }
+   },
+   "R3": {
+    "ym": {
+     "pearson": 1.0,
+     "rms_dy": 5.159112239058114e-11,
+     "max_abs_dy": 1.494238514847951e-07,
+     "p99_abs_dy": 0.0,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    },
+    "yv": {
+     "pearson": 1.0,
+     "rms_dy": 5.158391544244447e-11,
+     "max_abs_dy": 1.4946630768480906e-07,
+     "p99_abs_dy": 3.552713678800501e-15,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    }
+   },
+   "R7": {
+    "ym": {
+     "pearson": 1.0,
+     "rms_dy": 1.7824491664952715e-10,
+     "max_abs_dy": 4.850726698091279e-07,
+     "p99_abs_dy": 0.0,
+     "passed": true,
+     "ties_lpt": 2,
+     "ties_nb": 1
+    },
+    "yv": {
+     "pearson": 0.9999999999999998,
+     "rms_dy": 1.7839296791753324e-10,
+     "max_abs_dy": 4.879018700165716e-07,
+     "p99_abs_dy": 3.552713678800501e-15,
+     "passed": true,
+     "ties_lpt": 2,
+     "ties_nb": 1
+    }
+   },
+   "R14": {
+    "ym": {
+     "pearson": 1.0,
+     "rms_dy": 0.0,
+     "max_abs_dy": 0.0,
+     "p99_abs_dy": 0.0,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    },
+    "yv": {
+     "pearson": 1.0,
+     "rms_dy": 1.4275656749721923e-15,
+     "max_abs_dy": 1.674216321134736e-13,
+     "p99_abs_dy": 3.9968028886505635e-15,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    }
+   }
+  },
+  "4lpt_vs_nbody": {
+   "R0": {
+    "ym": {
+     "pearson": 0.9999999991729309,
+     "rms_dy": 4.067140425705075e-05,
+     "max_abs_dy": 0.006682994509533913,
+     "p99_abs_dy": 0.00013918568236640503,
+     "passed": true,
+     "ties_lpt": 2,
+     "ties_nb": 0
+    },
+    "yv": {
+     "pearson": 0.9999999991722031,
+     "rms_dy": 4.071739384290023e-05,
+     "max_abs_dy": 0.006667764365150042,
+     "p99_abs_dy": 0.00013930803184939388,
+     "passed": true,
+     "ties_lpt": 2,
+     "ties_nb": 0
+    }
+   },
+   "R1.5": {
+    "ym": {
+     "pearson": 0.9999999982529191,
+     "rms_dy": 5.91115587040244e-05,
+     "max_abs_dy": 0.007279299041680343,
+     "p99_abs_dy": 0.00015193227875912008,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 2
+    },
+    "yv": {
+     "pearson": 0.9999999982522141,
+     "rms_dy": 5.914359856712701e-05,
+     "max_abs_dy": 0.007273793144615848,
+     "p99_abs_dy": 0.00015228920015614698,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 2
+    }
+   },
+   "R3": {
+    "ym": {
+     "pearson": 0.9999999990825778,
+     "rms_dy": 4.283498630278665e-05,
+     "max_abs_dy": 0.009254979910018335,
+     "p99_abs_dy": 0.0001512472846467021,
+     "passed": true,
+     "ties_lpt": 1,
+     "ties_nb": 1
+    },
+    "yv": {
+     "pearson": 0.9999999990819036,
+     "rms_dy": 4.287767522972477e-05,
+     "max_abs_dy": 0.009235159034022722,
+     "p99_abs_dy": 0.00015125077190383237,
+     "passed": true,
+     "ties_lpt": 1,
+     "ties_nb": 1
+    }
+   },
+   "R7": {
+    "ym": {
+     "pearson": 0.9999999993225205,
+     "rms_dy": 3.680967862580106e-05,
+     "max_abs_dy": 0.010691053742457157,
+     "p99_abs_dy": 0.00012413684205846693,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    },
+    "yv": {
+     "pearson": 0.9999999993218966,
+     "rms_dy": 3.685687876290698e-05,
+     "max_abs_dy": 0.010644381060496144,
+     "p99_abs_dy": 0.0001242883185758807,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    }
+   },
+   "R14": {
+    "ym": {
+     "pearson": 0.9999999994988209,
+     "rms_dy": 3.166017518452296e-05,
+     "max_abs_dy": 0.010177063151656895,
+     "p99_abs_dy": 0.00010105963095949623,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    },
+    "yv": {
+     "pearson": 0.999999999498292,
+     "rms_dy": 3.1706604442140475e-05,
+     "max_abs_dy": 0.010139751262762786,
+     "p99_abs_dy": 0.00010141441055686593,
+     "passed": true,
+     "ties_lpt": 0,
+     "ties_nb": 1
+    }
+   }
+  }
+ },
+ "mask_frac": 1.0,
+ "passed": true,
+ "config": {
+  "_comment": "Defaults filling the placeholders of the copula task; every run logs this file.",
+  "box_L": 300.0,
+  "R_F": 14.0,
+  "phase_seed": 1,
+  "lpt_orders": [
+   "2lpt",
+   "4lpt"
+  ],
+  "za_for_test_d": "1lpt",
+  "N_list": [
+   64,
+   128,
+   256
+  ],
+  "z_list": [
+   24.0,
+   1.0,
+   0.0
+  ],
+  "a_initial": 0.04,
+  "refine_levels": [
+   0,
+   1
+  ],
+  "R_list": [
+   0.0,
+   1.5,
+   3.0,
+   7.0,
+   14.0
+  ],
+  "sheet_mesh": 512,
+  "tie_seeds": [
+   11,
+   12,
+   13
+  ],
+  "xi_bins": {
+   "rmin": 0.5,
+   "rmax": 150.0,
+   "nbins": 36
+  },
+  "nbody": {
+   "mesh_factor": 2,
+   "steps": 100,
+   "spacing": "log"
+  },
+  "test_d": {
+   "extra_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129,
+    130,
+    131,
+    132
+   ],
+   "N_band": 128,
+   "refine_band": 1,
+   "N_test": 256,
+   "refine_test": 1,
+   "mc_samples": 20000000,
+   "mc_seed": 7,
+   "quantiles": [
+    0.005,
+    0.01,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    0.9,
+    0.95,
+    0.99,
+    0.995
+   ]
+  },
+  "criteria": {
+   "a_min_pearson": 0.999,
+   "a_max_rms_dy": 0.05,
+   "b_max_abs_dxi": 1e-10,
+   "d_nsigma": 3.0
+  },
+  "nbody_djn": {
+   "code": "DiscoDJNative.run_nbody (port of DISCO-DJ)",
+   "stepper": "bullfrog",
+   "time_var": "D-uniform a-grid with snapshot nodes",
+   "steps": 64,
+   "mesh_factor": 2,
+   "grad_kernel_order": 4,
+   "worder": 2,
+   "deconvolve": false,
+   "antialias": 0,
+   "ics": "2LPT exact growth at a_initial (nbody_ics_lpt)"
+  }
+ },
+ "time": "2026-09-26 15:17:42"
+}

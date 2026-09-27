@@ -169,11 +169,9 @@ mask (both runs); not an unconditional two-point statistic.**
 |---|---|---|---|---|---|
 | 0 | 2LPT | 1.7e-3 / 6.2e-4 / 3.3e-4 / 9.6e-4 | 1.1e-3 / 2.9e-4 / 1.6e-4 / 3.2e-4 | 5.8e-4 / 1.6e-4 / 1.2e-4 / 1.7e-4 | 2.9e-4 / 1.3e-4 / **1.3e-4** / 1.4e-4 |
 | 0 | 4LPT | 1.5e-3 / 5.2e-4 / 2.3e-4 / 8.6e-4 | 9.6e-4 / 1.6e-4 / 3.2e-5 / 1.9e-4 | 4.5e-4 / 5.8e-5 / 1.3e-5 / 6.3e-5 | 1.9e-4 / 3.4e-5 / 2.1e-5 / 4.2e-5 |
-| 1 | 2LPT | – / 3.5e-4 / 1.6e-4 / 5.3e-4 | – / 1.5e-4 / 3.8e-5 / 1.7e-4 | – / 5.5e-5 / 1.6e-5 / 5.8e-5 | – / 2.1e-5 / 1.2e-5 / 2.2e-5 |
-| 1 | 4LPT | – / 3.4e-4 / 1.5e-4 / 5.2e-4 | – / 1.4e-4 / 2.5e-5 / 1.6e-4 | – / 4.3e-5 / 5.0e-6 / 4.7e-5 | – / 1.2e-5 / 1.3e-6 / 1.2e-5 |
+| 1 | 2LPT | 1.1e-3 / 3.5e-4 / 1.6e-4 / 5.3e-4 | 8.3e-4 / 1.5e-4 / 3.8e-5 / 1.7e-4 | 3.8e-4 / 5.5e-5 / 1.6e-5 / 5.8e-5 | 1.5e-4 / 2.1e-5 / 1.2e-5 / 2.2e-5 |
+| 1 | 4LPT | 1.1e-3 / 3.4e-4 / 1.5e-4 / 5.2e-4 | 8.1e-4 / 1.4e-4 / 2.5e-5 / 1.6e-4 | 3.6e-4 / 4.3e-5 / 5.0e-6 / 4.7e-5 | 1.3e-4 / 1.2e-5 / 1.3e-6 / 1.2e-5 |
 
-(z = 1, N = 64 is still running at the time of writing; it does not enter the convergence
-test.)
 
 - **The departure from perfect rank agreement is resolution noise, not LPT.** 1 − ρ drops
   up to 10× from N = 128 to 256, and at N = 128 it is equal or larger at refinement level 1

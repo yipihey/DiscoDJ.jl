@@ -1,0 +1,716 @@
+{
+ "N": 128,
+ "level": 1,
+ "z": 0.0,
+ "mask_frac": 0.9923402667045593,
+ "masks": {
+  "nbody": {
+   "nflip": 77873,
+   "ms_frac": 0.007034599781036377
+  },
+  "4lpt": {
+   "nflip": 70777,
+   "ms_frac": 0.006929278373718262
+  }
+ },
+ "models": {
+  "nbody": {
+   "R0": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R1.5": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R3": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R7": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R14": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   }
+  },
+  "4lpt": {
+   "R0": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R1.5": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R3": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R7": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   },
+   "R14": {
+    "ties": 0,
+    "transforms": {
+     "log": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "cube": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "neg_inverse": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     },
+     "asinh10": {
+      "max_abs_dxi": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "abs_dzero_lag": {
+       "mass": 0.0,
+       "vol": 0.0
+      },
+      "ties_after": 0,
+      "y_identical": true,
+      "passed": true
+     }
+    }
+   }
+  }
+ },
+ "passed": true,
+ "config": {
+  "_comment": "Defaults filling the placeholders of the copula task; every run logs this file.",
+  "box_L": 300.0,
+  "R_F": 14.0,
+  "phase_seed": 1,
+  "lpt_orders": [
+   "2lpt",
+   "4lpt"
+  ],
+  "za_for_test_d": "1lpt",
+  "N_list": [
+   64,
+   128,
+   256
+  ],
+  "z_list": [
+   24.0,
+   1.0,
+   0.0
+  ],
+  "a_initial": 0.04,
+  "refine_levels": [
+   0,
+   1
+  ],
+  "R_list": [
+   0.0,
+   1.5,
+   3.0,
+   7.0,
+   14.0
+  ],
+  "sheet_mesh": 512,
+  "tie_seeds": [
+   11,
+   12,
+   13
+  ],
+  "xi_bins": {
+   "rmin": 0.5,
+   "rmax": 150.0,
+   "nbins": 36
+  },
+  "nbody": {
+   "mesh_factor": 2,
+   "steps": 100,
+   "spacing": "log"
+  },
+  "test_d": {
+   "extra_seeds": [
+    101,
+    102,
+    103,
+    104,
+    105,
+    106,
+    107,
+    108,
+    109,
+    110,
+    111,
+    112,
+    113,
+    114,
+    115,
+    116,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129,
+    130,
+    131,
+    132
+   ],
+   "N_band": 128,
+   "refine_band": 1,
+   "N_test": 256,
+   "refine_test": 1,
+   "mc_samples": 20000000,
+   "mc_seed": 7,
+   "quantiles": [
+    0.005,
+    0.01,
+    0.05,
+    0.1,
+    0.25,
+    0.5,
+    0.75,
+    0.9,
+    0.95,
+    0.99,
+    0.995
+   ]
+  },
+  "criteria": {
+   "a_min_pearson": 0.999,
+   "a_max_rms_dy": 0.05,
+   "b_max_abs_dxi": 1e-10,
+   "d_nsigma": 3.0
+  },
+  "nbody_djn": {
+   "code": "DiscoDJNative.run_nbody (port of DISCO-DJ)",
+   "stepper": "bullfrog",
+   "time_var": "D-uniform a-grid with snapshot nodes",
+   "steps": 64,
+   "mesh_factor": 2,
+   "grad_kernel_order": 4,
+   "worder": 2,
+   "deconvolve": false,
+   "antialias": 0,
+   "ics": "2LPT exact growth at a_initial (nbody_ics_lpt)"
+  }
+ },
+ "time": "2026-09-26 15:47:56"
+}
