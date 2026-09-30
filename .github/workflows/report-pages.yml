@@ -1,0 +1,31 @@
+# Publish the LPT vs N-body study report (studies/lpt_pdf/report.html + figures) to GitHub Pages
+# via the gh-pages branch, whenever the report or its figures change on main.
+name: Report on GitHub Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - "studies/lpt_pdf/report.html"
+      - "studies/lpt_pdf/build_site.sh"
+      - "studies/lpt_pdf/figures/**"
+      - "studies/lpt_pdf/copula/figures/**"
+      - ".github/workflows/report-pages.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: report-pages
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: studies/lpt_pdf/build_site.sh _site
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "Publish study report"
