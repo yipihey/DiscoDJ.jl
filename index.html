@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>LPT vs N-body Before Shell Crossing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+/* Layout: a technical report — sticky contents rail on wide screens, one reading column with
+   full-width figure plates; figures sit on light "paper" plates in both themes. */
+:root {
+  --bg: #f4f6f9;         /* cool paper */
+  --surface: #ffffff;
+  --ink: #16202b;
+  --muted: #566372;
+  --rule: #d9dfe7;
+  --accent: #1f64b8;     /* the figures' LPT blue, darkened for text */
+  --nbody: #c9532a;      /* the figures' N-body orange, darkened for text */
+  --tint: #e9eef5;
+  --plate: #ffffff;
+  --ok: #1d7a55;
+  --warn: #a6620a;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --surface: #182029; --ink: #e3e8ee; --muted: #9aa7b6; --rule: #2a3542;
+    --accent: #7fb0ec; --nbody: #f09268; --tint: #1c2530; --plate: #f4f6f9; --ok: #62c79b; --warn: #e6a653;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #182029; --ink: #e3e8ee; --muted: #9aa7b6; --rule: #2a3542;
+  --accent: #7fb0ec; --nbody: #f09268; --tint: #1c2530; --plate: #f4f6f9; --ok: #62c79b; --warn: #e6a653;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.6; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px;
+        display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+@media (max-width: 960px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 24px 60px; } nav.toc { position: static !important; } }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start;
+          font-family: var(--f-display); font-size: 14px; line-height: 1.4; }
+nav.toc .lbl { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc li.sub a { padding-left: 16px; color: var(--muted); }
+nav.toc a { display: block; padding: 3px 8px; border-radius: 4px; color: var(--ink); text-decoration: none; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--tint); outline: none; }
+main { min-width: 0; }
+.col { max-width: 72ch; }
+h1, h2, h3, h4 { font-family: var(--f-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 30px; font-weight: 700; margin-top: 72px; padding-top: 16px; border-top: 2px solid var(--ink); }
+h3 { font-size: 21px; font-weight: 600; margin-top: 40px; }
+h4 { font-size: 16px; font-weight: 600; margin-top: 24px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+p, ul, ol.plain { margin: 12px 0 0; }
+ul { padding-left: 1.2em; }
+li + li { margin-top: 6px; }
+a { color: var(--accent); }
+.eyebrow { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .1em; font-size: 13px; color: var(--muted); }
+.lede { font-size: 20px; line-height: 1.5; margin-top: 16px; }
+.meta { font-family: var(--f-mono); font-size: 13px; color: var(--muted); margin-top: 16px; display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.nb { color: var(--nbody); font-weight: 600; } .lpt { color: var(--accent); font-weight: 600; }
+code, .mono { font-family: var(--f-mono); font-size: .86em; }
+code { background: var(--tint); padding: 1px 5px; border-radius: 3px; }
+.findings { margin-top: 28px; display: grid; gap: 14px; }
+.finding { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-top: 1px solid var(--rule); }
+.finding .tag { font-family: var(--f-display); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-top: 3px; }
+.finding p { margin: 0; }
+@media (max-width: 560px) { .finding { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.note { margin-top: 20px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--warn); border-radius: 4px; font-size: 16px; }
+.note.mask { border-left-color: var(--accent); }
+.note strong:first-child { font-family: var(--f-display); letter-spacing: .02em; }
+figure { margin: 28px 0 0; }
+.plate { background: var(--plate); border: 1px solid var(--rule); border-radius: 4px; padding: 10px; overflow-x: auto; }
+.plate img { display: block; width: 100%; height: auto; max-width: 100%; min-width: 560px; }
+@media (max-width: 640px) { .plate img { min-width: 520px; } }
+figcaption { font-size: 15px; line-height: 1.5; color: var(--muted); margin-top: 10px; max-width: 80ch; }
+figcaption b { color: var(--ink); font-family: var(--f-display); font-weight: 600; letter-spacing: .02em; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.pair figure { margin-top: 28px; }
+.pair .plate img { min-width: 0; }
+@media (max-width: 760px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 28px; }
+.tabs button { font-family: var(--f-mono); font-size: 13px; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--rule);
+               background: var(--surface); color: var(--ink); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tabs + figure { margin-top: 10px; }
+.tbl { overflow-x: auto; margin-top: 18px; border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--f-display); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: var(--tint); }
+td:first-child, th:first-child, td.l, th.l { text-align: left; }
+tbody tr:last-child td { border-bottom: 0; }
+td { font-family: var(--f-mono); font-size: 13px; }
+td.l { font-family: var(--f-body); font-size: 14px; }
+tr.grp td { border-top: 2px solid var(--rule); }
+.tcap { font-size: 14px; color: var(--muted); margin-top: 8px; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin-top: 14px; display: grid; gap: 10px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; margin: 0; }
+.steps li::before { content: counter(s); font-family: var(--f-mono); font-size: 13px; width: 26px; height: 26px; border-radius: 50%;
+                    border: 1px solid var(--rule); display: grid; place-items: center; color: var(--muted); background: var(--surface); }
+.pill { display: inline-block; font-family: var(--f-display); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+        padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); }
+pre { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; overflow-x: auto; font-family: var(--f-mono); font-size: 13px; line-height: 1.5; margin-top: 14px; }
+footer { margin-top: 72px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 14px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="lbl">Contents</div>
+  <ol>
+    <li><a href="#summary">Summary</a></li>
+    <li><a href="#setup">Common setup</a></li>
+    <li><a href="#pdf">Study 1 · One-point PDFs</a></li>
+    <li class="sub"><a href="#pdf-rf">Choosing R_f</a></li>
+    <li class="sub"><a href="#pdf-res">Resolution study</a></li>
+    <li class="sub"><a href="#pdf-2lpt">2LPT vs N-body</a></li>
+    <li class="sub"><a href="#pdf-orders">Zel'dovich to 4LPT</a></li>
+    <li><a href="#sheet">Estimator check · phase-space sheet</a></li>
+    <li class="sub"><a href="#sheet-est">Sheet vs CIC</a></li>
+    <li class="sub"><a href="#sheet-tet">Tetrahedron mass weighting</a></li>
+    <li><a href="#cop">Study 2 · Copula</a></li>
+    <li class="sub"><a href="#cop-val">Validation</a></li>
+    <li class="sub"><a href="#cop-lagr">Lagrangian copula</a></li>
+    <li class="sub"><a href="#cop-ranks">Paired ranks</a></li>
+    <li class="sub"><a href="#cop-attr">Eulerian attribution</a></li>
+    <li class="sub"><a href="#cop-dev">Deviations</a></li>
+    <li><a href="#code">DiscoDJNative</a></li>
+    <li><a href="#limits">Limitations</a></li>
+    <li><a href="#repro">Reproduce</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="col">
+  <div class="eyebrow">DiscoDJ.jl · studies/lpt_pdf</div>
+  <h1>LPT vs N-body Before Shell Crossing</h1>
+  <p class="lede">Studies on identical fixed-amplitude initial conditions. How well do Lagrangian perturbation theory at orders 1–4 and a converged particle-mesh N-body simulation agree on the density field, first in its one-point PDF, then in its spatial correlations once the PDF is removed?</p>
+  <div class="meta"><span>L = 300 Mpc/h</span><span>R<sub>f</sub> = 14 Mpc/h top hat</span><span>Planck18</span><span>z = 1, 0</span><span>N = 64³–512³</span></div>
+</header>
+
+<section id="summary" class="col">
+  <h2>Summary</h2>
+  <div class="findings">
+    <div class="finding"><div class="tag">PDF</div><p><b><span class="lpt">2LPT</span> is too narrow in both tails.</b> Its voids are not empty enough (the 0.1% volume quantile of 1+δ is 8–11% too high at R<sub>s</sub> ≤ R<sub>f</sub>) and its peaks are not dense enough (the mass-weighted 99.9% quantile is 29% low at 7 Mpc/h and 9% low at 14 Mpc/h). The median agrees to ≤ 0.1%. These differences are 10–100× the numerical uncertainty of either method.</p></div>
+    <div class="finding"><div class="tag">Orders</div><p><b>The LPT series converges to <span class="nb">N-body</span>.</b> Each order removes a large part of the gap. Void quantiles converge with alternating sign, dense-tail quantiles monotonically from below. <span class="lpt">4LPT</span> agrees with N-body to ≲ 1% on every scale, except in the far tails at R<sub>s</sub> ≤ R<sub>f</sub>.</p></div>
+    <div class="finding"><div class="tag">Estimator</div><p><b>These PDF results do not depend on the density estimator.</b> Redone with the exact phase-space-sheet density (tetrahedra remeshed by exact overlap volumes with R3D) and with a gridless mass weighting from the equal-mass tetrahedra, the nLPT/N-body ratios at R<sub>s</sub> = 7–42 Mpc/h agree with CIC to ≤ 0.2 percentage points. Unsmoothed, the tetrahedra resolve the fold-caustic tail to 1+δ ~ 10⁶, where N-body carries 4–9× more mass than 4LPT and 2LPT.</p></div>
+    <div class="finding"><div class="tag">Copula</div><p><b>With the PDF removed, 2LPT has a small but converged two-point error.</b> Its rank-Gaussianized Lagrangian correlation exceeds N-body's by about 5.7 × 10⁻³ near 20–30 Mpc/h at z = 0 (1.5–3% of ξ<sub>y</sub>) and 2 × 10⁻³ at z = 1. 4LPT removes 75–95% of it.</p></div>
+    <div class="finding"><div class="tag">Ranks</div><p><b>Element by element, LPT and N-body ranks are one monotone relation.</b> 1 − Spearman ≤ 3 × 10⁻⁴ at N = 256, with no detectable non-monotone part. The residual is mostly N-body discreteness; only 2LPT at z = 0, R ≥ 7 Mpc/h, shows a stable LPT rank error (≈ 1.3 × 10⁻⁴).</p></div>
+    <div class="finding"><div class="tag">Attribution</div><p><b>N-body's extra Eulerian clustering at ~10 Mpc/h is a one-point effect.</b> Giving LPT the N-body marginal accounts for 108–163% of Δξ<sub>δ</sub> (volume-weighted, converged); the copula part pulls the other way and originates in the Lagrangian copula, not the displacement mapping. Both orderings agree to ≤ 0.12.</p></div>
+  </div>
+  <div class="note mask"><strong>Scope of Study 2.</strong> Every copula statistic is conditional on the single-stream mask, the elements that are single-stream in both runs (99.2% of the mass at z = 0). None of them is an unconditional two-point statistic, and none says anything about multi-stream regions.</div>
+</section>
+
+<section id="setup" class="col">
+  <h2>Common setup</h2>
+  <div class="tbl"><table>
+    <tbody>
+      <tr><td class="l">Cosmology</td><td class="l">Planck18 (EE+BAO+SN); Eisenstein–Hu 1998 transfer with baryons, σ₈ = 0.8105</td></tr>
+      <tr><td class="l">Box</td><td class="l">L = 300 Mpc/h, periodic</td></tr>
+      <tr><td class="l">IC filter</td><td class="l">real-space top hat on δ<sub>lin</sub>, R<sub>f</sub> = 14 Mpc/h (M<sub>f</sub> = 9.8 × 10¹⁴ M☉/h, σ<sub>lin</sub> = 0.535 at z = 0)</td></tr>
+      <tr><td class="l">Amplitudes</td><td class="l">fixed (Angulo &amp; Pontzen 2016), |δ̂<sub>k</sub>| = N³√(P/V); paired phases θ → θ+π as a robustness check (Study 1)</td></tr>
+      <tr><td class="l">Phases</td><td class="l">drawn once; every resolution uses the same modes, so all runs share identical phases</td></tr>
+      <tr><td class="l">LPT</td><td class="l">1LPT–4LPT, exact ΛCDM growth through third order, EdS D₁⁴ at fourth</td></tr>
+      <tr><td class="l">N-body</td><td class="l">particle mesh, force mesh 2N, 4th-order finite-difference gradient, CIC, 2LPT ICs at z = 24</td></tr>
+    </tbody>
+  </table></div>
+  <p>Study 1 ran on a numpy port (the Julia toolchain was not yet available), with a KDK leapfrog PM. Study 2 ran entirely on <a href="#code">DiscoDJNative</a>, including its new port of DISCO-DJ's <code>run_nbody</code> (BullFrog stepper, 64 steps). The two N-body codes agree to 6 × 10⁻⁴ on the same ICs.</p>
+</section>
+
+<section id="pdf">
+  <div class="col">
+    <h2>Study 1 · One-point PDFs</h2>
+    <p>How well do Zel'dovich through 4LPT reproduce the volume- and mass-weighted PDFs of the smoothed density at z = 0 on scales that have (almost) not shell-crossed? Densities are CIC-deposited on a common 256³ mesh, CIC window deconvolved, then top-hat smoothed at R<sub>s</sub> = 7, 14, 28, 42 Mpc/h (½, 1, 2, 3 R<sub>f</sub>). The volume-weighted PDF counts cells equally; the mass-weighted one weights each cell by its particle mass.</p>
+
+    <h3 id="pdf-rf">Choosing R<sub>f</sub>: less than 1% shell-crossed mass</h3>
+    <p>Each Lagrangian cube is split into 6 tetrahedra; one counts as shell-crossed once its signed volume has been ≤ 0 at any time. Pilot runs at 128³ gave N-body ever-crossed mass fractions of 1.4%, 0.53% and 0.20% for R<sub>f</sub> = 12, 14 and 16 Mpc/h. The Zel'dovich (Doroshkevich) estimate badly underpredicts this. R<sub>f</sub> = 14 Mpc/h was adopted.</p>
+  </div>
+  <figure>
+    <div class="plate"><img src="figures/shell_crossing.png" alt="Shell-crossed mass fraction versus time for N-body and 2LPT" loading="lazy"></div>
+    <figcaption><b>Figure 1.1</b> Ever shell-crossed mass fraction. At full resolution N-body reaches 0.52% (fixed) and 0.69% (paired) by z = 0, still creeping up with resolution toward ≈ 0.6–0.8%. 2LPT crosses 2.5–3× less mass because it delays pancake collapse.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3 id="pdf-res">Resolution study</h3>
+    <p>Metric: the largest relative shift of the 1, 10, 50, 90 and 99% density quantiles against the reference run. 2LPT converges to ≤ 0.01% (reference 512³) and N-body to ≲ 0.5% (reference 256³ particles, 512³ PM mesh), even at R<sub>s</sub> = ½R<sub>f</sub>. Both are invisible next to the 2LPT–N-body differences.</p>
+  </div>
+  <div class="pair">
+    <figure><div class="plate"><img src="figures/conv_2lpt_vol.png" alt="2LPT resolution convergence, volume-weighted" loading="lazy"></div><figcaption><b>1.2a</b> 2LPT, volume-weighted: quantile shift vs reference, 64³–384³.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/conv_2lpt_mass.png" alt="2LPT resolution convergence, mass-weighted" loading="lazy"></div><figcaption><b>1.2b</b> 2LPT, mass-weighted.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/conv_nbody_vol.png" alt="N-body resolution convergence, volume-weighted" loading="lazy"></div><figcaption><b>1.2c</b> N-body, volume-weighted: 64³–192³ against 256³.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/conv_nbody_mass.png" alt="N-body resolution convergence, mass-weighted" loading="lazy"></div><figcaption><b>1.2d</b> N-body, mass-weighted.</figcaption></figure>
+  </div>
+  <div class="pair">
+    <figure><div class="plate"><img src="figures/conv_nbody_numerics.png" alt="N-body numerical parameter tests" loading="lazy"></div><figcaption><b>1.3</b> N-body numerics: time steps, force mesh and start redshift. The largest effects are a 1× force mesh (3%) and 25 steps (1.2%); the fiducial choices are converged to ≤ 0.3%.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/moments_vs_resolution.png" alt="Variance, skewness and kurtosis versus resolution" loading="lazy"></div><figcaption><b>1.4</b> σ², S₃ and S₄ vs resolution: flat from 128³ (2LPT) and 192³ (N-body).</figcaption></figure>
+  </div>
+  <div class="note"><strong>A PM pitfall found in validation.</strong> With the force mesh at 2 × N<sub>part</sub>, the unperturbed lattice deposits power exactly at the mesh Nyquist frequency. The spectral (ik) gradient turns this into O(1) spurious lattice forces, and CIC deconvolution makes the lattice dynamically unstable. The 4-point finite-difference gradient vanishes at Nyquist and was used throughout.</div>
+
+  <div class="col">
+    <h3 id="pdf-2lpt">2LPT vs N-body</h3>
+    <p>The bulk agrees; the tails do not. The median matches to ≤ 0.1% and the 10–90% range to ≲ 1%, but the differences grow into the tails and toward small smoothing scales.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>R<sub>s</sub> [Mpc/h]</th><th>σ²<sub>2LPT</sub>/σ²<sub>NB</sub></th><th>S₃ 2LPT / NB</th><th>vol. 0.1% / 99.9%</th><th>mass 99% / 99.9%</th><th>central 10–90%</th></tr></thead>
+    <tbody>
+      <tr><td>7 (½R<sub>f</sub>)</td><td>0.906</td><td>5.86 / 7.23</td><td>+10.8% / −10.8%</td><td>−17.4% / −28.9%</td><td>≤ 1.3%</td></tr>
+      <tr><td>14 (R<sub>f</sub>)</td><td>0.950</td><td>4.09 / 4.40</td><td>+8.3% / −6.9%</td><td>−7.5% / −9.1%</td><td>≤ 0.8%</td></tr>
+      <tr><td>28 (2R<sub>f</sub>)</td><td>0.972</td><td>2.86 / 2.94</td><td>+2.8% / −1.7%</td><td>−1.9% / −2.3%</td><td>≤ 0.4%</td></tr>
+      <tr><td>42 (3R<sub>f</sub>)</td><td>0.981</td><td>1.98 / 1.98</td><td>+1.3% / −0.5%</td><td>−0.5% / −0.5%</td><td>≤ 0.2%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">Quantile columns: 2LPT/N-body − 1 of 1+δ<sub>R</sub> at that quantile. A positive low quantile means 2LPT voids are not empty enough; a negative high quantile means 2LPT peaks are not dense enough.</p>
+  <figure>
+    <div class="plate"><img src="figures/compare_vol.png" alt="Volume-weighted PDFs of N-body and 2LPT and their ratio" loading="lazy"></div>
+    <figcaption><b>Figure 1.5</b> Volume-weighted PDFs of log₁₀(1+δ<sub>R</sub>), <span class="nb">N-body 256³</span> vs <span class="lpt">2LPT 512³</span> (top), and the ratio for fixed amplitudes (solid) and paired phases (dashed). The shaded band, barely visible, is the N-body numerical uncertainty.</figcaption>
+  </figure>
+  <figure>
+    <div class="plate"><img src="figures/compare_mass.png" alt="Mass-weighted PDFs of N-body and 2LPT and their ratio" loading="lazy"></div>
+    <figcaption><b>Figure 1.6</b> Mass-weighted PDFs. Mass weighting emphasises the collapsing regions where 2LPT truncation matters most; the high-density deficit is correspondingly larger.</figcaption>
+  </figure>
+  <figure>
+    <div class="plate"><img src="figures/compare_quantiles.png" alt="2LPT to N-body quantile ratios" loading="lazy"></div>
+    <figcaption><b>Figure 1.7</b> 2LPT/N-body − 1 at fixed quantiles of 1+δ<sub>R</sub>. Filled: fixed amplitudes; open: paired phases, which change every difference by ≤ 1 percentage point. Error bars (mostly smaller than symbols) combine both methods' resolution uncertainties.</figcaption>
+  </figure>
+  <figure>
+    <div class="plate"><img src="figures/field_level.png" alt="Point-by-point log density difference versus N-body density" loading="lazy"></div>
+    <figcaption><b>Figure 1.8</b> Point-by-point log₁₀ρ<sub>2LPT</sub> − log₁₀ρ<sub>NB</sub> against the N-body density. The rms is 1.7%, 1.2%, 0.54% and 0.27% at R<sub>s</sub> = 7–42 and the correlation is ≥ 0.996: the PDF differences are systematic in density, not scatter. The KS distance is only 0.2–0.8%, which is why KS-type tests say "agrees" while tail quantiles do not.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3 id="pdf-orders">Zel'dovich to 4LPT</h3>
+    <p>The same linear field was evolved to z = 0 with 1LPT–4LPT. Every order is converged in resolution (≤ 0.08% volume / 0.48% mass quantile shift at R<sub>s</sub> = 7 between 192³ and 256³), and replacing the exact ΛCDM growth by D₁ⁿ shifts quantiles by ≤ 0.2–0.4%, 5–30× less than the 3LPT → 4LPT change.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>R<sub>s</sub></th><th class="l">quantity</th><th>Zel'dovich</th><th>2LPT</th><th>3LPT</th><th>4LPT</th></tr></thead>
+    <tbody>
+      <tr><td>7</td><td class="l">σ²/σ²<sub>NB</sub> − 1</td><td>−18.3%</td><td>−9.4%</td><td>−4.0%</td><td>−2.6%</td></tr>
+      <tr><td>7</td><td class="l">vol. 0.1% / 99.9%</td><td>−19.7 / −26.4%</td><td>+10.8 / −10.8%</td><td>−6.3 / −5.1%</td><td>+4.3 / −2.8%</td></tr>
+      <tr><td>7</td><td class="l">mass 99% / 99.9%</td><td>−36.6 / −50.0%</td><td>−17.4 / −28.9%</td><td>−9.1 / −18.6%</td><td>−5.4 / −13.7%</td></tr>
+      <tr class="grp"><td>14</td><td class="l">σ²/σ²<sub>NB</sub> − 1</td><td>−9.1%</td><td>−5.0%</td><td>−1.4%</td><td>−0.9%</td></tr>
+      <tr><td>14</td><td class="l">vol. 0.1% / 99.9%</td><td>−17.5 / −17.3%</td><td>+8.4 / −6.9%</td><td>−4.5 / −3.4%</td><td>+2.9 / −2.0%</td></tr>
+      <tr><td>14</td><td class="l">mass 99% / 99.9%</td><td>−19.2 / −23.0%</td><td>−7.5 / −9.1%</td><td>−3.5 / −4.2%</td><td>−1.9 / −2.4%</td></tr>
+      <tr class="grp"><td>28</td><td class="l">σ²/σ²<sub>NB</sub> − 1</td><td>−3.6%</td><td>−2.8%</td><td>−0.4%</td><td>−0.4%</td></tr>
+      <tr><td>28</td><td class="l">max |quantile shift|</td><td>9.3%</td><td>2.8%</td><td>1.1%</td><td>0.5%</td></tr>
+      <tr class="grp"><td>42</td><td class="l">σ²/σ²<sub>NB</sub> − 1</td><td>−1.5%</td><td>−1.9%</td><td>−0.2%</td><td>−0.3%</td></tr>
+      <tr><td>42</td><td class="l">max |quantile shift|</td><td>5.1%</td><td>1.3%</td><td>0.3%</td><td>0.1%</td></tr>
+    </tbody>
+  </table></div>
+  <figure>
+    <div class="plate"><img src="figures/orders_quantiles.png" alt="nLPT to N-body quantile ratios for orders 1 to 4" loading="lazy"></div>
+    <figcaption><b>Figure 1.9</b> nLPT/N-body − 1 at fixed quantiles, Zel'dovich through 4LPT (top volume-, bottom mass-weighted). Voids converge with alternating sign (−20%, +11%, −6%, +4% at 7 Mpc/h); the dense tail converges monotonically from below (−50%, −29%, −19%, −14%). Filled: fixed amplitudes; open: paired phases.</figcaption>
+  </figure>
+  <div class="pair">
+    <figure><div class="plate"><img src="figures/orders_pdf_ratio_vol.png" alt="nLPT to N-body PDF ratio, volume-weighted" loading="lazy"></div><figcaption><b>1.10a</b> PDF ratio nLPT/N-body, volume-weighted.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/orders_pdf_ratio_mass.png" alt="nLPT to N-body PDF ratio, mass-weighted" loading="lazy"></div><figcaption><b>1.10b</b> PDF ratio, mass-weighted.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/orders_moments.png" alt="Variance, skewness and kurtosis ratios by LPT order" loading="lazy"></div><figcaption><b>1.11</b> σ², S₃, S₄ relative to N-body by order. At R<sub>s</sub> = R<sub>f</sub>, 4LPT is within 2% (S₃) and 6% (S₄); the 0.3–0.4% σ² deficit left at 28–42 Mpc/h is at the level of N-body's own systematics.</figcaption></figure>
+    <figure><div class="plate"><img src="figures/orders_convergence.png" alt="Resolution convergence for each LPT order" loading="lazy"></div><figcaption><b>1.12</b> Resolution convergence of every order, 64³–256³, with de-aliasing.</figcaption></figure>
+  </div>
+  <figure>
+    <div class="plate"><img src="figures/orders_shell_crossing.png" alt="Shell-crossed mass fraction by LPT order" loading="lazy"></div>
+    <figcaption><b>Figure 1.13</b> Ever shell-crossed mass by order: 0.035%, 0.19%, 0.31%, 0.38% (1LPT → 4LPT) against 0.52% for N-body. The dense-tail residual at 4LPT sits on this collapsing mass, which no LPT order can follow past shell crossing.</figcaption>
+  </figure>
+</section>
+
+<section id="sheet">
+  <div class="col">
+    <h2>Estimator check · phase-space sheet</h2>
+    <p>Study 1 measured every PDF with a particle estimator: CIC deposit, window deconvolved. Here the same comparison is redone with the <b>phase-space sheet</b>, and every result is shown next to CIC on the <em>same</em> snapshots. The snapshots are the DiscoDJNative runs on the study-1 initial conditions: Zel'dovich to 4LPT and N-body, N = 64, 128, 256, plus the paired set at 256. CIC on them reproduces the original study-1 quantiles to 0.00% for every LPT order and ≤ 0.08% for N-body.</p>
+    <ul>
+      <li><b>Exact sheet density.</b> Every Lagrangian cube is split into 6 tetrahedra. Each tetrahedron's mass is spread uniformly over its volume and deposited into each 1.17 Mpc/h cell in proportion to the exact overlap volume, computed with <a href="https://github.com/yipihey/r3djl">R3D</a>. Mass is conserved to 10⁻¹¹.</li>
+      <li><b>Gridless mass weighting.</b> Every tetrahedron has the same mass, so an equal-weight sample over tetrahedra is mass-weighted. Unsmoothed, it samples each tetrahedron's stream density; smoothed, the smoothed sheet field at each tetrahedron's centroid.</li>
+    </ul>
+  </div>
+  <figure>
+    <div class="plate"><img src="sheet_pdf/figures/sheet_slice.png" alt="Density slice, CIC versus exact sheet" loading="lazy"></div>
+    <figcaption><b>Figure 1.14</b> A 2.3 Mpc/h slab of the unsmoothed 256³ density at N = 128, CIC (top) and exact sheet (bottom). CIC shows the particle lattice as a moiré of empty and double-filled cells in underdense regions; the sheet is smooth.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3 id="sheet-est">Sheet vs CIC</h3>
+    <p>On smoothing scales R<sub>s</sub> ≥ 7 Mpc/h the estimators agree to ≤ 0.3% at every quantile, and the nLPT/N-body ratios to ≤ 0.2 percentage points. They differ strongly only on raw cells. There CIC leaves nearly empty cells (lowest 1+δ = 0.02–0.09, against 0.18–0.28 for the sheet), which shifts the 0.1% volume quantile by 58–109%.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>R<sub>s</sub></th><th class="l">model</th><th class="l">estimator</th><th>σ²</th><th>vol 0.1%</th><th>vol 99.9%</th><th>mass 99%</th><th>mass 99.9%</th></tr></thead>
+    <tbody>
+      <tr><td>7</td><td class="l">2LPT</td><td class="l">CIC</td><td>−9.4%</td><td>+10.7%</td><td>−10.7%</td><td>−17.3%</td><td>−28.9%</td></tr>
+      <tr><td>7</td><td class="l">2LPT</td><td class="l">sheet</td><td>−9.4%</td><td>+10.7%</td><td>−10.8%</td><td>−17.3%</td><td>−28.7%</td></tr>
+      <tr><td>7</td><td class="l">4LPT</td><td class="l">CIC</td><td>−2.5%</td><td>+4.2%</td><td>−2.7%</td><td>−5.3%</td><td>−13.6%</td></tr>
+      <tr><td>7</td><td class="l">4LPT</td><td class="l">sheet</td><td>−2.5%</td><td>+4.2%</td><td>−2.9%</td><td>−5.1%</td><td>−13.6%</td></tr>
+      <tr class="grp"><td>14</td><td class="l">2LPT</td><td class="l">CIC</td><td>−4.9%</td><td>+8.3%</td><td>−6.9%</td><td>−7.5%</td><td>−9.1%</td></tr>
+      <tr><td>14</td><td class="l">2LPT</td><td class="l">sheet</td><td>−4.9%</td><td>+8.3%</td><td>−6.9%</td><td>−7.5%</td><td>−9.0%</td></tr>
+      <tr><td>14</td><td class="l">4LPT</td><td class="l">CIC</td><td>−0.9%</td><td>+2.8%</td><td>−2.0%</td><td>−1.8%</td><td>−2.4%</td></tr>
+      <tr><td>14</td><td class="l">4LPT</td><td class="l">sheet</td><td>−0.9%</td><td>+2.8%</td><td>−2.0%</td><td>−1.8%</td><td>−2.3%</td></tr>
+      <tr class="grp"><td>raw</td><td class="l">2LPT</td><td class="l">CIC</td><td>−45.9%</td><td>+18.8%</td><td>−6.9%</td><td>−34.7%</td><td>−71.9%</td></tr>
+      <tr><td>raw</td><td class="l">2LPT</td><td class="l">sheet</td><td>−56.6%</td><td>+11.9%</td><td>−6.1%</td><td>−38.7%</td><td>−74.8%</td></tr>
+      <tr><td>raw</td><td class="l">4LPT</td><td class="l">CIC</td><td>−32.1%</td><td>+6.5%</td><td>+1.7%</td><td>−11.2%</td><td>−56.3%</td></tr>
+      <tr><td>raw</td><td class="l">4LPT</td><td class="l">sheet</td><td>−43.4%</td><td>+5.0%</td><td>+2.1%</td><td>−13.5%</td><td>−59.7%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">nLPT/N-body − 1, N = 256, same snapshots; "raw" = unsmoothed 1.17 Mpc/h cells (a diagnostic outside the study-1 scales). Full tables with the paired set and every order: <code>sheet_pdf/results/tables.md</code>.</p>
+  <figure>
+    <div class="plate"><img src="sheet_pdf/figures/sheet_quantiles.png" alt="nLPT to N-body quantile ratios with both estimators" loading="lazy"></div>
+    <figcaption><b>Figure 1.15</b> nLPT/N-body − 1 at fixed quantiles with the exact sheet (filled) and CIC (open) on the same snapshots; top volume-, bottom mass-weighted; first column raw cells. From R<sub>s</sub> = 7 Mpc/h up the two estimators are indistinguishable.</figcaption>
+  </figure>
+  <div class="tabs" role="tablist" aria-label="PDF weighting" data-group="spdf">
+    <button role="tab" aria-selected="true" data-src="sheet_pdf/figures/sheet_pdfs_vol.png" data-cap="volume-weighted">volume</button>
+    <button role="tab" aria-selected="false" data-src="sheet_pdf/figures/sheet_pdfs_mass.png" data-cap="mass-weighted">mass</button>
+  </div>
+  <figure data-group="spdf">
+    <div class="plate"><img src="sheet_pdf/figures/sheet_pdfs_vol.png" alt="PDFs with both estimators" loading="lazy"></div>
+    <figcaption><b>Figure 1.16</b> PDFs of N-body, 2LPT and 4LPT with the sheet (solid) and CIC (dashed), and sheet/CIC − 1 (bottom); <span data-cap>volume-weighted</span>, N = 256.</figcaption>
+  </figure>
+  <div class="pair">
+    <figure><div class="plate"><img src="sheet_pdf/figures/sheet_estimator_diff.png" alt="Sheet to CIC quantile differences" loading="lazy"></div><figcaption><b>1.17a</b> Sheet/CIC − 1 at fixed quantiles on the same snapshot, raw cells and R<sub>s</sub> = 7 Mpc/h.</figcaption></figure>
+    <figure><div class="plate"><img src="sheet_pdf/figures/sheet_convergence.png" alt="Resolution convergence of both estimators" loading="lazy"></div><figcaption><b>1.17b</b> Largest 1–99% quantile shift against N = 256. The sheet converges much faster in raw cells and at 7 Mpc/h. At 14 Mpc/h CIC is faster, because the sheet smooths the particle field over one interparticle spacing (a variance change of 0.1–0.4% at N = 256).</figcaption></figure>
+  </div>
+
+  <div class="col">
+    <h3 id="sheet-tet">Tetrahedron mass weighting: the dense tail</h3>
+    <p>The equal-mass tetrahedra give the mass-weighted PDF without gridding the weights. Smoothed, they agree with the gridded mass weightings to ≤ 0.2 percentage points in every nLPT/N-body ratio. Unsmoothed, they resolve the tail far beyond any mesh. The N-body 99.9% mass quantile is 1+δ = 647 from the tetrahedra, against 158 from CIC cells and 209 from exact-sheet cells. The tail continues as a power law to ~10⁶: past ρ ~ 10³ the mass fraction above ρ falls as ρ⁻¹, the fold-caustic law, in every model. Only the amplitude differs, and it tracks the shell-crossed mass.</p>
+  </div>
+  <figure>
+    <div class="plate"><img src="sheet_pdf/figures/sheet_tetmass.png" alt="Tetrahedron mass-weighted tail PDF and three mass weightings" loading="lazy"></div>
+    <figcaption><b>Figure 1.18</b> Left: unsmoothed mass-weighted PDF of the tetrahedron stream density (N = 256), with the N-body cell estimators (bins with ≥ 10 cells) and the fold-caustic slope. Right: nLPT/N-body − 1 at the 99.9% mass quantile for the three mass weightings. They coincide from R<sub>s</sub> = 7 Mpc/h up.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th class="l">model</th><th>inverted</th><th>99.9%</th><th>99.99%</th><th>99.999%</th><th>99.9999%</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Zel'dovich</td><td>0.03%</td><td>30</td><td>235</td><td>2.5 × 10³</td><td>2.2 × 10⁴</td></tr>
+      <tr><td class="l">2LPT</td><td>0.19%</td><td>121</td><td>1.2 × 10³</td><td>1.2 × 10⁴</td><td>1.5 × 10⁵</td></tr>
+      <tr><td class="l">3LPT</td><td>0.30%</td><td>199</td><td>2.1 × 10³</td><td>2.1 × 10⁴</td><td>2.0 × 10⁵</td></tr>
+      <tr><td class="l">4LPT</td><td>0.36%</td><td>248</td><td>2.6 × 10³</td><td>2.8 × 10⁴</td><td>2.6 × 10⁵</td></tr>
+      <tr><td class="l">N-body</td><td>0.45%</td><td>647</td><td>1.1 × 10⁴</td><td>1.1 × 10⁵</td><td>1.2 × 10⁶</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">Mass-weighted quantiles 1 − 10⁻ᵏ of the unsmoothed tetrahedron stream density, N = 256; "inverted" is the shell-crossed mass fraction. N-body reaches about 9× the density of 2LPT, and about 4× that of 4LPT, at the same small mass fraction. The N-body 99.9% quantile converges as 303, 582, 647 for N = 64, 128, 256.</p>
+</section>
+
+<section id="cop">
+  <div class="col">
+    <h2>Study 2 · Copula: correlations with the PDF removed</h2>
+    <p>Study 1 found that the one-point PDFs differ. Here the question is whether LPT also gets the <em>spatial correlations</em> wrong once the PDF is taken out, and if so, whether the error lives in the Lagrangian field or in the displacement mapping. Everything is done on the phase-space sheet (6 Kuhn tetrahedra per Lagrangian cube, exact volumes) with DiscoDJNative.</p>
+    <ul>
+      <li><b>Mask M:</b> elements not inverted and with centroid stream count exactly 1, in both runs.</li>
+      <li><b>Values:</b> element density V<sub>q</sub>/V at R = 0; top-hat smoothed sheet density at the centroid for R = 1.5, 3, 7, 14 Mpc/h (below, near and above the interparticle spacing).</li>
+      <li><b>Gaussianization:</b> y = Φ⁻¹((rank − ½)/N) over M per run, z and R. Mass- (equal elements) and volume-weighted (exact V<sub>e</sub>) versions, never mixed.</li>
+      <li><b>Resolution:</b> N = 64, 128, 256 particles per dimension; sheet refinement levels 0 and 1, tracked separately.</li>
+    </ul>
+
+    <h3 id="cop-val">Validation (step 1)</h3>
+    <div class="tbl"><table>
+      <thead><tr><th class="l">test</th><th class="l">criterion</th><th class="l">result</th></tr></thead>
+      <tbody>
+        <tr><td class="l">1a · z<sub>init</sub> element by element</td><td class="l">Pearson ≥ 0.999, rms Δy ≤ 0.05</td><td class="l"><span class="pill ok">pass</span> 4LPT: 1 − r ≈ 10⁻⁹</td></tr>
+        <tr><td class="l">1b · monotone transforms</td><td class="l">max |Δξ| ≤ 10⁻¹⁰</td><td class="l"><span class="pill ok">pass</span> Δξ = 0 exactly</td></tr>
+        <tr><td class="l">1c · noise floors</td><td class="l">reported</td><td class="l">tie seed 0; refinement 2.5 × 10⁻² (N = 64), 1.0 × 10⁻² (N = 128)</td></tr>
+        <tr><td class="l">1d · Zel'dovich vs Doroshkevich | det J &gt; 0</td><td class="l">within 3σ at every quantile</td><td class="l"><span class="pill warn">failed at 8 seeds</span> <span class="pill ok">pass at 32</span></td></tr>
+      </tbody>
+    </table></div>
+    <p>1a is trivial for 2LPT: the N-body starts from 2LPT at z = 24, so their z<sub>init</sub> fields are identical. Test 1d first failed at 3.75σ with 8 band seeds. An independent reimplementation, σ, isotropy and kurtosis checks found no bug, and the criterion itself had a 30–60% false-alarm rate. With 32 seeds and the criterion unchanged, the offset halved as noise would and every quantile passed.</p>
+  </div>
+  <div class="pair">
+    <figure><div class="plate"><img src="copula/figures/step1_d_doroshkevich.png" alt="Zel'dovich sheet quantiles vs Doroshkevich theory" loading="lazy"></div><figcaption><b>2.1</b> Test 1d: Zel'dovich single-stream quantiles of log₁₀(V<sub>q</sub>/V) against the Doroshkevich distribution conditioned on det J &gt; 0, with the 32-seed band.</figcaption></figure>
+    <figure><div class="plate"><img src="copula/figures/step1_c_refinement.png" alt="Sheet refinement noise floor" loading="lazy"></div><figcaption><b>2.2</b> Test 1c: change of ξ<sub>y</sub> between sheet refinement levels 1 and 0, the noise floor that drops with N. Conditional on the single-stream mask.</figcaption></figure>
+  </div>
+
+  <div class="col">
+    <h3 id="cop-lagr">Lagrangian copula (step 2)</h3>
+    <p>The Gaussianized fields are correlated in Lagrangian space, where both runs share the same elements. At 20–30 Mpc/h LPT copulas are slightly too correlated; volume-weighted, they are not correlated enough at small separations, with a sign change near 15 Mpc/h. The pattern barely changes with R, so it is carried by the large-scale field.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>z</th><th class="l">weighting</th><th>2LPT: min D (r)</th><th>rel. to ξ<sub>y</sub></th><th>4LPT: min D (r)</th><th>rel. to ξ<sub>y</sub></th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td class="l">mass</td><td>−5.7e-3 (21)</td><td>−1.5%</td><td>−1.0e-3 (21)</td><td>−0.27%</td></tr>
+      <tr><td>0</td><td class="l">volume</td><td>−5.7e-3 (29)</td><td>−3.1%</td><td>−1.4e-3 (24)</td><td>−0.52%</td></tr>
+      <tr><td>1</td><td class="l">mass</td><td>−2.0e-3 (24)</td><td>−0.70%</td><td>−1.0e-4 (24)</td><td>−0.04%</td></tr>
+      <tr><td>1</td><td class="l">volume</td><td>−2.1e-3 (24)</td><td>−0.76%</td><td>−1.6e-4 (24)</td><td>−0.06%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">D = ξ<sub>y</sub>[NB] − ξ<sub>y</sub>[LPT] at R = 7 Mpc/h, N = 256; r in Mpc/h. Converged at |Δq| ≥ 4.3 Mpc/h in all four cases. Conditional on the single-stream mask.</p>
+
+  <div class="tabs" role="tablist" aria-label="Lagrangian correlation variant" data-group="xi">
+    <button role="tab" aria-selected="true" data-src="copula/figures/steps_2_xi_mass_z0.png" data-cap="mass-weighted, z = 0">mass · z = 0</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_2_xi_vol_z0.png" data-cap="volume-weighted, z = 0">volume · z = 0</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_2_xi_mass_z1.png" data-cap="mass-weighted, z = 1">mass · z = 1</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_2_xi_vol_z1.png" data-cap="volume-weighted, z = 1">volume · z = 1</button>
+  </div>
+  <figure data-group="xi">
+    <div class="plate"><img src="copula/figures/steps_2_xi_mass_z0.png" alt="Lagrangian copula correlation function and differences" loading="lazy"></div>
+    <figcaption><b>Figure 2.3</b> Rank-Gaussianized ξ<sub>y</sub> in Lagrangian space, N-body vs 2LPT and 4LPT (top), and N-body − LPT (bottom); <span data-cap>mass-weighted, z = 0</span>; N = 256. Grey: not converged. Conditional on the single-stream mask (both runs); not an unconditional two-point statistic.</figcaption>
+  </figure>
+
+  <div class="tabs" role="tablist" aria-label="Cross-correlation variant" data-group="rk">
+    <button role="tab" aria-selected="true" data-src="copula/figures/steps_2_rk_mass_z0.png" data-cap="mass-weighted, z = 0">mass · z = 0</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_2_rk_vol_z0.png" data-cap="volume-weighted, z = 0">volume · z = 0</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_2_rk_mass_z1.png" data-cap="mass-weighted, z = 1">mass · z = 1</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_2_rk_vol_z1.png" data-cap="volume-weighted, z = 1">volume · z = 1</button>
+  </div>
+  <figure data-group="rk">
+    <div class="plate"><img src="copula/figures/steps_2_rk_mass_z0.png" alt="Cross-correlation coefficient of LPT and N-body score fields" loading="lazy"></div>
+    <figcaption><b>Figure 2.4</b> 1 − r(k) between the LPT and N-body Gaussianized fields, <span data-cap>mass-weighted, z = 0</span>. For 4LPT the fields are phase-aligned to ≲ 10⁻⁴; for 2LPT at z = 0 the decorrelation reaches 1.5% (mass) at k ≈ 0.3–0.7 h/Mpc. Grey: not converged. Conditional on the single-stream mask.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3 id="cop-ranks">Element-paired ranks (step 3)</h3>
+    <p>Pairing each element's LPT and N-body scores asks whether one is a monotone function of the other. It is, to the precision of the estimator: the non-monotone part η² − R²<sub>iso</sub> is exactly zero for N ≥ 128. What remains, 1 − Spearman, drops up to 10× from N = 128 to 256 and is equal or larger after sheet refinement. It measures N-body small-scale discreteness near the interparticle scale, not LPT. The one stable LPT rank error is 2LPT at z = 0, R ≥ 7 Mpc/h: 1 − ρ ≈ 1.3 × 10⁻⁴.</p>
+  </div>
+  <div class="pair">
+    <figure><div class="plate"><img src="copula/figures/steps_3_ranks_mass.png" alt="1 minus Spearman and non-monotone part versus smoothing, mass-weighted" loading="lazy"></div><figcaption><b>2.5a</b> Mass-weighted. Left 1 − Spearman, right η² − R²<sub>iso</sub>; faint lines are lower N; points at 10⁻⁸ are exact zeros. Conditional on the single-stream mask.</figcaption></figure>
+    <figure><div class="plate"><img src="copula/figures/steps_3_ranks_vol.png" alt="1 minus Spearman and non-monotone part versus smoothing, volume-weighted" loading="lazy"></div><figcaption><b>2.5b</b> Volume-weighted.</figcaption></figure>
+  </div>
+
+  <div class="col">
+    <h3 id="cop-attr">Eulerian copula and attribution (steps 4–5)</h3>
+    <p>In Eulerian space (256³ mesh, nodes single-stream in both runs, 99.96–99.98% of the volume) the correlations use a mask-window correction, ξ = corr(wEy)/corr(wE). The difference is then split in two ways, each in two orderings, and both orderings are always reported because the split is not unique.</p>
+    <ol class="steps">
+      <li><div><b>δ space.</b> T = ξ<sub>δ</sub>[NB] − ξ<sub>δ</sub>[LPT] into a <em>marginal</em> part (LPT ranks given the N-body PDF) and a <em>copula</em> part, marginal first (A) or copula first (B).</div></li>
+      <li><div><b>Score space.</b> Carry each run's Lagrangian scores through either run's displacement map (label transport Z<sub>ab</sub>). The score-space difference splits into a <em>Lagrangian-copula</em> part, a <em>mapping</em> part, and a residual from Eulerian re-smoothing, in orderings 1 and 2.</div></li>
+    </ol>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>z</th><th class="l">pair</th><th>R</th><th>T</th><th>marginal A / B</th><th>copula A / B</th><th>Dy</th><th>Lagr. copula 1 / 2</th><th>mapping 1 / 2</th><th>residual</th></tr></thead>
+    <tbody>
+      <tr><td>0</td><td class="l">2LPT</td><td>0</td><td>+4.2e-3</td><td>2.27 / 2.15</td><td>−1.27 / −1.15</td><td>−5.0e-3</td><td>1.15 / 1.08</td><td>−0.25 / −0.18</td><td>0.11</td></tr>
+      <tr><td>0</td><td class="l">2LPT</td><td>3</td><td>+7.6e-3</td><td>1.63 / 1.55</td><td>−0.63 / −0.55</td><td>−4.3e-3</td><td>1.04 / 1.03</td><td>−0.21 / −0.21</td><td>0.17</td></tr>
+      <tr><td>0</td><td class="l">2LPT</td><td>7</td><td>+1.1e-2</td><td>1.21 / 1.19</td><td>−0.21 / −0.19</td><td>−3.3e-3</td><td>1.04 / 1.04</td><td>−0.16 / −0.16</td><td>0.12</td></tr>
+      <tr><td>0</td><td class="l">2LPT</td><td>14</td><td>+6.8e-3</td><td>1.09 / 1.08</td><td>−0.09 / −0.08</td><td>−2.1e-3</td><td>1.20 / 1.19</td><td>−0.20 / −0.19</td><td>0.01</td></tr>
+      <tr><td>0</td><td class="l">4LPT</td><td>7</td><td>+2.9e-3</td><td>1.17 / 1.19</td><td>−0.17 / −0.19</td><td>−6.7e-4</td><td>1.03 / 1.03</td><td>−0.34 / −0.34</td><td>0.31</td></tr>
+      <tr><td>0</td><td class="l">4LPT</td><td>14</td><td>+2.0e-3</td><td>1.08 / 1.08</td><td>−0.08 / −0.08</td><td>−4.3e-4</td><td>1.15 / 1.15</td><td>−0.24 / −0.23</td><td>0.09</td></tr>
+      <tr class="grp"><td>1</td><td class="l">2LPT</td><td>3</td><td>+2.6e-3</td><td>1.12 / 1.11</td><td>−0.12 / −0.11</td><td>−1.3e-3</td><td>0.93 / 0.93</td><td>−0.02 / −0.02</td><td>0.09</td></tr>
+      <tr><td>1</td><td class="l">2LPT</td><td>7</td><td>+2.3e-3</td><td>1.06 / 1.06</td><td>−0.06 / −0.06</td><td>−9.9e-4</td><td>0.98 / 0.98</td><td>−0.02 / −0.02</td><td>0.04</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">Shares of T (δ space) and Dy (score space) at r ≈ 10 Mpc/h, volume-weighted, converged, N = 256. At R = 0 the marginal overshoots and the copula compensates: read it as strong cancellation, not a clean split. Conditional on the single-stream mask.</p>
+
+  <div class="tabs" role="tablist" aria-label="Attribution variant" data-group="at">
+    <button role="tab" aria-selected="true" data-src="copula/figures/steps_45_attrib_vol_z0.png" data-cap="volume-weighted, z = 0">volume · z = 0</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_45_attrib_vol_z1.png" data-cap="volume-weighted, z = 1">volume · z = 1</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_45_attrib_mass_z0.png" data-cap="mass-weighted, z = 0 (not converged in N)">mass · z = 0</button>
+    <button role="tab" aria-selected="false" data-src="copula/figures/steps_45_attrib_mass_z1.png" data-cap="mass-weighted, z = 1 (not converged in N)">mass · z = 1</button>
+  </div>
+  <figure data-group="at">
+    <div class="plate"><img src="copula/figures/steps_45_attrib_vol_z0.png" alt="Attribution of Eulerian correlation differences" loading="lazy"></div>
+    <figcaption><b>Figure 2.6</b> Top: δ-space total and marginal / copula parts, orderings A (dark) and B (light). Bottom: score-space total and Lagrangian-copula / mapping / residual parts, orderings 1 and 2. Solid 4LPT, dotted 2LPT; <span data-cap>volume-weighted, z = 0</span>; N = 256; grey = not converged. Conditional on the single-stream mask (both runs); not an unconditional two-point statistic.</figcaption>
+  </figure>
+  <div class="note"><strong>Mass-weighted Eulerian statistics are not converged.</strong> Their node weights are the point-sampled sheet density, which near caustics depends on resolution: the 2LPT Δξ<sub>δ</sub> at R = 7 and 7 Mpc/h separation is 0.087 at N = 256 against 0.158 at N = 128. They are shown for completeness and not interpreted.</div>
+
+  <div class="col">
+    <h3 id="cop-dev">Deviations from the protocol</h3>
+    <ol class="steps">
+      <li><div><b>Test 1d band</b> enlarged from 8 to 32 seeds, criterion unchanged.</div></li>
+      <li><div><b>No N = 256 at refinement level 1:</b> 1.3 × 10⁸ elements need about 20 GB and more than 15 GB RAM. Refinement convergence is measured at N = 128 and assumed to hold at N = 256.</div></li>
+      <li><div><b>Eulerian analysis mesh 256³</b> instead of 512³ after an out-of-memory failure, so Eulerian R = 1.5 Mpc/h is mesh-limited.</div></li>
+      <li><div><b>Convergence criterion revised after seeing data.</b> The pre-set tolerances were larger than the LPT–N-body differences, so they could not detect anything. Convergence now tests the differences themselves (25% of their local amplitude plus a measured large-scale noise floor), changed after the level-0 z = 0 runs and before any refinement result. The pre-set results are still reported in the tables.</div></li>
+    </ol>
+  </div>
+</section>
+
+<section id="code" class="col">
+  <h2>DiscoDJNative: the Julia engine</h2>
+  <p>Study 2 prompted a faithful port of DISCO-DJ's JAX <code>run_nbody</code> into DiscoDJNative, written with KernelAbstractions.jl so the same kernels target CPU, CUDA and Metal, and differentiable through ChainRulesCore/Zygote.</p>
+  <div class="tbl"><table>
+    <thead><tr><th class="l">component</th><th class="l">what it covers</th><th>vs JAX DISCO-DJ</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Time tables</td><td class="l">growth D₁–D₃, superconformal time, BullFrog coefficients</td><td>4 × 10⁻¹⁵</td></tr>
+      <tr><td class="l">LPT ICs</td><td class="l">nLPT with 3/2-rule de-aliasing</td><td>5 × 10⁻¹⁶</td></tr>
+      <tr><td class="l">PM forces</td><td class="l">CIC/TSC/PCS, gradient and Laplace kernels, interlacing, sheet resampling</td><td>1.2 × 10⁻¹⁴</td></tr>
+      <tr><td class="l">Full runs</td><td class="l">BullFrog, FastPM, symplectic; 12 configurations</td><td>3 × 10⁻¹⁴</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li><b>Faster nLPT:</b> fused KernelAbstractions source kernels with hand-written adjoints. 4LPT at 64³ went from 8.6 s to 1.6 s; gradients agree with the lean path to 4 × 10⁻¹⁶ and with finite differences to 10⁻¹⁰.</li>
+    <li><b>Faster PM step:</b> a reusable solver with a combined force multiplier, planned FFTs, a real-space finite-difference stencil and fused gathers. One step at 128³ went from 3.6 s to 0.82 s (Float64) or 0.65 s (Float32).</li>
+    <li><b>Phase-space sheet:</b> periodic tetrahedral elements, stream counting by point location, sheet density on a mesh, and element location for Eulerian nodes.</li>
+    <li><b>Upstream bug:</b> DISCO-DJ's linear sheet resampling uses a wrong index offset; the port uses the corrected version, and the parity reference was produced with a patched JAX build.</li>
+  </ul>
+</section>
+
+<section id="limits" class="col">
+  <h2>Limitations</h2>
+  <ul>
+    <li>One box (300 Mpc/h ≈ 21 R<sub>f</sub>) and one filter scale. At 42 Mpc/h the box holds only about 90 independent spheres, so PDF shapes there are realisation-specific; the ratios between methods are not.</li>
+    <li>Study 1 has a paired-phase check; Study 2 uses one fixed-amplitude realisation.</li>
+    <li>The N-body is PM only (force resolution R<sub>f</sub>/24 at the top resolution). The shell-crossed fraction is its most resolution-sensitive output and is still creeping up.</li>
+    <li>The 4th-order term uses EdS time dependence; the measured EdS-vs-exact shifts at 2nd and 3rd order (≤ 0.2%) bound the error.</li>
+    <li>Study 2 is conditional on the single-stream mask, which excludes exactly the 0.8% of elements where LPT and N-body differ most, and its element-level rank statistics bound the LPT error rather than measure it (except 2LPT, z = 0, R ≥ 7).</li>
+  </ul>
+</section>
+
+<section id="repro" class="col">
+  <h2>Reproduce</h2>
+  <pre>cd studies/lpt_pdf
+python3 test_nlpt.py          # nLPT validation (spherical collapse, Cauchy invariants)
+./queue.sh                    # Study 1: 2LPT + N-body, ~5 h on 4 cores
+./queue_nlpt.sh               # Study 1: Zel'dovich..4LPT, ~1 h
+LPTPDF_RESULTS=results LPTPDF_FIGURES=figures python3 analyze.py
+
+cd copula
+./make_snapshots.sh           # Study 2: DiscoDJNative LPT + run_nbody snapshots
+./run_all.sh                  # step 1, gate on its pass/fail tests, then steps 2-5 (resumable)</pre>
+  <p>Details: <code>studies/lpt_pdf/README.md</code>, <code>copula/README.md</code> and <code>copula/report.md</code>. Configurations and seeds are logged in every result file.</p>
+</section>
+
+<footer>Generated from the committed results in <code>studies/lpt_pdf/results</code> and <code>studies/lpt_pdf/copula/results</code> of DiscoDJ.jl.</footer>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('.tabs').forEach(function (bar) {
+  var fig = document.querySelector('figure[data-group="' + bar.dataset.group + '"]');
+  if (!fig) return;
+  var img = fig.querySelector('img'), cap = fig.querySelector('[data-cap]');
+  var buttons = Array.prototype.slice.call(bar.querySelectorAll('button'));
+  buttons.forEach(function (b, i) {
+    b.addEventListener('click', function () {
+      buttons.forEach(function (o) { o.setAttribute('aria-selected', String(o === b)); });
+      img.src = b.dataset.src;
+      if (cap) cap.textContent = b.dataset.cap;
+    });
+    b.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var n = buttons[(i + (e.key === 'ArrowRight' ? 1 : buttons.length - 1)) % buttons.length];
+      n.focus(); n.click();
+    });
+  });
+});
+</script>
+
+</body>
+</html>
