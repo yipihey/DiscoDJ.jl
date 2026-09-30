@@ -49,7 +49,7 @@ def study1(model, R, paired=False):
     """Original study-1 CIC statistics (numpy snapshots, KDK PM) from its stats cache."""
     t = S1_TAGS[model] + ("_paired" if paired else "")
     p = os.path.join(C.SCRATCH, t + "_stats.npz")
-    if not os.path.exists(p):
+    if R == 0 or not os.path.exists(p):
         return None
     z = np.load(p)
     return {k: z[f"R{R:g}_{k}"] for k in ("qV", "qM", "var", "S3", "S4")}
@@ -70,7 +70,9 @@ def main():
          "top-hat R_s; volume weighting = cells equally, mass weighting = each cell by its deposited mass.", ""]
 
     # ---- 0. sanity -------------------------------------------------------------------------
-    L += ["## Estimator sanity (N = 256)", "",
+    L += ["R_s = 0 denotes the raw 1.17 Mpc/h cells (no smoothing, no window deconvolution), a diagnostic "
+          "outside the study-1 set R_s = 7–42 Mpc/h.", "",
+          "## Estimator sanity (N = 256)", "",
           "| model | estimator | mean ρ (raw) | min ρ (raw) | min ρ_R, R_s = 7 | cells ρ_R ≤ 0, R_s = 7 |",
           "|---|---|---:|---:|---:|---:|"]
     for m in models:
@@ -121,7 +123,7 @@ def main():
           "| model | R_s | estimator | N = 64 (V / M) | N = 128 (V / M) | 0.1% / 99.9% at N = 128 (V) |",
           "|---|---:|---|---:|---:|---:|"]
     for m in models:
-        for R in (7.0, 14.0):
+        for R in (0.0, 7.0, 14.0):
             for e in P.EST:
                 ref = get(R_, f"{m}_N256", e, R)
                 cells = []; ext = ""
@@ -194,7 +196,8 @@ def figures(S, R_, models):
                     r = np.array(a["pdf" + w]) / np.array(b["pdf" + w]) - 1
                 ok = np.array(b["pdf" + w]) > 1e-3
                 ax[1, j].plot(xc[ok], r[ok], color=C_ORD[m], lw=1.3)
-            ax[0, j].set_ylim(1e-3, None); ax[0, j].set_title(f"R_s = {R:g} Mpc/h")
+            ax[0, j].set_ylim(1e-3, None)
+            ax[0, j].set_title(f"R_s = {R:g} Mpc/h" if R > 0 else "raw 1.17 Mpc/h cells")
             ax[1, j].axhline(0, color=INK, lw=0.6); ax[1, j].set_ylim(-0.3, 0.3)
             ax[1, j].set_xlabel("log₁₀(1+δ_R)")
             lo = xc[np.array(get(R_, "nbody_N256", "sheet", R)["pdf" + w]) > 1e-3]
@@ -217,8 +220,9 @@ def figures(S, R_, models):
                                   label=(f"{LBL[m]} {e}" if (i == 0 and j == 0) else None))
             ax[i, j].axhline(0, color=INK, lw=0.6)
             ax[i, j].set_xticks(x); ax[i, j].set_xticklabels(QLAB, rotation=45, fontsize=7)
-            ax[i, j].set_title(f"R_s = {R:g} Mpc/h ({'volume' if w == 'V' else 'mass'})", fontsize=9)
-            ax[i, j].set_ylim(-55, 25)
+            ax[i, j].set_title((f"R_s = {R:g} Mpc/h" if R > 0 else "raw cells") +
+                               f" ({'volume' if w == 'V' else 'mass'})", fontsize=9)
+            ax[i, j].set_ylim(-80, 60)
         ax[i, 0].set_ylabel("nLPT / N-body − 1 [%]")
     ax[0, 0].legend(fontsize=6, ncol=2)
     fig.text(0.5, -0.01, "filled, solid: phase-space sheet (exact) · open, dashed: CIC · same snapshots",
@@ -229,22 +233,23 @@ def figures(S, R_, models):
     # estimator difference per model: sheet / CIC - 1 at quantiles, R_s = 7 and 14
     fig, ax = plt.subplots(2, 2, figsize=(8.4, 6), sharey="row")
     for i, w in enumerate(("V", "M")):
-        for j, R in enumerate((7.0, 14.0)):
+        for j, R in enumerate((0.0, 7.0)):
             for m in models:
                 a, b = get(R_, f"{m}_N256", "sheet", R), get(R_, f"{m}_N256", "cic", R)
                 ax[i, j].plot(x, 100 * (np.array(a["q" + w]) / np.array(b["q" + w]) - 1), "o-",
                               color=C_ORD[m], ms=4, lw=1.2, label=LBL[m] if (i == 0 and j == 0) else None)
             ax[i, j].axhline(0, color=INK, lw=0.6)
             ax[i, j].set_xticks(x); ax[i, j].set_xticklabels(QLAB, rotation=45, fontsize=7)
-            ax[i, j].set_title(f"R_s = {R:g} Mpc/h ({'volume' if w == 'V' else 'mass'})", fontsize=9)
+            ax[i, j].set_title((f"R_s = {R:g} Mpc/h" if R > 0 else "raw 1.17 Mpc/h cells") +
+                               f" ({'volume' if w == 'V' else 'mass'})", fontsize=9)
         ax[i, 0].set_ylabel("sheet / CIC − 1 [%]")
     ax[0, 0].legend(fontsize=7)
     fig.tight_layout()
     save(fig, "sheet_estimator_diff")
 
     # convergence with particle number, both estimators
-    fig, ax = plt.subplots(1, 2, figsize=(8.4, 3.2))
-    for j, R in enumerate((7.0, 14.0)):
+    fig, ax = plt.subplots(1, 3, figsize=(11.5, 3.2))
+    for j, R in enumerate((0.0, 7.0, 14.0)):
         for m in ("nbody", "2lpt", "4lpt"):
             for e, ls, mk in (("sheet", "-", "o"), ("cic", "--", "s")):
                 ref = get(R_, f"{m}_N256", e, R)
@@ -255,7 +260,7 @@ def figures(S, R_, models):
                 ax[j].semilogy([64, 128], ys, ls=ls, marker=mk, color=C_ORD[m], ms=4,
                                mfc=C_ORD[m] if e == "sheet" else "white", label=f"{LBL[m]} {e}" if j == 0 else None)
         ax[j].set_xticks([64, 128]); ax[j].set_xlabel("N (particles per dimension)")
-        ax[j].set_title(f"R_s = {R:g} Mpc/h, volume-weighted", fontsize=9)
+        ax[j].set_title((f"R_s = {R:g} Mpc/h" if R > 0 else "raw 1.17 Mpc/h cells") + ", volume-weighted", fontsize=9)
     ax[0].set_ylabel("max |quantile shift| vs N = 256 [%]"); ax[0].legend(fontsize=6.5, ncol=2)
     fig.tight_layout()
     save(fig, "sheet_convergence")

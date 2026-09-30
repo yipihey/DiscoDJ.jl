@@ -14,7 +14,8 @@ Estimators (both on C.N_ANA^3 = 256^3 cells of 1.17 Mpc/h, rho-bar = 1):
          sheet_deposit.jl); the pixel (cell-average) window is deconvolved
 Smoothing, weighting and statistics are exactly those of study 1 (analyze.py): real-space top hat
 R_s = 7, 14, 28, 42 Mpc/h; volume weighting = cells equally; mass weighting = each cell by its
-unsmoothed deposited mass.
+unsmoothed deposited mass.  R_s = 0 is added as a diagnostic: the raw 1.17 Mpc/h cell values
+(no smoothing, no window deconvolution), where the two estimators differ most.
 """
 import json, os, subprocess, sys, time
 import numpy as np
@@ -40,6 +41,7 @@ QS = np.array([1e-3, 1e-2, 0.1, 0.5, 0.9, 0.99, 0.999])       # as study 1
 FINEBINS = np.linspace(np.log10(0.05), np.log10(20.0), 1201)  # as study 1
 LOGBINS = core.LOGBINS
 EST = ("cic", "sheet")
+RS = [0.0] + list(C.R_SMOOTH)          # 0 = raw cells (diagnostic)
 
 
 def psi_path(tag):
@@ -85,7 +87,9 @@ def smoothed(rho, est):
     win = core.cic_window(ng, C.L) if est == "cic" else pixel_window(ng, C.L)
     kx, ky, kz = core.kgrid(ng, C.L, np.float64)
     k = np.sqrt(kx**2 + ky**2 + kz**2)
-    return {R: core.irfftn(rk * (W_TH(k * R) / win), ng).astype(np.float32) for R in C.R_SMOOTH}
+    out = {0.0: rho.astype(np.float32)}
+    out.update({R: core.irfftn(rk * (W_TH(k * R) / win), ng).astype(np.float32) for R in C.R_SMOOTH})
+    return out
 
 
 def wquantile(v, w, q):
@@ -124,7 +128,7 @@ def main():
                 print(f"skip {tag}: no snapshot", flush=True); continue
             deposit(tag)
     elif cmd == "stats":
-        res = dict(QS=QS.tolist(), R=C.R_SMOOTH, FINEBINS=FINEBINS.tolist(), LOGBINS=LOGBINS.tolist(),
+        res = dict(QS=QS.tolist(), R=RS, FINEBINS=FINEBINS.tolist(), LOGBINS=LOGBINS.tolist(),
                    N_ANA=C.N_ANA, L=C.L, runs={})
         for tag in TAGS:
             for est in EST:
