@@ -13,7 +13,8 @@ for N in 64 128 256; do
   B=$(python3 snapshots.py fphi $N)
   $JL djn_snapshots.jl $B $N $S 3lpt
 done
-if [ ! -f $S/psi_nbody_N256_z0_paired.npy ]; then
-  B=$(python3 snapshots.py fphi 256 --paired)
-  $JL djn_snapshots.jl $B 256 $S 1lpt,2lpt,3lpt,4lpt,nbody _paired
-fi
+# paired set at N = 256: LPT orders and N-body in separate processes, lean nLPT kernels (15 GB)
+B=$(python3 snapshots.py fphi 256 --paired)
+[ -f $S/psi_3lpt_N256_z0_paired.npy ] || DJN_MODE=lean $JL djn_snapshots.jl $B 256 $S 1lpt,2lpt,3lpt _paired
+[ -f $S/psi_4lpt_N256_z0_paired.npy ] || DJN_MODE=lean $JL djn_snapshots.jl $B 256 $S 4lpt _paired
+[ -f $S/psi_nbody_N256_z0_paired.npy ] || DJN_MODE=lean $JL djn_snapshots.jl $B 256 $S nbody _paired

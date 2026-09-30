@@ -6,6 +6,7 @@
 #   fphi_base  written by `python snapshots.py fphi N` (<base>_re.npy, <base>_im.npy)
 #   models     comma list of 1lpt,2lpt,3lpt,4lpt,nbody
 #   env DJN_ZLIST=0,1  restricts the snapshot redshifts (default: config.json z_list)
+#   env DJN_MODE=lean  memory-lean nLPT kernels (default fast)
 # Writes psi_<model>_N<N>_z<z>[_seedS].npy (numpy (3,N,N,N) float64, x = q + psi) for every z in
 # config.json, and a JSON log of the settings next to them.
 using DiscoDJNative, JSON3
@@ -23,8 +24,11 @@ function main(args)
     fphi = permutedims(read_npy(base * "_re.npy") .+ im .* read_npy(base * "_im.npy"), (3, 2, 1))
     t0 = time()
     need_eds = any(m -> m == "4lpt", models)
-    shx = compute_core_exact(fphi, nlpt_kernels(N, L); n_order=3)        # exact growth ≤ 3rd order
-    she = need_eds ? compute_core(fphi, nlpt_kernels(N, L); n_order=4) : nothing
+    # DJN_MODE=lean selects the memory-lean nLPT path (same result; needed for N = 256 in 15 GB)
+    mode = Symbol(get(ENV, "DJN_MODE", "fast"))
+    ox = any(m -> m in ("3lpt", "4lpt"), models) ? 3 : 2
+    shx = compute_core_exact(fphi, nlpt_kernels(N, L); n_order=ox, mode=mode)   # exact growth ≤ 3rd order
+    she = need_eds ? compute_core(fphi, nlpt_kernels(N, L); n_order=4, mode=mode) : nothing
     println("nLPT shapes N=$N: $(round(time() - t0, digits=1)) s"); flush(stdout)
     D(a) = DiscoDJNative._Dplus(c, a)
     g3(a) = [DiscoDJNative._jinterp(a, c._a_table, t) for t in (c._D3a_table, c._D3b_table, c._D3c_table)]
@@ -47,6 +51,7 @@ function main(args)
         end
         println("$m N=$N saved"); flush(stdout)
     end
+    she = nothing; GC.gc()
     if "nbody" in models
         nb = cfg.nbody_djn
         # BullFrog in D-time, a grid uniform in D from a_initial to 1 with every snapshot a as a node
