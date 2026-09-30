@@ -55,6 +55,16 @@ def study1(model, R, paired=False):
     return {k: z[f"R{R:g}_{k}"] for k in ("qV", "qM", "var", "S3", "S4")}
 
 
+def load_tet():
+    p = os.path.join(RES, "tetmass.json")
+    return json.load(open(p)) if os.path.exists(p) else None
+
+
+def tetq(T, tag, R):
+    g = T.get(tag, {}).get(f"R{R:g}")
+    return None if g is None else np.array(g["qM"])
+
+
 def pct(x):
     return f"{100 * x:+.1f}%"
 
@@ -157,6 +167,62 @@ def main():
             L.append(f"| {LBL[m]} | {R:g} | {100 * dv:.2f}% | {100 * dm:.2f}% | {pct(g['var'] / float(s1['var']) - 1)} |")
     L.append("")
 
+    # ---- 5. gridless mass weighting from the tetrahedra -------------------------------------
+    T = load_tet()
+    if T:
+        summ["tet"] = {}
+        L += ["## Mass-weighted PDFs from the tetrahedra (no gridded weights)", "",
+              "Every tetrahedron has mass Δq³/6, so an equal-weight sample over tetrahedra is mass-weighted. "
+              "R_s = 0: stream density (Δq³/6)/|V_T| of each tetrahedron (unsmoothed, resolved to the tetrahedron "
+              "scale). R_s > 0: the smoothed exact-sheet field at each tetrahedron centroid. "
+              "Compared with the gridded mass weightings (each 1.17 Mpc/h cell weighted by its deposited mass).", "",
+              "### Estimators on the same snapshot (N = 256): tet / CIC-cell − 1 and sheet-cell / CIC-cell − 1 of the mass-weighted quantiles", "",
+              "| model | R_s | weighting | " + " | ".join(QLAB) + " |", "|---|---:|---|" + "---:|" * len(QLAB)]
+        for m in models:
+            for R in Rs:
+                t = tetq(T, f"{m}_N256", R); c = get(R_, f"{m}_N256", "cic", R); sh = get(R_, f"{m}_N256", "sheet", R)
+                if t is None:
+                    continue
+                for lab, arr in (("tetrahedra", t), ("sheet cells", np.array(sh["qM"]))):
+                    d = arr / np.array(c["qM"]) - 1
+                    summ["tet"][f"est|{m}|R{R:g}|{lab}"] = d.tolist()
+                    L.append(f"| {LBL[m]} | {R:g} | {lab} | " + " | ".join(pct(x) for x in d) + " |")
+        L += ["", "### nLPT / N-body − 1 of the mass-weighted quantiles, three weightings (N = 256)", "",
+              "| R_s | model | weighting | 50% | 90% | 99% | 99.9% |", "|---:|---|---|---:|---:|---:|---:|"]
+        for R in Rs:
+            for m in [x for x in models if x != "nbody"]:
+                for lab, suf in (("tetrahedra", ""), ("tetrahedra (paired)", "_paired")):
+                    a_, b_ = tetq(T, f"{m}_N256{suf}", R), tetq(T, f"nbody_N256{suf}", R)
+                    if a_ is None or b_ is None:
+                        continue
+                    d = a_ / b_ - 1
+                    summ["tet"][f"vsnb|{m}|R{R:g}|{lab}"] = d.tolist()
+                    L.append(f"| {R:g} | {LBL[m]} | {lab} | {pct(d[3])} | {pct(d[4])} | {pct(d[5])} | {pct(d[6])} |")
+                for e in ("sheet", "cic"):
+                    a_, b_ = get(R_, f"{m}_N256", e, R), get(R_, "nbody_N256", e, R)
+                    d = np.array(a_["qM"]) / np.array(b_["qM"]) - 1
+                    L.append(f"| {R:g} | {LBL[m]} | {e} cells | {pct(d[3])} | {pct(d[4])} | {pct(d[5])} | {pct(d[6])} |")
+            L.append("")
+        L += ["### Convergence of the tetrahedron mass weighting", "",
+              "Largest |shift| of the 1–99% mass-weighted quantiles against N = 256; and the 99.9% quantile shift.", "",
+              "| model | R_s | N = 64 | N = 128 | 99.9% at N = 64 / 128 |", "|---|---:|---:|---:|---:|"]
+        for m in models:
+            for R in Rs:
+                ref = tetq(T, f"{m}_N256", R)
+                if ref is None:
+                    continue
+                cells = []; tails = []
+                for n in (64, 128):
+                    g = tetq(T, f"{m}_N{n}", R)
+                    if g is None:
+                        cells.append("–"); tails.append("–"); continue
+                    dq = np.max(np.abs(g[1:-1] / ref[1:-1] - 1))
+                    summ["tet"][f"conv|{m}|R{R:g}|N{n}"] = dict(dq_M=dq, tail=g[-1] / ref[-1] - 1)
+                    cells.append(f"{100 * dq:.2f}%"); tails.append(pct(g[-1] / ref[-1] - 1))
+                L.append(f"| {LBL[m]} | {R:g} | {cells[0]} | {cells[1]} | {tails[0]} / {tails[1]} |")
+        L.append("")
+        summ["tet"]["flipped_fraction"] = {k: v.get("flipped_tet_fraction") for k, v in T.items()}
+
     with open(os.path.join(RES, "summary.json"), "w") as f:
         json.dump(summ, f, indent=1)
     with open(os.path.join(RES, "tables.md"), "w") as f:
@@ -246,6 +312,36 @@ def figures(S, R_, models):
     ax[0, 0].legend(fontsize=7)
     fig.tight_layout()
     save(fig, "sheet_estimator_diff")
+
+    # gridless mass weighting: unsmoothed tetrahedron PDFs and nLPT / N-body with three weightings
+    T = load_tet()
+    if T:
+        fig, ax = plt.subplots(1, 2, figsize=(10, 3.8))
+        for m in models:
+            g = T.get(f"{m}_N256", {}).get("R0")
+            if g:
+                ax[0].semilogy(xc, g["pdfM"], color=C_ORD[m], lw=1.4, label=f"{LBL[m]} tetrahedra")
+        g = get(R_, "nbody_N256", "sheet", 0.0)
+        ax[0].semilogy(xc, g["pdfM"], color=C_ORD["nbody"], lw=1.1, ls=":", label="N-body sheet cells")
+        g = get(R_, "nbody_N256", "cic", 0.0)
+        ax[0].semilogy(xc, g["pdfM"], color=C_ORD["nbody"], lw=1.1, ls="--", label="N-body CIC cells")
+        ax[0].set_ylim(1e-4, None); ax[0].set_xlabel("log₁₀ ρ (unsmoothed)")
+        ax[0].set_ylabel("mass-weighted PDF"); ax[0].legend(fontsize=6.5)
+        ax[0].set_title("unsmoothed: tetrahedron stream density vs 1.17 Mpc/h cells", fontsize=9)
+        for m in [x for x in models if x != "nbody"]:
+            for lab, fn, mk, fill, dx in (("tet", lambda R, mm=m: tetq(T, f"{mm}_N256", R) / tetq(T, "nbody_N256", R) - 1, "o", True, -0.2),
+                                          ("sheet cells", lambda R, mm=m: np.array(get(R_, f"{mm}_N256", "sheet", R)["qM"]) / np.array(get(R_, "nbody_N256", "sheet", R)["qM"]) - 1, "s", False, 0.0),
+                                          ("CIC cells", lambda R, mm=m: np.array(get(R_, f"{mm}_N256", "cic", R)["qM"]) / np.array(get(R_, "nbody_N256", "cic", R)["qM"]) - 1, "x", False, 0.2)):
+                y = [100 * fn(R)[-1] for R in Rs]
+                ax[1].plot(np.arange(len(Rs)) + dx, y, marker=mk, ls="-" if fill else ":", color=C_ORD[m], ms=5,
+                           mfc=C_ORD[m] if fill else "white", lw=1,
+                           label=f"{LBL[m]} {lab}" if m in ("2lpt", "4lpt") else None)
+        ax[1].axhline(0, color=INK, lw=0.6)
+        ax[1].set_xticks(np.arange(len(Rs))); ax[1].set_xticklabels(["raw"] + [f"{R:g}" for R in Rs[1:]])
+        ax[1].set_xlabel("R_s [Mpc/h]"); ax[1].set_ylabel("nLPT / N-body − 1 at mass 99.9% [%]")
+        ax[1].set_title("dense tail, three mass weightings", fontsize=9); ax[1].legend(fontsize=6, ncol=2)
+        fig.tight_layout()
+        save(fig, "sheet_tetmass")
 
     # convergence with particle number, both estimators
     fig, ax = plt.subplots(1, 3, figsize=(11.5, 3.2))

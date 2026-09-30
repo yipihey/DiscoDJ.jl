@@ -53,3 +53,17 @@ L = 300.0
     @test err[1] / err[2] > 1.6 && err[2] / err[3] > 1.6     # first-order convergence to the exact value
     @test err[3] < 0.02 * std(ρx)
 end
+
+include(joinpath(@__DIR__, "tet_mass_pdf.jl"))
+@testset "tetrahedron mass-weighted sampling" begin
+    n = 16
+    ψ = zeros(n, n, n, 3)
+    f = ones(Float32, 24, 24, 24)
+    vals, ff = tet_samples(ψ, L, [f])
+    @test length(vals[1]) == 6n^3
+    @test maximum(abs.(vals[1] .- 1)) < 1e-5          # every tetrahedron has the mean density
+    @test maximum(abs.(vals[2] .- 1)) < 1e-6          # constant field sampled exactly
+    @test ff == 0
+    s = summarize(copy(vals[1]))
+    @test all(abs.(s["qM"] .- 1) .< 1e-5)
+end

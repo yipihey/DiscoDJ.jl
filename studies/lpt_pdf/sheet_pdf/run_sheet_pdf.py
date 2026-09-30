@@ -2,6 +2,7 @@
 
     python run_sheet_pdf.py deposit [TAG ...]   # CIC + exact sheet density on the 256^3 analysis mesh
     python run_sheet_pdf.py stats              # quantiles / moments / CDFs of every (snapshot, estimator)
+    python run_sheet_pdf.py tetmass [TAG ...]   # mass-weighted PDFs from the tetrahedra (no gridded weights)
 
 Snapshots (numpy (3,N,N,N) displacements at z = 0, DiscoDJNative, study-1 initial conditions) are
 read from _scratch/copula; see make_snapshots.sh.  Tags are <model>_N<N>[_paired] with model in
@@ -14,7 +15,9 @@ Estimators (both on C.N_ANA^3 = 256^3 cells of 1.17 Mpc/h, rho-bar = 1):
          sheet_deposit.jl); the pixel (cell-average) window is deconvolved
 Smoothing, weighting and statistics are exactly those of study 1 (analyze.py): real-space top hat
 R_s = 7, 14, 28, 42 Mpc/h; volume weighting = cells equally; mass weighting = each cell by its
-unsmoothed deposited mass.  R_s = 0 is added as a diagnostic: the raw 1.17 Mpc/h cell values
+unsmoothed deposited mass.  A third, gridless mass weighting ("tet") samples the equal-mass
+tetrahedra: their stream density at R_s = 0, the smoothed exact-sheet field at their centroids for
+R_s > 0 (tet_mass_pdf.jl).  R_s = 0 is added as a diagnostic: the raw 1.17 Mpc/h cell values
 (no smoothing, no window deconvolution), where the two estimators differ most.
 """
 import json, os, subprocess, sys, time
@@ -120,6 +123,29 @@ def stats_one(tag, est):
     return out
 
 
+def tetmass(tag):
+    """Mass-weighted PDFs from the tetrahedra themselves (tet_mass_pdf.jl): stream density of every
+    (equal-mass) tetrahedron, and the smoothed exact-sheet field at every tetrahedron centroid."""
+    out = os.path.join(OUT, f"{tag}_tetmass.json")
+    if os.path.exists(out):
+        return json.load(open(out))
+    fs = smoothed(np.load(rho_path(tag, "sheet")), "sheet")
+    files = []
+    for R in C.R_SMOOTH:
+        fn = os.path.join(OUT, f"_tmp_{tag}_R{R:g}.npy"); np.save(fn, fs[R].astype(np.float64)); files.append(f"{R:g}={fn}")
+    del fs
+    cmd = [JULIA, "-t", str(os.cpu_count()), f"--project={HERE}", os.path.join(HERE, "tet_mass_pdf.jl"),
+           psi_path(tag), str(C.L), out + ".tmp"] + files
+    r = subprocess.run(cmd, env=JENV, capture_output=True, text=True)
+    for f in files:
+        os.remove(f.split("=", 1)[1])
+    if r.returncode != 0:
+        raise RuntimeError(r.stdout + r.stderr)
+    os.replace(out + ".tmp", out)
+    print("  " + r.stdout.strip().splitlines()[-1], flush=True)
+    return json.load(open(out))
+
+
 def main():
     cmd = sys.argv[1]
     if cmd == "deposit":
@@ -136,6 +162,13 @@ def main():
                     res["runs"][f"{tag}|{est}"] = stats_one(tag, est)
             print(f"stats {tag}", flush=True)
         with open(os.path.join(RES, "stats.json"), "w") as f:
+            json.dump(res, f)
+    elif cmd == "tetmass":
+        res = {}
+        for tag in (sys.argv[2:] or TAGS):
+            if os.path.exists(rho_path(tag, "sheet")):
+                res[tag] = tetmass(tag)
+        with open(os.path.join(RES, "tetmass.json"), "w") as f:
             json.dump(res, f)
 
 
