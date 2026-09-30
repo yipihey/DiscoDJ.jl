@@ -6,7 +6,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 out="${1:?usage: build_site.sh <outdir>}"
-mkdir -p "$out/figures" "$out/copula/figures"
+mkdir -p "$out/figures" "$out/copula/figures" "$out/sheet_pdf/figures"
 {
   printf '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
   printf '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
@@ -17,5 +17,6 @@ mkdir -p "$out/figures" "$out/copula/figures"
 } > "$out/index.html"
 cp "$here"/figures/*.png "$out/figures/"
 cp "$here"/copula/figures/*.png "$out/copula/figures/"
+cp "$here"/sheet_pdf/figures/*.png "$out/sheet_pdf/figures/"
 touch "$out/.nojekyll"
 echo "site written to $out"

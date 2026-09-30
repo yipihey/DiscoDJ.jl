@@ -118,6 +118,9 @@ footer { margin-top: 72px; padding-top: 16px; border-top: 1px solid var(--rule);
     <li class="sub"><a href="#pdf-res">Resolution study</a></li>
     <li class="sub"><a href="#pdf-2lpt">2LPT vs N-body</a></li>
     <li class="sub"><a href="#pdf-orders">Zel'dovich to 4LPT</a></li>
+    <li><a href="#sheet">Estimator check · phase-space sheet</a></li>
+    <li class="sub"><a href="#sheet-est">Sheet vs CIC</a></li>
+    <li class="sub"><a href="#sheet-tet">Tetrahedron mass weighting</a></li>
     <li><a href="#cop">Study 2 · Copula</a></li>
     <li class="sub"><a href="#cop-val">Validation</a></li>
     <li class="sub"><a href="#cop-lagr">Lagrangian copula</a></li>
@@ -134,7 +137,7 @@ footer { margin-top: 72px; padding-top: 16px; border-top: 1px solid var(--rule);
 <header class="col">
   <div class="eyebrow">DiscoDJ.jl · studies/lpt_pdf</div>
   <h1>LPT vs N-body Before Shell Crossing</h1>
-  <p class="lede">Two studies on identical fixed-amplitude initial conditions. How well do Lagrangian perturbation theory at orders 1–4 and a converged particle-mesh N-body simulation agree on the density field, first in its one-point PDF, then in its spatial correlations once the PDF is removed?</p>
+  <p class="lede">Studies on identical fixed-amplitude initial conditions. How well do Lagrangian perturbation theory at orders 1–4 and a converged particle-mesh N-body simulation agree on the density field, first in its one-point PDF, then in its spatial correlations once the PDF is removed?</p>
   <div class="meta"><span>L = 300 Mpc/h</span><span>R<sub>f</sub> = 14 Mpc/h top hat</span><span>Planck18</span><span>z = 1, 0</span><span>N = 64³–512³</span></div>
 </header>
 
@@ -143,6 +146,7 @@ footer { margin-top: 72px; padding-top: 16px; border-top: 1px solid var(--rule);
   <div class="findings">
     <div class="finding"><div class="tag">PDF</div><p><b><span class="lpt">2LPT</span> is too narrow in both tails.</b> Its voids are not empty enough (the 0.1% volume quantile of 1+δ is 8–11% too high at R<sub>s</sub> ≤ R<sub>f</sub>) and its peaks are not dense enough (the mass-weighted 99.9% quantile is 29% low at 7 Mpc/h and 9% low at 14 Mpc/h). The median agrees to ≤ 0.1%. These differences are 10–100× the numerical uncertainty of either method.</p></div>
     <div class="finding"><div class="tag">Orders</div><p><b>The LPT series converges to <span class="nb">N-body</span>.</b> Each order removes a large part of the gap. Void quantiles converge with alternating sign, dense-tail quantiles monotonically from below. <span class="lpt">4LPT</span> agrees with N-body to ≲ 1% on every scale, except in the far tails at R<sub>s</sub> ≤ R<sub>f</sub>.</p></div>
+    <div class="finding"><div class="tag">Estimator</div><p><b>These PDF results do not depend on the density estimator.</b> Redone with the exact phase-space-sheet density (tetrahedra remeshed by exact overlap volumes with R3D) and with a gridless mass weighting from the equal-mass tetrahedra, the nLPT/N-body ratios at R<sub>s</sub> = 7–42 Mpc/h agree with CIC to ≤ 0.2 percentage points. Unsmoothed, the tetrahedra resolve the fold-caustic tail to 1+δ ~ 10⁶, where N-body carries 4–9× more mass than 4LPT and 2LPT.</p></div>
     <div class="finding"><div class="tag">Copula</div><p><b>With the PDF removed, 2LPT has a small but converged two-point error.</b> Its rank-Gaussianized Lagrangian correlation exceeds N-body's by about 5.7 × 10⁻³ near 20–30 Mpc/h at z = 0 (1.5–3% of ξ<sub>y</sub>) and 2 × 10⁻³ at z = 1. 4LPT removes 75–95% of it.</p></div>
     <div class="finding"><div class="tag">Ranks</div><p><b>Element by element, LPT and N-body ranks are one monotone relation.</b> 1 − Spearman ≤ 3 × 10⁻⁴ at N = 256, with no detectable non-monotone part. The residual is mostly N-body discreteness; only 2LPT at z = 0, R ≥ 7 Mpc/h, shows a stable LPT rank error (≈ 1.3 × 10⁻⁴).</p></div>
     <div class="finding"><div class="tag">Attribution</div><p><b>N-body's extra Eulerian clustering at ~10 Mpc/h is a one-point effect.</b> Giving LPT the N-body marginal accounts for 108–163% of Δξ<sub>δ</sub> (volume-weighted, converged); the copula part pulls the other way and originates in the Lagrangian copula, not the displacement mapping. Both orderings agree to ≤ 0.12.</p></div>
@@ -259,6 +263,80 @@ footer { margin-top: 72px; padding-top: 16px; border-top: 1px solid var(--rule);
     <div class="plate"><img src="figures/orders_shell_crossing.png" alt="Shell-crossed mass fraction by LPT order" loading="lazy"></div>
     <figcaption><b>Figure 1.13</b> Ever shell-crossed mass by order: 0.035%, 0.19%, 0.31%, 0.38% (1LPT → 4LPT) against 0.52% for N-body. The dense-tail residual at 4LPT sits on this collapsing mass, which no LPT order can follow past shell crossing.</figcaption>
   </figure>
+</section>
+
+<section id="sheet">
+  <div class="col">
+    <h2>Estimator check · phase-space sheet</h2>
+    <p>Study 1 measured every PDF with a particle estimator: CIC deposit, window deconvolved. Here the same comparison is redone with the <b>phase-space sheet</b>, and every result is shown next to CIC on the <em>same</em> snapshots. The snapshots are the DiscoDJNative runs on the study-1 initial conditions: Zel'dovich to 4LPT and N-body, N = 64, 128, 256, plus the paired set at 256. CIC on them reproduces the original study-1 quantiles to 0.00% for every LPT order and ≤ 0.08% for N-body.</p>
+    <ul>
+      <li><b>Exact sheet density.</b> Every Lagrangian cube is split into 6 tetrahedra. Each tetrahedron's mass is spread uniformly over its volume and deposited into each 1.17 Mpc/h cell in proportion to the exact overlap volume, computed with <a href="https://github.com/yipihey/r3djl">R3D</a>. Mass is conserved to 10⁻¹¹.</li>
+      <li><b>Gridless mass weighting.</b> Every tetrahedron has the same mass, so an equal-weight sample over tetrahedra is mass-weighted. Unsmoothed, it samples each tetrahedron's stream density; smoothed, the smoothed sheet field at each tetrahedron's centroid.</li>
+    </ul>
+  </div>
+  <figure>
+    <div class="plate"><img src="sheet_pdf/figures/sheet_slice.png" alt="Density slice, CIC versus exact sheet" loading="lazy"></div>
+    <figcaption><b>Figure 1.14</b> A 2.3 Mpc/h slab of the unsmoothed 256³ density at N = 128, CIC (top) and exact sheet (bottom). CIC shows the particle lattice as a moiré of empty and double-filled cells in underdense regions; the sheet is smooth.</figcaption>
+  </figure>
+
+  <div class="col">
+    <h3 id="sheet-est">Sheet vs CIC</h3>
+    <p>On smoothing scales R<sub>s</sub> ≥ 7 Mpc/h the estimators agree to ≤ 0.3% at every quantile, and the nLPT/N-body ratios to ≤ 0.2 percentage points. They differ strongly only on raw cells. There CIC leaves nearly empty cells (lowest 1+δ = 0.02–0.09, against 0.18–0.28 for the sheet), which shifts the 0.1% volume quantile by 58–109%.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>R<sub>s</sub></th><th class="l">model</th><th class="l">estimator</th><th>σ²</th><th>vol 0.1%</th><th>vol 99.9%</th><th>mass 99%</th><th>mass 99.9%</th></tr></thead>
+    <tbody>
+      <tr><td>7</td><td class="l">2LPT</td><td class="l">CIC</td><td>−9.4%</td><td>+10.7%</td><td>−10.7%</td><td>−17.3%</td><td>−28.9%</td></tr>
+      <tr><td>7</td><td class="l">2LPT</td><td class="l">sheet</td><td>−9.4%</td><td>+10.7%</td><td>−10.8%</td><td>−17.3%</td><td>−28.7%</td></tr>
+      <tr><td>7</td><td class="l">4LPT</td><td class="l">CIC</td><td>−2.5%</td><td>+4.2%</td><td>−2.7%</td><td>−5.3%</td><td>−13.6%</td></tr>
+      <tr><td>7</td><td class="l">4LPT</td><td class="l">sheet</td><td>−2.5%</td><td>+4.2%</td><td>−2.9%</td><td>−5.1%</td><td>−13.6%</td></tr>
+      <tr class="grp"><td>14</td><td class="l">2LPT</td><td class="l">CIC</td><td>−4.9%</td><td>+8.3%</td><td>−6.9%</td><td>−7.5%</td><td>−9.1%</td></tr>
+      <tr><td>14</td><td class="l">2LPT</td><td class="l">sheet</td><td>−4.9%</td><td>+8.3%</td><td>−6.9%</td><td>−7.5%</td><td>−9.0%</td></tr>
+      <tr><td>14</td><td class="l">4LPT</td><td class="l">CIC</td><td>−0.9%</td><td>+2.8%</td><td>−2.0%</td><td>−1.8%</td><td>−2.4%</td></tr>
+      <tr><td>14</td><td class="l">4LPT</td><td class="l">sheet</td><td>−0.9%</td><td>+2.8%</td><td>−2.0%</td><td>−1.8%</td><td>−2.3%</td></tr>
+      <tr class="grp"><td>raw</td><td class="l">2LPT</td><td class="l">CIC</td><td>−45.9%</td><td>+18.8%</td><td>−6.9%</td><td>−34.7%</td><td>−71.9%</td></tr>
+      <tr><td>raw</td><td class="l">2LPT</td><td class="l">sheet</td><td>−56.6%</td><td>+11.9%</td><td>−6.1%</td><td>−38.7%</td><td>−74.8%</td></tr>
+      <tr><td>raw</td><td class="l">4LPT</td><td class="l">CIC</td><td>−32.1%</td><td>+6.5%</td><td>+1.7%</td><td>−11.2%</td><td>−56.3%</td></tr>
+      <tr><td>raw</td><td class="l">4LPT</td><td class="l">sheet</td><td>−43.4%</td><td>+5.0%</td><td>+2.1%</td><td>−13.5%</td><td>−59.7%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">nLPT/N-body − 1, N = 256, same snapshots; "raw" = unsmoothed 1.17 Mpc/h cells (a diagnostic outside the study-1 scales). Full tables with the paired set and every order: <code>sheet_pdf/results/tables.md</code>.</p>
+  <figure>
+    <div class="plate"><img src="sheet_pdf/figures/sheet_quantiles.png" alt="nLPT to N-body quantile ratios with both estimators" loading="lazy"></div>
+    <figcaption><b>Figure 1.15</b> nLPT/N-body − 1 at fixed quantiles with the exact sheet (filled) and CIC (open) on the same snapshots; top volume-, bottom mass-weighted; first column raw cells. From R<sub>s</sub> = 7 Mpc/h up the two estimators are indistinguishable.</figcaption>
+  </figure>
+  <div class="tabs" role="tablist" aria-label="PDF weighting" data-group="spdf">
+    <button role="tab" aria-selected="true" data-src="sheet_pdf/figures/sheet_pdfs_vol.png" data-cap="volume-weighted">volume</button>
+    <button role="tab" aria-selected="false" data-src="sheet_pdf/figures/sheet_pdfs_mass.png" data-cap="mass-weighted">mass</button>
+  </div>
+  <figure data-group="spdf">
+    <div class="plate"><img src="sheet_pdf/figures/sheet_pdfs_vol.png" alt="PDFs with both estimators" loading="lazy"></div>
+    <figcaption><b>Figure 1.16</b> PDFs of N-body, 2LPT and 4LPT with the sheet (solid) and CIC (dashed), and sheet/CIC − 1 (bottom); <span data-cap>volume-weighted</span>, N = 256.</figcaption>
+  </figure>
+  <div class="pair">
+    <figure><div class="plate"><img src="sheet_pdf/figures/sheet_estimator_diff.png" alt="Sheet to CIC quantile differences" loading="lazy"></div><figcaption><b>1.17a</b> Sheet/CIC − 1 at fixed quantiles on the same snapshot, raw cells and R<sub>s</sub> = 7 Mpc/h.</figcaption></figure>
+    <figure><div class="plate"><img src="sheet_pdf/figures/sheet_convergence.png" alt="Resolution convergence of both estimators" loading="lazy"></div><figcaption><b>1.17b</b> Largest 1–99% quantile shift against N = 256. The sheet converges much faster in raw cells and at 7 Mpc/h. At 14 Mpc/h CIC is faster, because the sheet smooths the particle field over one interparticle spacing (a variance change of 0.1–0.4% at N = 256).</figcaption></figure>
+  </div>
+
+  <div class="col">
+    <h3 id="sheet-tet">Tetrahedron mass weighting: the dense tail</h3>
+    <p>The equal-mass tetrahedra give the mass-weighted PDF without gridding the weights. Smoothed, they agree with the gridded mass weightings to ≤ 0.2 percentage points in every nLPT/N-body ratio. Unsmoothed, they resolve the tail far beyond any mesh. The N-body 99.9% mass quantile is 1+δ = 647 from the tetrahedra, against 158 from CIC cells and 209 from exact-sheet cells. The tail continues as a power law to ~10⁶: past ρ ~ 10³ the mass fraction above ρ falls as ρ⁻¹, the fold-caustic law, in every model. Only the amplitude differs, and it tracks the shell-crossed mass.</p>
+  </div>
+  <figure>
+    <div class="plate"><img src="sheet_pdf/figures/sheet_tetmass.png" alt="Tetrahedron mass-weighted tail PDF and three mass weightings" loading="lazy"></div>
+    <figcaption><b>Figure 1.18</b> Left: unsmoothed mass-weighted PDF of the tetrahedron stream density (N = 256), with the N-body cell estimators (bins with ≥ 10 cells) and the fold-caustic slope. Right: nLPT/N-body − 1 at the 99.9% mass quantile for the three mass weightings. They coincide from R<sub>s</sub> = 7 Mpc/h up.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th class="l">model</th><th>inverted</th><th>99.9%</th><th>99.99%</th><th>99.999%</th><th>99.9999%</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Zel'dovich</td><td>0.03%</td><td>30</td><td>235</td><td>2.5 × 10³</td><td>2.2 × 10⁴</td></tr>
+      <tr><td class="l">2LPT</td><td>0.19%</td><td>121</td><td>1.2 × 10³</td><td>1.2 × 10⁴</td><td>1.5 × 10⁵</td></tr>
+      <tr><td class="l">3LPT</td><td>0.30%</td><td>199</td><td>2.1 × 10³</td><td>2.1 × 10⁴</td><td>2.0 × 10⁵</td></tr>
+      <tr><td class="l">4LPT</td><td>0.36%</td><td>248</td><td>2.6 × 10³</td><td>2.8 × 10⁴</td><td>2.6 × 10⁵</td></tr>
+      <tr><td class="l">N-body</td><td>0.45%</td><td>647</td><td>1.1 × 10⁴</td><td>1.1 × 10⁵</td><td>1.2 × 10⁶</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tcap col">Mass-weighted quantiles 1 − 10⁻ᵏ of the unsmoothed tetrahedron stream density, N = 256; "inverted" is the shell-crossed mass fraction. N-body reaches about 9× the density of 2LPT, and about 4× that of 4LPT, at the same small mass fraction. The N-body 99.9% quantile converges as 303, 582, 647 for N = 64, 128, 256.</p>
 </section>
 
 <section id="cop">

@@ -9,6 +9,7 @@ on:
       - "studies/lpt_pdf/build_site.sh"
       - "studies/lpt_pdf/figures/**"
       - "studies/lpt_pdf/copula/figures/**"
+      - "studies/lpt_pdf/sheet_pdf/figures/**"
       - ".github/workflows/report-pages.yml"
   workflow_dispatch:
 permissions:
