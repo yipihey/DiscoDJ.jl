@@ -216,3 +216,183 @@ CIC on the DiscoDJNative snapshots vs the original study-1 CIC (numpy nLPT at 25
 | N-body | 28 | 0.03% | 0.03% | -0.1% |
 | N-body | 42 | 0.02% | 0.02% | -0.1% |
 
+## Mass-weighted PDFs from the tetrahedra (no gridded weights)
+
+Every tetrahedron has mass Δq³/6, so an equal-weight sample over tetrahedra is mass-weighted. R_s = 0: stream density (Δq³/6)/|V_T| of each tetrahedron (unsmoothed, resolved to the tetrahedron scale). R_s > 0: the smoothed exact-sheet field at each tetrahedron centroid. Compared with the gridded mass weightings (each 1.17 Mpc/h cell weighted by its deposited mass).
+
+### Estimators on the same snapshot (N = 256): tet / CIC-cell − 1 and sheet-cell / CIC-cell − 1 of the mass-weighted quantiles
+
+| model | R_s | weighting | 0.1% | 1% | 10% | 50% | 90% | 99% | 99.9% |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| Zel'dovich | 0 | tetrahedra | +39.4% | +10.5% | -1.9% | -0.8% | -0.2% | +3.2% | +42.6% |
+| Zel'dovich | 0 | sheet cells | +39.5% | +10.6% | -1.8% | -0.8% | -0.6% | +1.1% | +13.7% |
+| Zel'dovich | 7 | tetrahedra | +0.2% | +0.3% | +0.2% | +0.0% | -0.3% | -0.5% | -0.5% |
+| Zel'dovich | 7 | sheet cells | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | -0.1% |
+| Zel'dovich | 14 | tetrahedra | +0.2% | +0.2% | +0.1% | -0.0% | -0.1% | -0.2% | -0.1% |
+| Zel'dovich | 14 | sheet cells | +0.1% | +0.1% | +0.0% | -0.0% | -0.1% | -0.1% | -0.0% |
+| Zel'dovich | 28 | tetrahedra | +0.1% | +0.1% | +0.0% | -0.0% | -0.0% | -0.0% | -0.1% |
+| Zel'dovich | 28 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| Zel'dovich | 42 | tetrahedra | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+| Zel'dovich | 42 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| 2LPT | 0 | tetrahedra | +34.8% | +12.3% | -1.0% | -1.0% | -0.3% | +6.7% | +172.3% |
+| 2LPT | 0 | sheet cells | +34.9% | +12.4% | -1.0% | -1.0% | -0.6% | +5.9% | +18.8% |
+| 2LPT | 7 | tetrahedra | +0.3% | +0.2% | +0.2% | +0.0% | -0.3% | -0.5% | -0.4% |
+| 2LPT | 7 | sheet cells | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | +0.1% |
+| 2LPT | 14 | tetrahedra | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | -0.2% |
+| 2LPT | 14 | sheet cells | +0.1% | +0.1% | +0.0% | -0.0% | -0.1% | -0.1% | -0.1% |
+| 2LPT | 28 | tetrahedra | +0.1% | +0.1% | +0.0% | -0.0% | -0.0% | -0.1% | -0.1% |
+| 2LPT | 28 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| 2LPT | 42 | tetrahedra | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| 2LPT | 42 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| 3LPT | 0 | tetrahedra | +33.9% | +11.2% | -1.1% | -1.0% | -0.3% | +9.0% | +231.4% |
+| 3LPT | 0 | sheet cells | +34.1% | +11.3% | -1.0% | -1.0% | -0.6% | +9.2% | +16.3% |
+| 3LPT | 7 | tetrahedra | +0.3% | +0.2% | +0.2% | +0.0% | -0.3% | -0.6% | -0.6% |
+| 3LPT | 7 | sheet cells | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | -0.1% |
+| 3LPT | 14 | tetrahedra | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.1% | -0.2% |
+| 3LPT | 14 | sheet cells | +0.1% | +0.1% | +0.0% | -0.0% | -0.1% | -0.0% | -0.1% |
+| 3LPT | 28 | tetrahedra | +0.1% | +0.1% | +0.0% | -0.0% | -0.0% | -0.0% | -0.1% |
+| 3LPT | 28 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| 3LPT | 42 | tetrahedra | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+| 3LPT | 42 | sheet cells | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+| 4LPT | 0 | tetrahedra | +35.7% | +11.9% | -1.1% | -1.0% | -0.3% | +10.0% | +258.3% |
+| 4LPT | 0 | sheet cells | +35.8% | +12.0% | -1.0% | -1.0% | -0.6% | +10.0% | +22.3% |
+| 4LPT | 7 | tetrahedra | +0.3% | +0.2% | +0.2% | +0.0% | -0.3% | -0.5% | -0.4% |
+| 4LPT | 7 | sheet cells | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.0% | -0.1% |
+| 4LPT | 14 | tetrahedra | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | -0.1% |
+| 4LPT | 14 | sheet cells | +0.1% | +0.1% | +0.0% | -0.0% | -0.1% | -0.1% | -0.1% |
+| 4LPT | 28 | tetrahedra | +0.1% | +0.1% | +0.0% | -0.0% | -0.0% | -0.1% | -0.1% |
+| 4LPT | 28 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.1% |
+| 4LPT | 42 | tetrahedra | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+| 4LPT | 42 | sheet cells | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+| N-body | 0 | tetrahedra | +35.0% | +11.7% | -1.1% | -1.1% | -0.3% | +22.1% | +309.5% |
+| N-body | 0 | sheet cells | +35.1% | +11.9% | -1.0% | -1.1% | -0.7% | +12.9% | +32.5% |
+| N-body | 7 | tetrahedra | +0.3% | +0.2% | +0.2% | +0.0% | -0.3% | -0.6% | -0.4% |
+| N-body | 7 | sheet cells | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | -0.2% |
+| N-body | 14 | tetrahedra | +0.2% | +0.1% | +0.1% | -0.0% | -0.1% | -0.2% | -0.2% |
+| N-body | 14 | sheet cells | +0.1% | +0.1% | +0.0% | -0.0% | -0.1% | -0.1% | -0.2% |
+| N-body | 28 | tetrahedra | +0.1% | +0.1% | +0.0% | -0.0% | -0.0% | -0.1% | -0.0% |
+| N-body | 28 | sheet cells | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% | -0.0% |
+| N-body | 42 | tetrahedra | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+| N-body | 42 | sheet cells | +0.0% | +0.0% | +0.0% | +0.0% | -0.0% | -0.0% | -0.0% |
+
+### nLPT / N-body − 1 of the mass-weighted quantiles, three weightings (N = 256)
+
+| R_s | model | weighting | 50% | 90% | 99% | 99.9% |
+|---:|---|---|---:|---:|---:|---:|
+| 0 | Zel'dovich | tetrahedra | +4.4% | -6.8% | -66.6% | -95.4% |
+| 0 | Zel'dovich | tetrahedra (paired) | +4.3% | -7.0% | -74.0% | -95.1% |
+| 0 | Zel'dovich | sheet cells | +4.4% | -6.9% | -64.5% | -88.7% |
+| 0 | Zel'dovich | cic cells | +4.1% | -6.9% | -60.4% | -86.9% |
+| 0 | 2LPT | tetrahedra | -0.1% | -1.7% | -42.9% | -81.3% |
+| 0 | 2LPT | tetrahedra (paired) | -0.1% | -1.7% | -50.4% | -75.6% |
+| 0 | 2LPT | sheet cells | -0.1% | -1.6% | -38.7% | -74.8% |
+| 0 | 2LPT | cic cells | -0.2% | -1.7% | -34.7% | -71.9% |
+| 0 | 3LPT | tetrahedra | +0.2% | -0.1% | -27.7% | -69.2% |
+| 0 | 3LPT | tetrahedra (paired) | +0.2% | -0.1% | -34.3% | -62.0% |
+| 0 | 3LPT | sheet cells | +0.2% | -0.0% | -21.6% | -66.7% |
+| 0 | 3LPT | cic cells | +0.2% | -0.1% | -19.0% | -62.0% |
+| 0 | 4LPT | tetrahedra | -0.0% | +0.1% | -20.0% | -61.7% |
+| 0 | 4LPT | tetrahedra (paired) | -0.0% | +0.1% | -26.7% | -56.8% |
+| 0 | 4LPT | sheet cells | -0.0% | +0.2% | -13.5% | -59.7% |
+| 0 | 4LPT | cic cells | -0.0% | +0.1% | -11.2% | -56.3% |
+
+| 7 | Zel'dovich | tetrahedra | +4.0% | -7.7% | -36.5% | -50.1% |
+| 7 | Zel'dovich | tetrahedra (paired) | +3.9% | -8.0% | -37.3% | -50.6% |
+| 7 | Zel'dovich | sheet cells | +4.0% | -7.7% | -36.6% | -50.0% |
+| 7 | Zel'dovich | cic cells | +4.0% | -7.7% | -36.6% | -50.0% |
+| 7 | 2LPT | tetrahedra | -0.0% | -2.1% | -17.2% | -28.9% |
+| 7 | 2LPT | tetrahedra (paired) | -0.0% | -2.1% | -17.8% | -28.1% |
+| 7 | 2LPT | sheet cells | -0.0% | -2.1% | -17.3% | -28.7% |
+| 7 | 2LPT | cic cells | -0.0% | -2.1% | -17.3% | -28.9% |
+| 7 | 3LPT | tetrahedra | +0.2% | -0.3% | -9.0% | -18.7% |
+| 7 | 3LPT | tetrahedra (paired) | +0.2% | -0.3% | -9.5% | -18.3% |
+| 7 | 3LPT | sheet cells | +0.2% | -0.3% | -9.1% | -18.5% |
+| 7 | 3LPT | cic cells | +0.2% | -0.3% | -9.0% | -18.5% |
+| 7 | 4LPT | tetrahedra | -0.0% | +0.0% | -5.2% | -13.6% |
+| 7 | 4LPT | tetrahedra (paired) | +0.0% | +0.1% | -5.7% | -13.6% |
+| 7 | 4LPT | sheet cells | -0.0% | +0.0% | -5.1% | -13.6% |
+| 7 | 4LPT | cic cells | -0.0% | +0.0% | -5.3% | -13.6% |
+
+| 14 | Zel'dovich | tetrahedra | +2.5% | -5.0% | -19.1% | -22.9% |
+| 14 | Zel'dovich | tetrahedra (paired) | +2.5% | -5.8% | -19.9% | -20.4% |
+| 14 | Zel'dovich | sheet cells | +2.5% | -5.0% | -19.1% | -22.8% |
+| 14 | Zel'dovich | cic cells | +2.5% | -5.1% | -19.1% | -22.9% |
+| 14 | 2LPT | tetrahedra | +0.0% | -1.4% | -7.4% | -9.0% |
+| 14 | 2LPT | tetrahedra (paired) | +0.0% | -1.6% | -7.7% | -7.8% |
+| 14 | 2LPT | sheet cells | +0.0% | -1.4% | -7.5% | -9.0% |
+| 14 | 2LPT | cic cells | +0.0% | -1.4% | -7.5% | -9.1% |
+| 14 | 3LPT | tetrahedra | +0.2% | -0.2% | -3.3% | -4.1% |
+| 14 | 3LPT | tetrahedra (paired) | +0.2% | -0.3% | -3.5% | -3.6% |
+| 14 | 3LPT | sheet cells | +0.2% | -0.2% | -3.3% | -4.1% |
+| 14 | 3LPT | cic cells | +0.2% | -0.2% | -3.4% | -4.2% |
+| 14 | 4LPT | tetrahedra | +0.0% | -0.0% | -1.8% | -2.3% |
+| 14 | 4LPT | tetrahedra (paired) | +0.0% | -0.1% | -1.9% | -2.0% |
+| 14 | 4LPT | sheet cells | +0.0% | -0.0% | -1.8% | -2.3% |
+| 14 | 4LPT | cic cells | +0.0% | -0.0% | -1.8% | -2.4% |
+
+| 28 | Zel'dovich | tetrahedra | +0.8% | -1.8% | -6.2% | -8.2% |
+| 28 | Zel'dovich | tetrahedra (paired) | +1.0% | -2.2% | -6.1% | -8.9% |
+| 28 | Zel'dovich | sheet cells | +0.8% | -1.8% | -6.3% | -8.2% |
+| 28 | Zel'dovich | cic cells | +0.8% | -1.8% | -6.3% | -8.2% |
+| 28 | 2LPT | tetrahedra | -0.0% | -0.5% | -1.9% | -2.3% |
+| 28 | 2LPT | tetrahedra (paired) | +0.0% | -0.6% | -1.7% | -2.3% |
+| 28 | 2LPT | sheet cells | -0.0% | -0.5% | -1.9% | -2.3% |
+| 28 | 2LPT | cic cells | -0.0% | -0.5% | -1.9% | -2.3% |
+| 28 | 3LPT | tetrahedra | +0.1% | -0.1% | -0.6% | -0.8% |
+| 28 | 3LPT | tetrahedra (paired) | +0.1% | -0.1% | -0.5% | -0.6% |
+| 28 | 3LPT | sheet cells | +0.1% | -0.1% | -0.6% | -0.8% |
+| 28 | 3LPT | cic cells | +0.1% | -0.1% | -0.6% | -0.8% |
+| 28 | 4LPT | tetrahedra | +0.0% | -0.1% | -0.2% | -0.3% |
+| 28 | 4LPT | tetrahedra (paired) | +0.0% | -0.1% | -0.2% | -0.2% |
+| 28 | 4LPT | sheet cells | +0.0% | -0.1% | -0.3% | -0.3% |
+| 28 | 4LPT | cic cells | +0.0% | -0.0% | -0.3% | -0.3% |
+
+| 42 | Zel'dovich | tetrahedra | +0.5% | -0.8% | -2.0% | -2.0% |
+| 42 | Zel'dovich | tetrahedra (paired) | +0.4% | -0.9% | -3.8% | -3.9% |
+| 42 | Zel'dovich | sheet cells | +0.5% | -0.8% | -2.0% | -2.0% |
+| 42 | Zel'dovich | cic cells | +0.5% | -0.8% | -2.0% | -2.0% |
+| 42 | 2LPT | tetrahedra | -0.0% | -0.3% | -0.5% | -0.4% |
+| 42 | 2LPT | tetrahedra (paired) | +0.0% | -0.2% | -0.9% | -0.9% |
+| 42 | 2LPT | sheet cells | -0.0% | -0.2% | -0.5% | -0.4% |
+| 42 | 2LPT | cic cells | -0.0% | -0.3% | -0.5% | -0.4% |
+| 42 | 3LPT | tetrahedra | +0.0% | -0.0% | -0.1% | -0.1% |
+| 42 | 3LPT | tetrahedra (paired) | +0.0% | -0.0% | -0.3% | -0.2% |
+| 42 | 3LPT | sheet cells | +0.0% | -0.0% | -0.1% | -0.1% |
+| 42 | 3LPT | cic cells | +0.0% | -0.0% | -0.1% | -0.1% |
+| 42 | 4LPT | tetrahedra | +0.0% | -0.0% | -0.1% | -0.0% |
+| 42 | 4LPT | tetrahedra (paired) | +0.0% | -0.0% | -0.1% | -0.1% |
+| 42 | 4LPT | sheet cells | +0.0% | -0.0% | -0.1% | -0.0% |
+| 42 | 4LPT | cic cells | +0.0% | -0.0% | -0.1% | -0.0% |
+
+### Convergence of the tetrahedron mass weighting
+
+Largest |shift| of the 1–99% mass-weighted quantiles against N = 256; and the 99.9% quantile shift.
+
+| model | R_s | N = 64 | N = 128 | 99.9% at N = 64 / 128 |
+|---|---:|---:|---:|---:|
+| Zel'dovich | 0 | 6.47% | 1.46% | -17.5% / -4.0% |
+| Zel'dovich | 7 | 3.84% | 0.79% | -3.7% / -0.7% |
+| Zel'dovich | 14 | 1.43% | 0.29% | -1.3% / -0.3% |
+| Zel'dovich | 28 | 0.42% | 0.09% | -0.5% / -0.1% |
+| Zel'dovich | 42 | 0.18% | 0.03% | -0.1% / -0.0% |
+| 2LPT | 0 | 10.62% | 2.29% | -16.2% / -4.1% |
+| 2LPT | 7 | 4.51% | 0.92% | -3.9% / -0.7% |
+| 2LPT | 14 | 1.65% | 0.34% | -1.4% / -0.3% |
+| 2LPT | 28 | 0.43% | 0.09% | -0.5% / -0.1% |
+| 2LPT | 42 | 0.19% | 0.03% | -0.1% / -0.0% |
+| 3LPT | 0 | 12.67% | 2.78% | -20.1% / -3.6% |
+| 3LPT | 7 | 4.76% | 0.99% | -3.8% / -0.7% |
+| 3LPT | 14 | 1.65% | 0.34% | -1.2% / -0.3% |
+| 3LPT | 28 | 0.45% | 0.09% | -0.5% / -0.1% |
+| 3LPT | 42 | 0.19% | 0.03% | -0.1% / -0.0% |
+| 4LPT | 0 | 13.36% | 2.92% | -19.7% / -3.7% |
+| 4LPT | 7 | 4.87% | 1.01% | -3.4% / -0.6% |
+| 4LPT | 14 | 1.66% | 0.33% | -1.2% / -0.2% |
+| 4LPT | 28 | 0.45% | 0.08% | -0.5% / -0.1% |
+| 4LPT | 42 | 0.19% | 0.03% | -0.1% / -0.0% |
+| N-body | 0 | 32.29% | 8.69% | -53.2% / -10.1% |
+| N-body | 7 | 8.15% | 1.61% | -10.6% / -2.0% |
+| N-body | 14 | 2.80% | 0.53% | -2.3% / -0.4% |
+| N-body | 28 | 0.63% | 0.12% | -0.9% / -0.2% |
+| N-body | 42 | 0.22% | 0.04% | -0.2% / -0.1% |
+
