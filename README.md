@@ -17,7 +17,7 @@ Julia tools for **DISCO-DJ**, the differentiable cosmology code of List, Hahn, W
 **[LPT vs N-body Before Shell Crossing: full report with all figures](https://yipihey.github.io/DiscoDJ.jl/studies/lpt_pdf/report.html)**
 (source: [`studies/lpt_pdf/report.html`](studies/lpt_pdf/report.html))
 
-The report covers two studies run on identical fixed-amplitude initial conditions
+The report covers the studies, run on identical fixed-amplitude initial conditions
 (L = 300 Mpc/h, top-hat filter R_f = 14 Mpc/h, Planck18).
 
 1. **[One-point density PDFs](studies/lpt_pdf/README.md):** Zel'dovich, 2LPT, 3LPT and 4LPT
@@ -34,7 +34,14 @@ The report covers two studies run on identical fixed-amplitude initial condition
      z = 0. 4LPT removes 75–95% of it.
    - N-body's extra clustering at ~10 Mpc/h comes from its one-point PDF, not its copula.
 
-Both studies include resolution studies for every method. The copula study reports its
+3. **[Phase-space-sheet estimator](studies/lpt_pdf/sheet_pdf/README.md):** the one-point PDFs
+   redone with the exact sheet density (tetrahedra remeshed with R3D) and with a gridless mass
+   weighting from the tetrahedra, next to CIC on the same snapshots.
+   - The conclusions of study 1 hold to ≤ 0.2 percentage points.
+   - The tetrahedra resolve the caustic-dominated dense tail, where N-body carries 4–9× more mass
+     than 4LPT and 2LPT.
+
+All studies include resolution studies for every method. The copula study reports its
 validation tests, noise floors and every deviation from its protocol.
 
 ## What DiscoDJNative provides
@@ -86,6 +93,7 @@ ic = lpt_ics(b, 0.02)                            # ψ, pos, vel as Julia arrays
 | `lib/DiscoDJLib/` | the PythonCall bridge to JAX DISCO-DJ |
 | `studies/lpt_pdf/` | the one-point PDF study, the HTML report and the site build script |
 | `studies/lpt_pdf/copula/` | the copula study: pipeline, configuration, results and figures |
+| `studies/lpt_pdf/sheet_pdf/` | the phase-space-sheet estimator study (exact R3D remeshing, tetrahedron mass weighting) |
 
 ## Roadmap
 

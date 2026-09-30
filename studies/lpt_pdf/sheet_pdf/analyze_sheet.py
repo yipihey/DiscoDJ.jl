@@ -336,10 +336,16 @@ def figures(S, R_, models):
                 ax[0].semilogy(wc, g["pdfM_wide"], color=C_ORD[m], lw=1.4, label=f"{LBL[m]} tetrahedra")
         for e, ls in (("sheet", ":"), ("cic", "--")):          # raw cells, mass-weighted, same wide bins
             rho = np.load(P.rho_path("nbody_N256", e)).ravel().astype(np.float64)
-            h, _ = np.histogram(np.log10(np.clip(rho, 1e-6, None)), wb, weights=rho)
-            ax[0].semilogy(wc, h / h.sum() / (wb[1] - wb[0]), color=C_ORD["nbody"], lw=1.1, ls=ls,
-                           label=f"N-body {'sheet' if e == 'sheet' else 'CIC'} cells")
+            lr = np.log10(np.clip(rho, 1e-6, None))
+            h, _ = np.histogram(lr, wb, weights=rho); cnt, _ = np.histogram(lr, wb)
+            y = np.where(cnt >= 10, h / h.sum() / (wb[1] - wb[0]), np.nan)   # bins with < 10 cells dropped
+            ax[0].semilogy(wc, y, color=C_ORD["nbody"], lw=1.1, ls=ls,
+                           label=f"N-body {'sheet' if e == 'sheet' else 'CIC'} cells (≥ 10 cells/bin)")
             del rho
+        g = T["nbody_N256"]["R0"]; pw = np.array(g["pdfM_wide"])            # fold-caustic slope guide
+        i0 = np.argmin(np.abs(wc - 3.0)); xs = np.linspace(2.5, 6.0, 20)
+        ax[0].semilogy(xs, pw[i0] * 10 ** (-(xs - wc[i0])), color="#8a8984", lw=0.9, ls="-.",
+                       label="∝ ρ⁻¹ per log ρ (fold caustics, p_M ∝ ρ⁻²)")
         ax[0].set_ylim(1e-7, 3); ax[0].set_xlim(-1.2, 6.5); ax[0].set_xlabel("log₁₀ ρ (unsmoothed)")
         ax[0].set_ylabel("mass-weighted PDF"); ax[0].legend(fontsize=6.5)
         ax[0].set_title("unsmoothed: tetrahedron stream density vs 1.17 Mpc/h cells", fontsize=9)

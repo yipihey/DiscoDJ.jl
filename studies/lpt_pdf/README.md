@@ -44,6 +44,13 @@ to ≲ 1% on every scale, except in the far tails at R_s ≤ R_f.
 | 42 | σ²/σ²NB − 1                | −1.5% | −1.9% | −0.2% | −0.3% |
 | 42 | max \|quantile shift\|   | 5.1% | 1.3% | 0.3% | 0.1% |
 
+**Estimator check** ([sheet_pdf/](sheet_pdf/README.md)). Every PDF above uses a CIC particle
+estimator. Redone with the exact phase-space-sheet density (tetrahedra remeshed onto the grid by
+their exact overlap volumes, using R3D), and with a gridless mass weighting taken from the
+equal-mass tetrahedra, the nLPT/N-body ratios at R_s = 7–42 Mpc/h are unchanged to ≤ 0.2
+percentage points. The estimators differ only on unsmoothed cells: there CIC leaves voids nearly
+empty, and the tetrahedra resolve the fold-caustic tail of the mass-weighted PDF to 1 + δ ~ 10⁶.
+
 ## Setup
 
 | | |

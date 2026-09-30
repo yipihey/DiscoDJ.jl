@@ -396,3 +396,20 @@ Largest |shift| of the 1–99% mass-weighted quantiles against N = 256; and the 
 | N-body | 28 | 0.63% | 0.12% | -0.9% / -0.2% |
 | N-body | 42 | 0.22% | 0.04% | -0.2% / -0.1% |
 
+### Extreme unsmoothed tail from the tetrahedra (stream density ρ_T, N = 256)
+
+Mass-weighted quantiles 1 − 10⁻ᵏ of ρ_T; 'flipped' = fraction of inverted tetrahedra (shell-crossed mass).
+
+| model | flipped | 99.9% | 99.99% | 99.999% | 99.9999% | max |
+|---|---:|---:|---:|---:|---:|---:|
+| Zel'dovich | 0.03% | 29.6 | 235 | 2.46e+03 | 2.19e+04 | 4e+06 |
+| Zel'dovich (paired) | 0.04% | 38.4 | 378 | 4.01e+03 | 3.88e+04 | 1.3e+07 |
+| 2LPT | 0.19% | 121 | 1.23e+03 | 1.24e+04 | 1.5e+05 | 1e+07 |
+| 2LPT (paired) | 0.26% | 190 | 2.17e+03 | 2.12e+04 | 2.21e+05 | 4.4e+07 |
+| 3LPT | 0.30% | 199 | 2.1e+03 | 2.1e+04 | 1.97e+05 | 1.6e+07 |
+| 3LPT (paired) | 0.40% | 297 | 3.42e+03 | 3.49e+04 | 3.55e+05 | 1.8e+07 |
+| 4LPT | 0.36% | 248 | 2.63e+03 | 2.76e+04 | 2.6e+05 | 6.1e+07 |
+| 4LPT (paired) | 0.48% | 337 | 3.82e+03 | 4.08e+04 | 3.72e+05 | 6.4e+07 |
+| N-body | 0.45% | 647 | 1.05e+04 | 1.14e+05 | 1.15e+06 | 2.7e+08 |
+| N-body (paired) | 0.56% | 780 | 1.08e+04 | 1.07e+05 | 1.15e+06 | 7.5e+07 |
+
