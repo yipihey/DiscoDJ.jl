@@ -20,11 +20,13 @@ from cosmo import Cosmology
 L = CFG["box_L"]
 
 
-def linear_field(cosmo, n, seed):
+def linear_field(cosmo, n, seed, paired=False):
     if seed == CFG["phase_seed"]:
         import config as C0
         ph = core.master_phases(C0.N_MASTER, C0.SEED, C0.PHASES)
-        return core.delta_k(cosmo, core.subgrid_modes(ph, n), n, L, CFG["R_F"])
+        return core.delta_k(cosmo, core.subgrid_modes(ph, n), n, L, CFG["R_F"], paired)
+    assert not paired, "paired phases are only defined for the study phases"
+
     ph = core.master_phases(n, seed)          # independent realisation directly at n
     return core.delta_k(cosmo, ph, n, L, CFG["R_F"])
 
@@ -82,17 +84,19 @@ def run_lpt(n, models=("1lpt", "2lpt", "4lpt"), seed=None):
         print(f"{m} N={n} seed={seed} saved", flush=True)
 
 
-def export_fphi(n, seed=None):
-    """phi_hat with lap phi = delta (a = 1), rfftn layout (z halved), as DISCO-DJ's `fphi`."""
+def export_fphi(n, seed=None, paired=False):
+    """phi_hat with lap phi = delta (a = 1), rfftn layout (z halved), as DISCO-DJ's `fphi`.
+    paired: the phase-flipped (theta + pi) partner of the study realisation."""
     seed = CFG["phase_seed"] if seed is None else seed
     cosmo = Cosmology()
-    dk = linear_field(cosmo, n, seed).astype(np.complex128)
+    dk = linear_field(cosmo, n, seed, paired).astype(np.complex128)
     kx, ky, kz = core.kgrid(n, L, np.float64)
     k2 = kx**2 + ky**2 + kz**2
     k2[0, 0, 0] = 1
     fphi = -dk / k2
     fphi[0, 0, 0] = 0
-    base = os.path.join(SCRATCH, f"fphi_N{n}" + ("" if seed == CFG["phase_seed"] else f"_seed{seed}"))
+    base = os.path.join(SCRATCH, f"fphi_N{n}" + ("" if seed == CFG["phase_seed"] else f"_seed{seed}")
+                        + ("_paired" if paired else ""))
     np.save(base + "_re.npy", fphi.real.copy())
     np.save(base + "_im.npy", fphi.imag.copy())
     return base
@@ -103,12 +107,13 @@ if __name__ == "__main__":
     ap.add_argument("kind", choices=["nbody", "lpt", "za", "fphi"])
     ap.add_argument("N", type=int)
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--paired", action="store_true")
     a = ap.parse_args()
     if a.kind == "nbody":
         run_nbody(a.N)
     elif a.kind == "lpt":
         run_lpt(a.N)
     elif a.kind == "fphi":
-        print(export_fphi(a.N, a.seed))
+        print(export_fphi(a.N, a.seed, a.paired))
     else:
         run_lpt(a.N, models=("1lpt",), seed=a.seed)

@@ -4,7 +4,8 @@
 #   julia -t auto --project=<this directory> djn_snapshots.jl <fphi_base> <N> <scratch> <models> [seed_suffix]
 #
 #   fphi_base  written by `python snapshots.py fphi N` (<base>_re.npy, <base>_im.npy)
-#   models     comma list of 1lpt,2lpt,4lpt,nbody
+#   models     comma list of 1lpt,2lpt,3lpt,4lpt,nbody
+#   env DJN_ZLIST=0,1  restricts the snapshot redshifts (default: config.json z_list)
 # Writes psi_<model>_N<N>_z<z>[_seedS].npy (numpy (3,N,N,N) float64, x = q + psi) for every z in
 # config.json, and a JSON log of the settings next to them.
 using DiscoDJNative, JSON3
@@ -15,7 +16,9 @@ function main(args)
     base, N, scratch, models = args[1], parse(Int, args[2]), args[3], split(args[4], ",")
     suffix = length(args) >= 5 ? args[5] : ""
     cfg = JSON3.read(read(joinpath(@__DIR__, "config.json"), String))
-    L = Float64(cfg.box_L); zs = Float64.(cfg.z_list); ai = Float64(cfg.a_initial)
+    L = Float64(cfg.box_L); ai = Float64(cfg.a_initial)
+    # DJN_ZLIST (e.g. "0") overrides the snapshot redshifts of config.json
+    zs = haskey(ENV, "DJN_ZLIST") ? parse.(Float64, split(ENV["DJN_ZLIST"], ",")) : Float64.(cfg.z_list)
     c = Cosmology("Planck18EEBAOSN")
     fphi = permutedims(read_npy(base * "_re.npy") .+ im .* read_npy(base * "_im.npy"), (3, 2, 1))
     t0 = time()
