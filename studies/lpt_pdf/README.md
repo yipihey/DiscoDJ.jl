@@ -84,9 +84,12 @@ with force resolution. Extrapolated, it lands around 0.6% (fixed) and 0.8%
 
 ## Methods
 
-All code is in this directory (numpy + scipy.fft + numba). Julia could not be
-installed in the environment this study ran in, and DiscoDJNative has no N-body
-solver yet. The pieces mirror the DiscoDJNative conventions:
+All code is in this directory (numpy + scipy.fft + numba). At the time of this
+study Julia could not be installed in its environment and DiscoDJNative had no
+N-body solver. (Both have since changed: the [copula study](copula/report.md) runs
+entirely on DiscoDJNative, including its port of DISCO-DJ's `run_nbody`, which
+agrees with this numpy PM to 6 × 10⁻⁴ on the same ICs.) The pieces mirror the
+DiscoDJNative conventions:
 `x = q + D₁ψ₁ + D₂ψ₂`, with D₁(1) = 1 and D₂ → −3/7 D₁².
 
 * `cosmo.py`: E(a), EH98 P(k) (a line-by-line port of

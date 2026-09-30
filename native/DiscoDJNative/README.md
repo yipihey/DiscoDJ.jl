@@ -142,7 +142,7 @@ JULIA_NUM_THREADS=32 julia --project=. test/bench/bench_threads.jl 256
 JULIA_NUM_THREADS=32 JULIA_CUDA_HARD_MEMORY_LIMIT=38GiB \
   julia --project=<gpu-env> test/bench/bench_cpu_gpu.jl 128 256 512
 
-# Tests (47 CPU; +12 GPU when CUDA is functional)
+# Tests (CPU suite incl. N-body parity against JAX; GPU tests run when CUDA is functional)
 julia --project=. test/runtests.jl
 ```
 
