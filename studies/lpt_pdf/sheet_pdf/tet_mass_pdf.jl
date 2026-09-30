@@ -18,6 +18,7 @@ include(joinpath(@__DIR__, "..", "copula", "npy.jl"))
 const QS = [1e-3, 1e-2, 0.1, 0.5, 0.9, 0.99, 0.999]
 const FINEBINS = range(log10(0.05), log10(20.0), length=1201)
 const LOGBINS = range(log10(0.05), log10(20.0), length=161)
+const WIDEBINS = range(-2.0, 8.0, length=401)                   # 10^-2 .. 10^8, for the unsmoothed tail
 
 @inline function trilinear(f, x, y, z, h, ng)
     fx = x / h - 0.5; fy = y / h - 0.5; fz = z / h - 0.5          # cell-centred samples
@@ -76,10 +77,14 @@ function summarize(v::Vector{Float32})
          end for qq in QS]
     lv = log10.(max.(v, 1f-6))
     cnt(b) = [searchsortedfirst(lv, b[i + 1]) - searchsortedfirst(lv, b[i]) for i in 1:length(b)-1]
-    hf = cnt(FINEBINS); hl = cnt(LOGBINS)
+    hf = cnt(FINEBINS); hl = cnt(LOGBINS); hw = cnt(WIDEBINS)
     cdf = cumsum(hf) ./ sum(hf)
     pdf = hl ./ (nv * step(LOGBINS))
-    return Dict("qM" => q, "cdfM" => cdf, "pdfM" => pdf, "min" => Float64(v[1]), "max" => Float64(v[end]))
+    # extreme tail: quantiles 1 − 10^-k (k = 3..6), where the sample size allows
+    qt = [(k, Float64(v[clamp(round(Int, (1 - 10.0^-k) * nv), 1, nv)])) for k in 3:6 if 10.0^-k * nv >= 10]
+    return Dict("qM" => q, "cdfM" => cdf, "pdfM" => pdf, "pdfM_wide" => hw ./ (nv * step(WIDEBINS)),
+                "q_tail" => [x[2] for x in qt], "q_tail_k" => [x[1] for x in qt],
+                "min" => Float64(v[1]), "max" => Float64(v[end]))
 end
 
 function main(args)

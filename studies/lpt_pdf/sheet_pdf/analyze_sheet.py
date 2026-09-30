@@ -222,6 +222,18 @@ def main():
                 L.append(f"| {LBL[m]} | {R:g} | {cells[0]} | {cells[1]} | {tails[0]} / {tails[1]} |")
         L.append("")
         summ["tet"]["flipped_fraction"] = {k: v.get("flipped_tet_fraction") for k, v in T.items()}
+        L += ["### Extreme unsmoothed tail from the tetrahedra (stream density ρ_T, N = 256)", "",
+              "Mass-weighted quantiles 1 − 10⁻ᵏ of ρ_T; 'flipped' = fraction of inverted tetrahedra (shell-crossed mass).", "",
+              "| model | flipped | 99.9% | 99.99% | 99.999% | 99.9999% | max |", "|---|---:|---:|---:|---:|---:|---:|"]
+        for m in models:
+            for suf in ("", "_paired"):
+                g = T.get(f"{m}_N256{suf}", {}); r0 = g.get("R0")
+                if not r0:
+                    continue
+                qt = dict(zip(r0["q_tail_k"], r0["q_tail"]))
+                L.append(f"| {LBL[m]}{' (paired)' if suf else ''} | {100 * g['flipped_tet_fraction']:.2f}% | " +
+                         " | ".join(f"{qt[k]:.3g}" if k in qt else "–" for k in (3, 4, 5, 6)) + f" | {r0['max']:.2g} |")
+        L.append("")
 
     with open(os.path.join(RES, "summary.json"), "w") as f:
         json.dump(summ, f, indent=1)
@@ -317,15 +329,18 @@ def figures(S, R_, models):
     T = load_tet()
     if T:
         fig, ax = plt.subplots(1, 2, figsize=(10, 3.8))
+        wb = np.linspace(-2.0, 8.0, 401); wc = 0.5 * (wb[1:] + wb[:-1])
         for m in models:
             g = T.get(f"{m}_N256", {}).get("R0")
             if g:
-                ax[0].semilogy(xc, g["pdfM"], color=C_ORD[m], lw=1.4, label=f"{LBL[m]} tetrahedra")
-        g = get(R_, "nbody_N256", "sheet", 0.0)
-        ax[0].semilogy(xc, g["pdfM"], color=C_ORD["nbody"], lw=1.1, ls=":", label="N-body sheet cells")
-        g = get(R_, "nbody_N256", "cic", 0.0)
-        ax[0].semilogy(xc, g["pdfM"], color=C_ORD["nbody"], lw=1.1, ls="--", label="N-body CIC cells")
-        ax[0].set_ylim(1e-4, None); ax[0].set_xlabel("log₁₀ ρ (unsmoothed)")
+                ax[0].semilogy(wc, g["pdfM_wide"], color=C_ORD[m], lw=1.4, label=f"{LBL[m]} tetrahedra")
+        for e, ls in (("sheet", ":"), ("cic", "--")):          # raw cells, mass-weighted, same wide bins
+            rho = np.load(P.rho_path("nbody_N256", e)).ravel().astype(np.float64)
+            h, _ = np.histogram(np.log10(np.clip(rho, 1e-6, None)), wb, weights=rho)
+            ax[0].semilogy(wc, h / h.sum() / (wb[1] - wb[0]), color=C_ORD["nbody"], lw=1.1, ls=ls,
+                           label=f"N-body {'sheet' if e == 'sheet' else 'CIC'} cells")
+            del rho
+        ax[0].set_ylim(1e-7, 3); ax[0].set_xlim(-1.2, 6.5); ax[0].set_xlabel("log₁₀ ρ (unsmoothed)")
         ax[0].set_ylabel("mass-weighted PDF"); ax[0].legend(fontsize=6.5)
         ax[0].set_title("unsmoothed: tetrahedron stream density vs 1.17 Mpc/h cells", fontsize=9)
         for m in [x for x in models if x != "nbody"]:
