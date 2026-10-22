@@ -1,0 +1,880 @@
+# fixed/1LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.108542e-10 -3.662765e-10 2.101748e-10
+-3.662765e-10 1.131307e-09 -7.828700e-10
+2.101748e-10 -7.828700e-10 5.736142e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.985229e-10 -3.553247e-10 2.038330e-10
+-3.553247e-10 1.019851e-09 -6.944605e-10
+2.038330e-10 -6.944605e-10 5.026292e-10
+
+# fixed/1LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.955055e-10 -2.688217e-10
+-2.688217e-10 7.123141e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.779625e-10 -2.426411e-10
+-2.426411e-10 6.301400e-10
+
+# fixed/1LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+7.438632e-11 -2.749323e-10 3.997387e-10 -2.150125e-10
+-2.749323e-10 1.816856e-09 -2.321941e-09 1.290046e-09
+3.997387e-10 -2.321941e-09 4.638274e-09 -2.831860e-09
+-2.150125e-10 1.290046e-09 -2.831860e-09 1.822422e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+6.492097e-11 -2.512012e-10 3.755899e-10 -2.066487e-10
+-2.512012e-10 1.744570e-09 -2.272687e-09 1.280941e-09
+3.755899e-10 -2.272687e-09 4.500623e-09 -2.753289e-09
+-2.066487e-10 1.280941e-09 -2.753289e-09 1.770935e-09
+
+# fixed/1LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.270154e-09 -3.800343e-08 1.022793e-07 -1.136883e-07 4.451595e-08
+-3.800343e-08 3.132782e-07 -8.677582e-07 9.785557e-07 -3.863571e-07
+1.022793e-07 -8.677582e-07 2.450768e-06 -2.798522e-06 1.114283e-06
+-1.136883e-07 9.785557e-07 -2.798522e-06 3.224504e-06 -1.292295e-06
+4.451595e-08 -3.863571e-07 1.114283e-06 -1.292295e-06 5.204979e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+5.059116e-09 -3.666125e-08 9.857332e-08 -1.095028e-07 4.286871e-08
+-3.666125e-08 3.047389e-07 -8.441883e-07 9.519399e-07 -3.758831e-07
+9.857332e-08 -8.441883e-07 2.385688e-06 -2.725023e-06 1.085357e-06
+-1.095028e-07 9.519399e-07 -2.725023e-06 3.141492e-06 -1.259624e-06
+4.286871e-08 -3.758831e-07 1.085357e-06 -1.259624e-06 5.076391e-07
+
+# fixed/1LPTx/exact/a0.5/O   powers = [1, 3, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.301528e-10 -1.984867e-10 1.153513e-10
+-1.984867e-10 6.172899e-10 -4.167826e-10
+1.153513e-10 -4.167826e-10 3.034386e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.254965e-10 -1.871864e-10 1.057787e-10
+-1.871864e-10 5.609570e-10 -3.715144e-10
+1.057787e-10 -3.715144e-10 2.667444e-10
+
+# fixed/1LPTx/exact/a0.5/O3   powers = [1, 3]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.259515e-10 -1.523471e-10
+-1.523471e-10 3.710095e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.204654e-10 -1.380310e-10
+-1.380310e-10 3.114488e-10
+
+# fixed/1LPTx/exact/a0.5/S   powers = [0, 1, 3, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.260679e-11 -1.522636e-10 2.670603e-10 -1.511002e-10
+-1.522636e-10 9.326972e-10 -1.418757e-09 8.079792e-10
+2.670603e-10 -1.418757e-09 3.100353e-09 -1.894067e-09
+-1.511002e-10 8.079792e-10 -1.894067e-09 1.212354e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.946027e-11 -1.381565e-10 2.483950e-10 -1.407348e-10
+-1.381565e-10 8.641761e-10 -1.322364e-09 7.508207e-10
+2.483950e-10 -1.322364e-09 2.932345e-09 -1.783262e-09
+-1.407348e-10 7.508207e-10 -1.783262e-09 1.135724e-09
+
+# fixed/1LPTx/exact/a0.5/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.942177e-09 -2.001503e-08 5.116663e-08 -5.490836e-08 2.097161e-08
+-2.001503e-08 1.548371e-07 -4.128141e-07 4.545707e-07 -1.766456e-07
+5.116663e-08 -4.128141e-07 1.132724e-06 -1.272386e-06 5.014608e-07
+-5.490836e-08 4.545707e-07 -1.272386e-06 1.450348e-06 -5.777573e-07
+2.097161e-08 -1.766456e-07 5.014608e-07 -5.777573e-07 2.320142e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.862137e-09 -1.943370e-08 4.985240e-08 -5.363750e-08 2.052861e-08
+-1.943370e-08 1.505828e-07 -4.031600e-07 4.451838e-07 -1.733520e-07
+4.985240e-08 -4.031600e-07 1.110775e-06 -1.250989e-06 4.939288e-07
+-5.363750e-08 4.451838e-07 -1.250989e-06 1.429407e-06 -5.703522e-07
+2.052861e-08 -1.733520e-07 4.939288e-07 -5.703522e-07 2.293817e-07
+
+# fixed/1LPTx/exact/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.108542e-10 -3.662765e-10 2.101748e-10
+-3.662765e-10 1.131307e-09 -7.828700e-10
+2.101748e-10 -7.828700e-10 5.736142e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.985229e-10 -3.553247e-10 2.038330e-10
+-3.553247e-10 1.019851e-09 -6.944605e-10
+2.038330e-10 -6.944605e-10 5.026292e-10
+
+# fixed/1LPTx/exact/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.955055e-10 -2.688217e-10
+-2.688217e-10 7.123141e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.779625e-10 -2.426411e-10
+-2.426411e-10 6.301400e-10
+
+# fixed/1LPTx/exact/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+7.438632e-11 -2.749323e-10 3.997387e-10 -2.150125e-10
+-2.749323e-10 1.816856e-09 -2.321941e-09 1.290046e-09
+3.997387e-10 -2.321941e-09 4.638274e-09 -2.831860e-09
+-2.150125e-10 1.290046e-09 -2.831860e-09 1.822422e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+6.492097e-11 -2.512012e-10 3.755899e-10 -2.066487e-10
+-2.512012e-10 1.744570e-09 -2.272687e-09 1.280941e-09
+3.755899e-10 -2.272687e-09 4.500623e-09 -2.753289e-09
+-2.066487e-10 1.280941e-09 -2.753289e-09 1.770935e-09
+
+# fixed/1LPTx/exact/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.270154e-09 -3.800343e-08 1.022793e-07 -1.136883e-07 4.451595e-08
+-3.800343e-08 3.132782e-07 -8.677582e-07 9.785557e-07 -3.863571e-07
+1.022793e-07 -8.677582e-07 2.450768e-06 -2.798522e-06 1.114283e-06
+-1.136883e-07 9.785557e-07 -2.798522e-06 3.224504e-06 -1.292295e-06
+4.451595e-08 -3.863571e-07 1.114283e-06 -1.292295e-06 5.204979e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+5.059116e-09 -3.666125e-08 9.857332e-08 -1.095028e-07 4.286871e-08
+-3.666125e-08 3.047389e-07 -8.441883e-07 9.519399e-07 -3.758831e-07
+9.857332e-08 -8.441883e-07 2.385688e-06 -2.725023e-06 1.085357e-06
+-1.095028e-07 9.519399e-07 -2.725023e-06 3.141492e-06 -1.259624e-06
+4.286871e-08 -3.758831e-07 1.085357e-06 -1.259624e-06 5.076391e-07
+
+# fixed/2LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.065398e-10 -1.898579e-10 1.127834e-10
+-1.898579e-10 6.014935e-10 -4.196457e-10
+1.127834e-10 -4.196457e-10 3.145429e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.025176e-10 -1.764522e-10 1.037015e-10
+-1.764522e-10 5.208201e-10 -3.592762e-10
+1.037015e-10 -3.592762e-10 2.682631e-10
+
+# fixed/2LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.971040e-10 -1.302718e-10
+-1.302718e-10 3.349790e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.903820e-10 -1.098384e-10
+-1.098384e-10 2.623713e-10
+
+# fixed/2LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.752071e-11 -1.295614e-10 2.016891e-10 -1.093567e-10
+-1.295614e-10 7.962362e-10 -1.121843e-09 6.271814e-10
+2.016891e-10 -1.121843e-09 2.435274e-09 -1.516951e-09
+-1.093567e-10 6.271814e-10 -1.516951e-09 1.006526e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.453529e-11 -1.204569e-10 1.951627e-10 -1.063935e-10
+-1.204569e-10 7.682398e-10 -1.099348e-09 6.158630e-10
+1.951627e-10 -1.099348e-09 2.391663e-09 -1.484728e-09
+-1.063935e-10 6.158630e-10 -1.484728e-09 9.809597e-10
+
+# fixed/2LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.898753e-09 -1.999890e-08 5.121734e-08 -5.500086e-08 2.101161e-08
+-1.999890e-08 1.540854e-07 -4.086509e-07 4.477619e-07 -1.732432e-07
+5.121734e-08 -4.086509e-07 1.111850e-06 -1.239780e-06 4.856070e-07
+-5.500086e-08 4.477619e-07 -1.239780e-06 1.400400e-06 -5.537709e-07
+2.101161e-08 -1.732432e-07 4.856070e-07 -5.537709e-07 2.205890e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.825495e-09 -1.953422e-08 5.021641e-08 -5.405501e-08 2.068514e-08
+-1.953422e-08 1.506584e-07 -4.005325e-07 4.395429e-07 -1.702452e-07
+5.021641e-08 -4.005325e-07 1.091643e-06 -1.218665e-06 4.777240e-07
+-5.405501e-08 4.395429e-07 -1.218665e-06 1.377913e-06 -5.452629e-07
+2.068514e-08 -1.702452e-07 4.777240e-07 -5.452629e-07 2.173406e-07
+
+# fixed/2LPTx/exact/a0.5/O   powers = [1, 3, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.042510e-10 -1.290038e-10 7.600103e-11
+-1.290038e-10 4.388969e-10 -2.959764e-10
+7.600103e-11 -2.959764e-10 2.102629e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+9.979132e-11 -1.227341e-10 7.125817e-11
+-1.227341e-10 4.114277e-10 -2.754815e-10
+7.125817e-11 -2.754815e-10 1.948576e-10
+
+# fixed/2LPTx/exact/a0.5/O3   powers = [1, 3]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.009393e-10 -9.604010e-11
+-9.604010e-11 2.548513e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+9.639064e-11 -9.078111e-11
+-9.078111e-11 2.359683e-10
+
+# fixed/2LPTx/exact/a0.5/S   powers = [0, 1, 3, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.584176e-11 -9.623507e-11 1.551436e-10 -8.758970e-11
+-9.623507e-11 5.414274e-10 -8.304093e-10 4.747398e-10
+1.551436e-10 -8.304093e-10 1.701157e-09 -1.038066e-09
+-8.758970e-11 4.747398e-10 -1.038066e-09 6.595109e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.283748e-11 -8.839223e-11 1.409735e-10 -7.960628e-11
+-8.839223e-11 5.155112e-10 -7.812549e-10 4.444655e-10
+1.409735e-10 -7.812549e-10 1.602843e-09 -9.780776e-10
+-7.960628e-11 4.444655e-10 -9.780776e-10 6.215805e-10
+
+# fixed/2LPTx/exact/a0.5/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.512129e-09 -1.111337e-08 2.859797e-08 -3.063834e-08 1.164308e-08
+-1.111337e-08 9.155366e-08 -2.452995e-07 2.692675e-07 -1.040407e-07
+2.859797e-08 -2.452995e-07 6.754041e-07 -7.558569e-07 2.962359e-07
+-3.063834e-08 2.692675e-07 -7.558569e-07 8.586172e-07 -3.404058e-07
+1.164308e-08 -1.040407e-07 2.962359e-07 -3.404058e-07 1.361887e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.349785e-09 -9.994424e-09 2.598422e-08 -2.807598e-08 1.074457e-08
+-9.994424e-09 8.381831e-08 -2.272343e-07 2.515411e-07 -9.781566e-08
+2.598422e-08 -2.272343e-07 6.332140e-07 -7.144606e-07 2.817001e-07
+-2.807598e-08 2.515411e-07 -7.144606e-07 8.179882e-07 -3.261329e-07
+1.074457e-08 -9.781566e-08 2.817001e-07 -3.261329e-07 1.311710e-07
+
+# fixed/2LPTx/exact/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.063435e-10 -1.912991e-10 1.144293e-10
+-1.912991e-10 6.050321e-10 -4.268247e-10
+1.144293e-10 -4.268247e-10 3.234869e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.025015e-10 -1.772772e-10 1.051498e-10
+-1.772772e-10 5.175787e-10 -3.611530e-10
+1.051498e-10 -3.611530e-10 2.729004e-10
+
+# fixed/2LPTx/exact/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.964973e-10 -1.299706e-10
+-1.299706e-10 3.321607e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.900874e-10 -1.091668e-10
+-1.091668e-10 2.571081e-10
+
+# fixed/2LPTx/exact/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.696071e-11 -1.264050e-10 1.940629e-10 -1.044055e-10
+-1.264050e-10 7.777790e-10 -1.078098e-09 5.974265e-10
+1.940629e-10 -1.078098e-09 2.326986e-09 -1.448685e-09
+-1.044055e-10 5.974265e-10 -1.448685e-09 9.645878e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.432219e-11 -1.183219e-10 1.884686e-10 -1.022470e-10
+-1.183219e-10 7.517396e-10 -1.056192e-09 5.868512e-10
+1.884686e-10 -1.056192e-09 2.270437e-09 -1.406100e-09
+-1.022470e-10 5.868512e-10 -1.406100e-09 9.304828e-10
+
+# fixed/2LPTx/exact/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.847258e-09 -1.956949e-08 5.009870e-08 -5.382757e-08 2.057512e-08
+-1.956949e-08 1.503433e-07 -3.985449e-07 4.367392e-07 -1.689859e-07
+5.009870e-08 -3.985449e-07 1.083836e-06 -1.208485e-06 4.732662e-07
+-5.382757e-08 4.367392e-07 -1.208485e-06 1.364739e-06 -5.394853e-07
+2.057512e-08 -1.689859e-07 4.732662e-07 -5.394853e-07 2.148017e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.782841e-09 -1.919642e-08 4.933469e-08 -5.312705e-08 2.033699e-08
+-1.919642e-08 1.478065e-07 -3.927376e-07 4.309455e-07 -1.668767e-07
+4.933469e-08 -3.927376e-07 1.069693e-06 -1.193794e-06 4.677583e-07
+-5.312705e-08 4.309455e-07 -1.193794e-06 1.349103e-06 -5.335250e-07
+2.033699e-08 -1.668767e-07 4.677583e-07 -5.335250e-07 2.125042e-07
+
+# fixed/3LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.087282e-10 -1.898397e-10 1.149698e-10
+-1.898397e-10 6.063610e-10 -4.242223e-10
+1.149698e-10 -4.242223e-10 3.176100e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.066785e-10 -1.798037e-10 1.079808e-10
+-1.798037e-10 5.323458e-10 -3.673121e-10
+1.079808e-10 -3.673121e-10 2.729832e-10
+
+# fixed/3LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.988144e-10 -1.279782e-10
+-1.279782e-10 3.334218e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.947992e-10 -1.121538e-10
+-1.121538e-10 2.658633e-10
+
+# fixed/3LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.999641e-11 -1.394109e-10 2.197109e-10 -1.198345e-10
+-1.394109e-10 8.335171e-10 -1.172843e-09 6.556243e-10
+2.197109e-10 -1.172843e-09 2.444441e-09 -1.493575e-09
+-1.198345e-10 6.556243e-10 -1.493575e-09 9.682514e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.614149e-11 -1.265998e-10 2.067135e-10 -1.139132e-10
+-1.265998e-10 7.887201e-10 -1.123299e-09 6.296316e-10
+2.067135e-10 -1.123299e-09 2.367131e-09 -1.443349e-09
+-1.139132e-10 6.296316e-10 -1.443349e-09 9.314838e-10
+
+# fixed/3LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.791071e-09 -1.907749e-08 4.854855e-08 -5.191829e-08 1.977973e-08
+-1.907749e-08 1.463571e-07 -3.866027e-07 4.225951e-07 -1.632520e-07
+4.854855e-08 -3.866027e-07 1.050389e-06 -1.170871e-06 4.586125e-07
+-5.191829e-08 4.225951e-07 -1.170871e-06 1.324282e-06 -5.242988e-07
+1.977973e-08 -1.632520e-07 4.586125e-07 -5.242988e-07 2.092857e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.738193e-09 -1.883255e-08 4.819395e-08 -5.172411e-08 1.975368e-08
+-1.883255e-08 1.452223e-07 -3.849654e-07 4.217078e-07 -1.631381e-07
+4.819395e-08 -3.849654e-07 1.047894e-06 -1.169296e-06 4.582873e-07
+-5.172411e-08 4.217078e-07 -1.169296e-06 1.322932e-06 -5.238522e-07
+1.975368e-08 -1.631381e-07 4.582873e-07 -5.238522e-07 2.090792e-07
+
+# fixed/3LPTx/exact/a0.5/O   powers = [1, 3, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.048010e-10 -1.318078e-10 7.928457e-11
+-1.318078e-10 4.411471e-10 -2.977808e-10
+7.928457e-11 -2.977808e-10 2.112019e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.011699e-10 -1.249701e-10 7.431237e-11
+-1.249701e-10 4.060368e-10 -2.716296e-10
+7.431237e-11 -2.716296e-10 1.914742e-10
+
+# fixed/3LPTx/exact/a0.5/O3   powers = [1, 3]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.006561e-10 -9.655865e-11
+-9.655865e-11 2.615780e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+9.698903e-11 -9.117434e-11
+-9.117434e-11 2.407920e-10
+
+# fixed/3LPTx/exact/a0.5/S   powers = [0, 1, 3, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.561609e-11 -9.586673e-11 1.495532e-10 -8.229322e-11
+-9.586673e-11 5.416935e-10 -8.140904e-10 4.607722e-10
+1.495532e-10 -8.140904e-10 1.648197e-09 -1.006180e-09
+-8.229322e-11 4.607722e-10 -1.006180e-09 6.434268e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.282780e-11 -8.884537e-11 1.365870e-10 -7.438482e-11
+-8.884537e-11 5.213173e-10 -7.733812e-10 4.340965e-10
+1.365870e-10 -7.733812e-10 1.558913e-09 -9.472276e-10
+-7.438482e-11 4.340965e-10 -9.472276e-10 6.032496e-10
+
+# fixed/3LPTx/exact/a0.5/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.16663490254247607
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.499191e-09 -1.099847e-08 2.837941e-08 -3.045568e-08 1.158837e-08
+-1.099847e-08 9.061301e-08 -2.437480e-07 2.681581e-07 -1.037482e-07
+2.837941e-08 -2.437480e-07 6.747847e-07 -7.575104e-07 2.974404e-07
+-3.045568e-08 2.681581e-07 -7.575104e-07 8.635672e-07 -3.430905e-07
+1.158837e-08 -1.037482e-07 2.974404e-07 -3.430905e-07 1.375625e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.337047e-09 -9.885565e-09 2.573984e-08 -2.782594e-08 1.065264e-08
+-9.885565e-09 8.294251e-08 -2.255219e-07 2.499398e-07 -9.724073e-08
+2.573984e-08 -2.255219e-07 6.314427e-07 -7.141242e-07 2.819171e-07
+-2.782594e-08 2.499398e-07 -7.141242e-07 8.200245e-07 -3.274647e-07
+1.065264e-08 -9.724073e-08 2.819171e-07 -3.274647e-07 1.319357e-07
+
+# fixed/3LPTx/exact/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.085480e-10 -1.930648e-10 1.166298e-10
+-1.930648e-10 6.172563e-10 -4.310704e-10
+1.166298e-10 -4.310704e-10 3.218394e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.067893e-10 -1.847542e-10 1.110399e-10
+-1.847542e-10 5.361161e-10 -3.668730e-10
+1.110399e-10 -3.668730e-10 2.699553e-10
+
+# fixed/3LPTx/exact/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.980478e-10 -1.300678e-10
+-1.300678e-10 3.476598e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.943701e-10 -1.148831e-10
+-1.148831e-10 2.811309e-10
+
+# fixed/3LPTx/exact/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.976124e-11 -1.384330e-10 2.145332e-10 -1.151977e-10
+-1.384330e-10 8.312024e-10 -1.165346e-09 6.474177e-10
+2.145332e-10 -1.165346e-09 2.400591e-09 -1.455281e-09
+-1.151977e-10 6.474177e-10 -1.455281e-09 9.369249e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.706864e-11 -1.307053e-10 2.122741e-10 -1.162129e-10
+-1.307053e-10 8.085047e-10 -1.155520e-09 6.470439e-10
+2.122741e-10 -1.155520e-09 2.376031e-09 -1.434308e-09
+-1.162129e-10 6.470439e-10 -1.434308e-09 9.153505e-10
+
+# fixed/3LPTx/exact/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.808129e-09 -1.930214e-08 4.924635e-08 -5.266853e-08 2.004295e-08
+-1.930214e-08 1.485536e-07 -3.929341e-07 4.290302e-07 -1.653783e-07
+4.924635e-08 -3.929341e-07 1.068436e-06 -1.189027e-06 4.645189e-07
+-5.266853e-08 4.290302e-07 -1.189027e-06 1.342002e-06 -5.297538e-07
+2.004295e-08 -1.653783e-07 4.645189e-07 -5.297538e-07 2.107837e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.763698e-09 -1.907572e-08 4.885025e-08 -5.236604e-08 1.995854e-08
+-1.907572e-08 1.473410e-07 -3.907369e-07 4.273057e-07 -1.648832e-07
+4.885025e-08 -3.907369e-07 1.064361e-06 -1.185773e-06 4.635688e-07
+-5.236604e-08 4.273057e-07 -1.185773e-06 1.339372e-06 -5.289766e-07
+1.995854e-08 -1.648832e-07 4.635688e-07 -5.289766e-07 2.105515e-07
+
+# fixed/4LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.080285e-10 -1.883528e-10 1.123332e-10
+-1.883528e-10 6.121737e-10 -4.294081e-10
+1.123332e-10 -4.294081e-10 3.220001e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.062758e-10 -1.785681e-10 1.054853e-10
+-1.785681e-10 5.321840e-10 -3.672550e-10
+1.054853e-10 -3.672550e-10 2.726363e-10
+
+# fixed/4LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.984502e-10 -1.280934e-10
+-1.280934e-10 3.374533e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.948442e-10 -1.128013e-10
+-1.128013e-10 2.699569e-10
+
+# fixed/4LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.990751e-11 -1.381407e-10 2.158773e-10 -1.176710e-10
+-1.381407e-10 8.251145e-10 -1.152226e-09 6.416648e-10
+2.158773e-10 -1.152226e-09 2.385010e-09 -1.453430e-09
+-1.176710e-10 6.416648e-10 -1.453430e-09 9.399883e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.656070e-11 -1.275394e-10 2.074400e-10 -1.146895e-10
+-1.275394e-10 7.890645e-10 -1.116221e-09 6.235647e-10
+2.074400e-10 -1.116221e-09 2.318586e-09 -1.406316e-09
+-1.146895e-10 6.235647e-10 -1.406316e-09 9.021271e-10
+
+# fixed/4LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.2736642562338479
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.811546e-09 -1.924882e-08 4.904524e-08 -5.248490e-08 1.999955e-08
+-1.924882e-08 1.476022e-07 -3.898901e-07 4.260230e-07 -1.644776e-07
+4.904524e-08 -3.898901e-07 1.058283e-06 -1.178198e-06 4.608781e-07
+-5.248490e-08 4.260230e-07 -1.178198e-06 1.329972e-06 -5.255750e-07
+1.999955e-08 -1.644776e-07 4.608781e-07 -5.255750e-07 2.093214e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.757796e-09 -1.899904e-08 4.868148e-08 -5.228435e-08 1.997188e-08
+-1.899904e-08 1.464406e-07 -3.882044e-07 4.251041e-07 -1.643562e-07
+4.868148e-08 -3.882044e-07 1.055796e-06 -1.176771e-06 4.606524e-07
+-5.228435e-08 4.251041e-07 -1.176771e-06 1.329028e-06 -5.253643e-07
+1.997188e-08 -1.643562e-07 4.606524e-07 -5.253643e-07 2.092480e-07
+
+# gaussian/1LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+9.260379e-10 -5.588379e-10 3.324697e-10
+-5.588379e-10 1.403852e-09 -9.714540e-10
+3.324697e-10 -9.714540e-10 7.069165e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+9.129979e-10 -5.079796e-10 2.984148e-10
+-5.079796e-10 1.089914e-09 -7.490423e-10
+2.984148e-10 -7.490423e-10 5.482456e-10
+
+# gaussian/1LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+9.071471e-10 -4.129719e-10
+-4.129719e-10 8.394686e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+8.931329e-10 -3.653056e-10
+-3.653056e-10 6.217134e-10
+
+# gaussian/1LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+6.265547e-11 -2.090329e-10 3.114048e-10 -1.763508e-10
+-2.090329e-10 1.768786e-09 -1.959784e-09 1.124242e-09
+3.114048e-10 -1.959784e-09 4.035623e-09 -2.503805e-09
+-1.763508e-10 1.124242e-09 -2.503805e-09 1.623294e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+5.863381e-11 -2.052013e-10 3.281485e-10 -1.883745e-10
+-2.052013e-10 1.756830e-09 -1.962794e-09 1.130185e-09
+3.281485e-10 -1.962794e-09 3.945127e-09 -2.444535e-09
+-1.883745e-10 1.130185e-09 -2.444535e-09 1.583068e-09
+
+# gaussian/1LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.992213e-09 -3.854593e-08 9.963384e-08 -1.074078e-07 4.109116e-08
+-3.854593e-08 3.073246e-07 -8.279919e-07 9.116322e-07 -3.530978e-07
+9.963384e-08 -8.279919e-07 2.288967e-06 -2.562833e-06 1.004306e-06
+-1.074078e-07 9.116322e-07 -2.562833e-06 2.903829e-06 -1.147996e-06
+4.109116e-08 -3.530978e-07 1.004306e-06 -1.147996e-06 4.569484e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+5.971196e-09 -3.852290e-08 9.983626e-08 -1.077766e-07 4.126372e-08
+-3.852290e-08 3.072993e-07 -8.282219e-07 9.120511e-07 -3.532938e-07
+9.983626e-08 -8.282219e-07 2.286210e-06 -2.557825e-06 1.001962e-06
+-1.077766e-07 9.120511e-07 -2.557825e-06 2.894730e-06 -1.143738e-06
+4.126372e-08 -3.532938e-07 1.001962e-06 -1.143738e-06 4.549567e-07
+
+# gaussian/1LPTx/exact/a0.5/O   powers = [1, 3, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.232859e-10 -3.264473e-10 1.858587e-10
+-3.264473e-10 8.611405e-10 -5.641821e-10
+1.858587e-10 -5.641821e-10 3.943900e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.180185e-10 -3.171539e-10 1.769976e-10
+-3.171539e-10 8.256581e-10 -5.329835e-10
+1.769976e-10 -5.329835e-10 3.659851e-10
+
+# gaussian/1LPTx/exact/a0.5/O3   powers = [1, 3]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.139582e-10 -2.418772e-10
+-2.418772e-10 4.793899e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.086403e-10 -2.300765e-10
+-2.300765e-10 4.393662e-10
+
+# gaussian/1LPTx/exact/a0.5/S   powers = [0, 1, 3, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.171010e-11 -1.797507e-10 2.804573e-10 -1.474402e-10
+-1.797507e-10 1.132688e-09 -1.452586e-09 7.732156e-10
+2.804573e-10 -1.452586e-09 2.798802e-09 -1.623062e-09
+-1.474402e-10 7.732156e-10 -1.623062e-09 9.986238e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.443095e-11 -1.567814e-10 2.547300e-10 -1.374635e-10
+-1.567814e-10 1.060053e-09 -1.371435e-09 7.417632e-10
+2.547300e-10 -1.371435e-09 2.703905e-09 -1.586716e-09
+-1.374635e-10 7.417632e-10 -1.586716e-09 9.846506e-10
+
+# gaussian/1LPTx/exact/a0.5/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.229497e-09 -2.192283e-08 5.683273e-08 -6.175580e-08 2.382836e-08
+-2.192283e-08 1.791182e-07 -4.833911e-07 5.363858e-07 -2.095578e-07
+5.683273e-08 -4.833911e-07 1.337046e-06 -1.508793e-06 5.964044e-07
+-6.175580e-08 5.363858e-07 -1.508793e-06 1.724626e-06 -6.882364e-07
+2.382836e-08 -2.095578e-07 5.964044e-07 -6.882364e-07 2.766602e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.082808e-09 -2.101960e-08 5.496186e-08 -6.015706e-08 2.333619e-08
+-2.101960e-08 1.735462e-07 -4.718489e-07 5.265117e-07 -2.065136e-07
+5.496186e-08 -4.718489e-07 1.313137e-06 -1.488338e-06 5.900978e-07
+-6.015706e-08 5.265117e-07 -1.488338e-06 1.707116e-06 -6.828331e-07
+2.333619e-08 -2.065136e-07 5.900978e-07 -6.828331e-07 2.749909e-07
+
+# gaussian/1LPTx/exact/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+9.260379e-10 -5.588379e-10 3.324697e-10
+-5.588379e-10 1.403852e-09 -9.714540e-10
+3.324697e-10 -9.714540e-10 7.069165e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+9.129979e-10 -5.079796e-10 2.984148e-10
+-5.079796e-10 1.089914e-09 -7.490423e-10
+2.984148e-10 -7.490423e-10 5.482456e-10
+
+# gaussian/1LPTx/exact/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+9.071471e-10 -4.129719e-10
+-4.129719e-10 8.394686e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+8.931329e-10 -3.653056e-10
+-3.653056e-10 6.217134e-10
+
+# gaussian/1LPTx/exact/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+6.265547e-11 -2.090329e-10 3.114048e-10 -1.763508e-10
+-2.090329e-10 1.768786e-09 -1.959784e-09 1.124242e-09
+3.114048e-10 -1.959784e-09 4.035623e-09 -2.503805e-09
+-1.763508e-10 1.124242e-09 -2.503805e-09 1.623294e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+5.863381e-11 -2.052013e-10 3.281485e-10 -1.883745e-10
+-2.052013e-10 1.756830e-09 -1.962794e-09 1.130185e-09
+3.281485e-10 -1.962794e-09 3.945127e-09 -2.444535e-09
+-1.883745e-10 1.130185e-09 -2.444535e-09 1.583068e-09
+
+# gaussian/1LPTx/exact/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+5.992213e-09 -3.854593e-08 9.963384e-08 -1.074078e-07 4.109116e-08
+-3.854593e-08 3.073246e-07 -8.279919e-07 9.116322e-07 -3.530978e-07
+9.963384e-08 -8.279919e-07 2.288967e-06 -2.562833e-06 1.004306e-06
+-1.074078e-07 9.116322e-07 -2.562833e-06 2.903829e-06 -1.147996e-06
+4.109116e-08 -3.530978e-07 1.004306e-06 -1.147996e-06 4.569484e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+5.971196e-09 -3.852290e-08 9.983626e-08 -1.077766e-07 4.126372e-08
+-3.852290e-08 3.072993e-07 -8.282219e-07 9.120511e-07 -3.532938e-07
+9.983626e-08 -8.282219e-07 2.286210e-06 -2.557825e-06 1.001962e-06
+-1.077766e-07 9.120511e-07 -2.557825e-06 2.894730e-06 -1.143738e-06
+4.126372e-08 -3.532938e-07 1.001962e-06 -1.143738e-06 4.549567e-07
+
+# gaussian/2LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.807300e-10 -3.112549e-10 1.801342e-10
+-3.112549e-10 7.905170e-10 -5.221588e-10
+1.801342e-10 -5.221588e-10 3.713169e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.724774e-10 -2.996518e-10 1.683381e-10
+-2.996518e-10 7.385280e-10 -4.725807e-10
+1.683381e-10 -4.725807e-10 3.239142e-10
+
+# gaussian/2LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.706341e-10 -2.260753e-10
+-2.260753e-10 4.298086e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.666058e-10 -2.165056e-10
+-2.165056e-10 3.759841e-10
+
+# gaussian/2LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.444147e-11 -1.532609e-10 2.336652e-10 -1.227210e-10
+-1.532609e-10 9.992492e-10 -1.285505e-09 6.985171e-10
+2.336652e-10 -1.285505e-09 2.482871e-09 -1.471214e-09
+-1.227210e-10 6.985171e-10 -1.471214e-09 9.346867e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.159065e-11 -1.412870e-10 2.222671e-10 -1.189841e-10
+-1.412870e-10 9.443163e-10 -1.231397e-09 6.756107e-10
+2.222671e-10 -1.231397e-09 2.419892e-09 -1.437741e-09
+-1.189841e-10 6.756107e-10 -1.437741e-09 9.099227e-10
+
+# gaussian/2LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.619443e-09 -1.760475e-08 4.491307e-08 -4.824031e-08 1.843707e-08
+-1.760475e-08 1.444082e-07 -3.840475e-07 4.208518e-07 -1.625779e-07
+4.491307e-08 -3.840475e-07 1.047769e-06 -1.168221e-06 4.566765e-07
+-4.824031e-08 4.208518e-07 -1.168221e-06 1.319962e-06 -5.210870e-07
+1.843707e-08 -1.625779e-07 4.566765e-07 -5.210870e-07 2.072779e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.606330e-09 -1.749873e-08 4.464085e-08 -4.795024e-08 1.832806e-08
+-1.749873e-08 1.434913e-07 -3.815102e-07 4.180023e-07 -1.614664e-07
+4.464085e-08 -3.815102e-07 1.040223e-06 -1.159360e-06 4.531177e-07
+-4.795024e-08 4.180023e-07 -1.159360e-06 1.309288e-06 -5.167333e-07
+1.832806e-08 -1.614664e-07 4.531177e-07 -5.167333e-07 2.054856e-07
+
+# gaussian/2LPTx/exact/a0.5/O   powers = [1, 3, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.583888e-10 -1.269708e-10 6.657176e-11
+-1.269708e-10 4.224579e-10 -2.832106e-10
+6.657176e-11 -2.832106e-10 2.033492e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.555059e-10 -1.268359e-10 6.717428e-11
+-1.268359e-10 3.841917e-10 -2.534278e-10
+6.717428e-11 -2.534278e-10 1.798781e-10
+
+# gaussian/2LPTx/exact/a0.5/O3   powers = [1, 3]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.538850e-10 -9.508204e-11
+-9.508204e-11 2.563346e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.501645e-10 -9.110276e-11
+-9.110276e-11 2.281725e-10
+
+# gaussian/2LPTx/exact/a0.5/S   powers = [0, 1, 3, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.663310e-11 -9.406206e-11 1.452295e-10 -8.202954e-11
+-9.406206e-11 5.591352e-10 -7.785573e-10 4.376088e-10
+1.452295e-10 -7.785573e-10 1.639803e-09 -1.012833e-09
+-8.202954e-11 4.376088e-10 -1.012833e-09 6.507676e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.530628e-11 -9.214552e-11 1.423439e-10 -8.104682e-11
+-9.214552e-11 5.448241e-10 -7.630370e-10 4.309780e-10
+1.423439e-10 -7.630370e-10 1.612717e-09 -9.979521e-10
+-8.104682e-11 4.309780e-10 -9.979521e-10 6.416700e-10
+
+# gaussian/2LPTx/exact/a0.5/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.499542e-09 -1.085444e-08 2.920006e-08 -3.255082e-08 1.278403e-08
+-1.085444e-08 9.073973e-08 -2.518821e-07 2.849026e-07 -1.128253e-07
+2.920006e-08 -2.518821e-07 7.145543e-07 -8.193196e-07 3.274103e-07
+-3.255082e-08 2.849026e-07 -8.193196e-07 9.486353e-07 -3.817601e-07
+1.278403e-08 -1.128253e-07 3.274103e-07 -3.817601e-07 1.544590e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.465792e-09 -1.065939e-08 2.877141e-08 -3.215548e-08 1.265275e-08
+-1.065939e-08 8.959019e-08 -2.494150e-07 2.826783e-07 -1.121000e-07
+2.877141e-08 -2.494150e-07 7.091055e-07 -8.142708e-07 3.257276e-07
+-3.215548e-08 2.826783e-07 -8.142708e-07 9.438404e-07 -3.801315e-07
+1.265275e-08 -1.121000e-07 3.257276e-07 -3.801315e-07 1.538982e-07
+
+# gaussian/2LPTx/exact/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.737142e-10 -3.010915e-10 1.736387e-10
+-3.010915e-10 7.777375e-10 -5.135360e-10
+1.736387e-10 -5.135360e-10 3.650428e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.671505e-10 -2.912346e-10 1.635279e-10
+-2.912346e-10 7.333052e-10 -4.713949e-10
+1.635279e-10 -4.713949e-10 3.247573e-10
+
+# gaussian/2LPTx/exact/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.645875e-10 -2.209612e-10
+-2.209612e-10 4.295948e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.610071e-10 -2.102630e-10
+-2.102630e-10 3.737454e-10
+
+# gaussian/2LPTx/exact/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.518941e-11 -1.549520e-10 2.381793e-10 -1.251096e-10
+-1.549520e-10 9.945500e-10 -1.276843e-09 6.883408e-10
+2.381793e-10 -1.276843e-09 2.462772e-09 -1.448039e-09
+-1.251096e-10 6.883408e-10 -1.448039e-09 9.122330e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.176836e-11 -1.416368e-10 2.251582e-10 -1.214092e-10
+-1.416368e-10 9.356901e-10 -1.220742e-09 6.677182e-10
+2.251582e-10 -1.220742e-09 2.404795e-09 -1.424481e-09
+-1.214092e-10 6.677182e-10 -1.424481e-09 8.975617e-10
+
+# gaussian/2LPTx/exact/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.671966e-09 -1.808388e-08 4.648108e-08 -5.019432e-08 1.925755e-08
+-1.808388e-08 1.488212e-07 -3.991480e-07 4.404004e-07 -1.710416e-07
+4.648108e-08 -3.991480e-07 1.099203e-06 -1.234782e-06 4.855449e-07
+-5.019432e-08 4.404004e-07 -1.234782e-06 1.406127e-06 -5.584978e-07
+1.925755e-08 -1.710416e-07 4.855449e-07 -5.584978e-07 2.235376e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.657421e-09 -1.796331e-08 4.615003e-08 -4.982027e-08 1.911054e-08
+-1.796331e-08 1.477725e-07 -3.961211e-07 4.368791e-07 -1.696329e-07
+4.615003e-08 -3.961211e-07 1.090047e-06 -1.223855e-06 4.811087e-07
+-4.982027e-08 4.368791e-07 -1.223855e-06 1.392916e-06 -5.530948e-07
+1.911054e-08 -1.696329e-07 4.811087e-07 -5.530948e-07 2.213189e-07
+
+# gaussian/3LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.831891e-10 -3.075770e-10 1.833042e-10
+-3.075770e-10 8.488727e-10 -5.705566e-10
+1.833042e-10 -5.705566e-10 4.083136e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.804364e-10 -3.031724e-10 1.785204e-10
+-3.031724e-10 8.084941e-10 -5.328571e-10
+1.785204e-10 -5.328571e-10 3.728066e-10
+
+# gaussian/3LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.703482e-10 -2.137323e-10
+-2.137323e-10 4.495385e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.668519e-10 -2.039092e-10
+-2.039092e-10 3.987063e-10
+
+# gaussian/3LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.628138e-11 -1.624681e-10 2.484180e-10 -1.304117e-10
+-1.624681e-10 1.054871e-09 -1.385994e-09 7.575097e-10
+2.484180e-10 -1.385994e-09 2.760572e-09 -1.650137e-09
+-1.304117e-10 7.575097e-10 -1.650137e-09 1.049726e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.290493e-11 -1.478498e-10 2.320228e-10 -1.231138e-10
+-1.478498e-10 9.851556e-10 -1.303803e-09 7.143030e-10
+2.320228e-10 -1.303803e-09 2.660654e-09 -1.593609e-09
+-1.231138e-10 7.143030e-10 -1.593609e-09 1.012042e-09
+
+# gaussian/3LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.824632e-09 -1.904103e-08 4.909586e-08 -5.324194e-08 2.052921e-08
+-1.904103e-08 1.543105e-07 -4.133776e-07 4.565355e-07 -1.776883e-07
+4.909586e-08 -4.133776e-07 1.135564e-06 -1.275583e-06 5.022578e-07
+-5.324194e-08 4.565355e-07 -1.275583e-06 1.451709e-06 -5.771640e-07
+2.052921e-08 -1.776883e-07 5.022578e-07 -5.771640e-07 2.311977e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.810039e-09 -1.894813e-08 4.890568e-08 -5.308256e-08 2.048266e-08
+-1.894813e-08 1.536243e-07 -4.117210e-07 4.548580e-07 -1.770848e-07
+4.890568e-08 -4.117210e-07 1.130988e-06 -1.270387e-06 5.002058e-07
+-5.308256e-08 4.548580e-07 -1.270387e-06 1.445331e-06 -5.745068e-07
+2.048266e-08 -1.770848e-07 5.002058e-07 -5.745068e-07 2.300534e-07
+
+# gaussian/3LPTx/exact/a0.5/O   powers = [1, 3, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.567019e-10 -1.220260e-10 6.355951e-11
+-1.220260e-10 4.332327e-10 -2.930415e-10
+6.355951e-11 -2.930415e-10 2.126329e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.552515e-10 -1.199078e-10 6.232146e-11
+-1.199078e-10 3.950327e-10 -2.619593e-10
+6.232146e-11 -2.619593e-10 1.868741e-10
+
+# gaussian/3LPTx/exact/a0.5/O3   powers = [1, 3]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.533765e-10 -9.286387e-11
+-9.286387e-11 2.543357e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.518517e-10 -8.996874e-11
+-8.996874e-11 2.267404e-10
+
+# gaussian/3LPTx/exact/a0.5/S   powers = [0, 1, 3, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.619604e-11 -9.203174e-11 1.462380e-10 -8.367084e-11
+-9.203174e-11 5.465995e-10 -7.648100e-10 4.296486e-10
+1.462380e-10 -7.648100e-10 1.666528e-09 -1.041687e-09
+-8.367084e-11 4.296486e-10 -1.041687e-09 6.814261e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.496244e-11 -9.110002e-11 1.444622e-10 -8.357472e-11
+-9.110002e-11 5.393567e-10 -7.562071e-10 4.261250e-10
+1.444622e-10 -7.562071e-10 1.647425e-09 -1.028725e-09
+-8.357472e-11 4.261250e-10 -1.028725e-09 6.700668e-10
+
+# gaussian/3LPTx/exact/a0.5/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.16656775387044737
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+1.452951e-09 -1.045923e-08 2.803431e-08 -3.113412e-08 1.218011e-08
+-1.045923e-08 8.735086e-08 -2.418021e-07 2.727177e-07 -1.076669e-07
+2.803431e-08 -2.418021e-07 6.840765e-07 -7.821776e-07 3.116235e-07
+-3.113412e-08 2.727177e-07 -7.821776e-07 9.032616e-07 -3.624754e-07
+1.218011e-08 -1.076669e-07 3.116235e-07 -3.624754e-07 1.462772e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+1.433957e-09 -1.034714e-08 2.780325e-08 -3.093900e-08 1.212198e-08
+-1.034714e-08 8.668864e-08 -2.404212e-07 2.715366e-07 -1.073104e-07
+2.780325e-08 -2.404212e-07 6.808740e-07 -7.791374e-07 3.106142e-07
+-3.093900e-08 2.715366e-07 -7.791374e-07 9.001227e-07 -3.613639e-07
+1.212198e-08 -1.073104e-07 3.106142e-07 -3.613639e-07 1.458661e-07
+
+# gaussian/3LPTx/exact/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.786103e-10 -3.036349e-10 1.815524e-10
+-3.036349e-10 8.344136e-10 -5.611082e-10
+1.815524e-10 -5.611082e-10 4.024870e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.749296e-10 -2.981398e-10 1.761156e-10
+-2.981398e-10 7.941077e-10 -5.239426e-10
+1.761156e-10 -5.239426e-10 3.678207e-10
+
+# gaussian/3LPTx/exact/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.667085e-10 -2.137342e-10
+-2.137342e-10 4.526018e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.642092e-10 -2.068269e-10
+-2.068269e-10 4.076108e-10
+
+# gaussian/3LPTx/exact/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.519099e-11 -1.591186e-10 2.436892e-10 -1.292322e-10
+-1.591186e-10 1.040512e-09 -1.370714e-09 7.576344e-10
+2.436892e-10 -1.370714e-09 2.733356e-09 -1.649753e-09
+-1.292322e-10 7.576344e-10 -1.649753e-09 1.060461e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.159395e-11 -1.441768e-10 2.274220e-10 -1.226743e-10
+-1.441768e-10 9.641715e-10 -1.280706e-09 7.106765e-10
+2.274220e-10 -1.280706e-09 2.624034e-09 -1.588452e-09
+-1.226743e-10 7.106765e-10 -1.588452e-09 1.020404e-09
+
+# gaussian/3LPTx/exact/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.760300e-09 -1.876401e-08 4.857094e-08 -5.275042e-08 2.034417e-08
+-1.876401e-08 1.536700e-07 -4.135052e-07 4.575644e-07 -1.782069e-07
+4.857094e-08 -4.135052e-07 1.141472e-06 -1.285105e-06 5.064877e-07
+-5.275042e-08 4.575644e-07 -1.285105e-06 1.466084e-06 -5.835121e-07
+2.034417e-08 -1.782069e-07 5.064877e-07 -5.835121e-07 2.340160e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.736168e-09 -1.858742e-08 4.816351e-08 -5.235475e-08 2.020628e-08
+-1.858742e-08 1.523501e-07 -4.103676e-07 4.544128e-07 -1.770719e-07
+4.816351e-08 -4.103676e-07 1.133711e-06 -1.276976e-06 5.034480e-07
+-5.235475e-08 4.544128e-07 -1.276976e-06 1.457219e-06 -5.800836e-07
+2.020628e-08 -1.770719e-07 5.034480e-07 -5.800836e-07 2.326545e-07
+
+# gaussian/4LPT/Dn/a1.0/O   powers = [1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.822069e-10 -3.090348e-10 1.812663e-10
+-3.090348e-10 8.263865e-10 -5.519661e-10
+1.812663e-10 -5.519661e-10 3.934843e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.776002e-10 -3.011589e-10 1.736746e-10
+-3.011589e-10 7.794126e-10 -5.098805e-10
+1.736746e-10 -5.098805e-10 3.555003e-10
+
+# gaussian/4LPT/Dn/a1.0/O3   powers = [1, 3]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+3.709988e-10 -2.210919e-10
+-2.210919e-10 4.511901e-10
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+3.676275e-10 -2.119152e-10
+-2.119152e-10 4.001846e-10
+
+# gaussian/4LPT/Dn/a1.0/S   powers = [0, 1, 3, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+4.653816e-11 -1.636495e-10 2.486485e-10 -1.311163e-10
+-1.636495e-10 1.058947e-09 -1.387002e-09 7.581230e-10
+2.486485e-10 -1.387002e-09 2.710249e-09 -1.616277e-09
+-1.311163e-10 7.581230e-10 -1.616277e-09 1.025151e-09
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+4.264510e-11 -1.460355e-10 2.277252e-10 -1.210661e-10
+-1.460355e-10 9.690177e-10 -1.274874e-09 6.962321e-10
+2.277252e-10 -1.274874e-09 2.567467e-09 -1.533551e-09
+-1.210661e-10 6.962321e-10 -1.533551e-09 9.719607e-10
+
+# gaussian/4LPT/Dn/a1.0/U   powers = [1, 2, 3, 4, 5]   sigma0 = 0.27355397806818493
+## covariance of the ensemble-mean coefficients (realization scatter / n)
+2.781020e-09 -1.875590e-08 4.817298e-08 -5.202984e-08 1.998279e-08
+-1.875590e-08 1.528413e-07 -4.088050e-07 4.504292e-07 -1.748861e-07
+4.817298e-08 -4.088050e-07 1.122373e-06 -1.258770e-06 4.947614e-07
+-5.202984e-08 4.504292e-07 -1.258770e-06 1.431007e-06 -5.681462e-07
+1.998279e-08 -1.748861e-07 4.947614e-07 -5.681462e-07 2.273324e-07
+## GLS covariance (fit to the ensemble-mean curve with empirical ε–ε covariance)
+2.762518e-09 -1.862830e-08 4.788974e-08 -5.176554e-08 1.989450e-08
+-1.862830e-08 1.518794e-07 -4.064247e-07 4.479396e-07 -1.739578e-07
+4.788974e-08 -4.064247e-07 1.115813e-06 -1.251251e-06 4.917463e-07
+-5.176554e-08 4.479396e-07 -1.251251e-06 1.421808e-06 -5.642868e-07
+1.989450e-08 -1.739578e-07 4.917463e-07 -5.642868e-07 2.256664e-07
+

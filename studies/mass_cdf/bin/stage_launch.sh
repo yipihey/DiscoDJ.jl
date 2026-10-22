@@ -1,22 +1,28 @@
 #!/bin/zsh
-# Staged launcher used for the production campaign (documented here for reproducibility).
-# stage 2: after the cheap N=64 ensembles finish → R_f=22 (4 workers) + L1000 N=256 (4 workers)
-# stage 3: after the 5LPT and R14 ensembles finish → 6LPT (2 workers) + L2000 N=256 (4 workers) + FEM N=256 (1 worker)
+# Launch commands used for the production campaign (kept for reproducibility; run from studies/mass_cdf).
+#   zsh bin/stage_launch.sh 1|2|3
+# Each worker: julia -t 4 --project=. bin/run_ensemble.jl <config> <ic_type> <seed_lo> <seed_hi>
 cd "$(dirname "$0")/.."
-J="julia -t 4 --project=."
-wait_for() { while [ "$(ls $1 2>/dev/null | wc -l | tr -d ' ')" -lt "$2" ]; do sleep 60; done; }
-stage=$1
-if [ "$stage" = "2" ]; then
-  wait_for "data/L1000_N64_R18/part_*-400.jld2" 2; wait_for "data/L500_N64_R18/part_*-400.jld2" 2
-  mkdir -p data/L1000_N128_R22 data/L1000_N256_R18
-  for r in "gaussian 1 75" "gaussian 76 150" "fixed 1 75" "fixed 76 150"; do set -A a ${=r}; nohup $J bin/run_ensemble.jl config/L1000_N128_R22.toml $a[1] $a[2] $a[3] > data/L1000_N128_R22/stdout_$a[1]_$a[2].txt 2>&1 & done
-  for r in "gaussian 1 30" "gaussian 31 60" "fixed 1 30" "fixed 31 60"; do set -A a ${=r}; nohup $J bin/run_ensemble.jl config/L1000_N256_R18.toml $a[1] $a[2] $a[3] > data/L1000_N256_R18/stdout_$a[1]_$a[2].txt 2>&1 & done
-  echo "stage 2 launched $(date)"
-elif [ "$stage" = "3" ]; then
-  wait_for "data/L1000_N128_R18_5LPT/part_*.jld2" 4; wait_for "data/L1000_N128_R14/part_*.jld2" 4
-  mkdir -p data/L1000_N128_R18_6LPT data/L2000_N256_R18 data/FEM_L500_N256
-  for r in "gaussian 1 50" "fixed 1 50"; do set -A a ${=r}; nohup $J bin/run_ensemble.jl config/L1000_N128_R18_6LPT.toml $a[1] $a[2] $a[3] > data/L1000_N128_R18_6LPT/stdout_$a[1]_$a[2].txt 2>&1 & done
-  for r in "gaussian 1 30" "gaussian 31 60" "fixed 1 30" "fixed 31 60"; do set -A a ${=r}; nohup $J bin/run_ensemble.jl config/L2000_N256_R18.toml $a[1] $a[2] $a[3] > data/L2000_N256_R18/stdout_$a[1]_$a[2].txt 2>&1 & done
-  nohup $J bin/run_fem.jl config/FEM_L500_N256.toml 1 2 > data/FEM_L500_N256/stdout.txt 2>&1 &
-  echo "stage 3 launched $(date)"
-fi
+launch_all() {   # arguments: "<ensemble> <ic> <lo> <hi>" ...
+  for r in "$@"; do set -A a ${=r}; mkdir -p data/$a[1]
+    nohup julia -t 4 --project=. bin/run_ensemble.jl config/$a[1].toml $a[2] $a[3] $a[4] > data/$a[1]/stdout_$a[2]_$a[3].txt 2>&1 &
+  done
+}
+case "$1" in
+  1) launch_all "L1000_N128_R18 gaussian 1 100" "L1000_N128_R18 gaussian 101 200" "L1000_N128_R18 gaussian 201 300" "L1000_N128_R18 gaussian 301 400" \
+                "L1000_N128_R18 fixed 1 100" "L1000_N128_R18 fixed 101 200" \
+                "L1000_N128_R18_5LPT gaussian 1 100" "L1000_N128_R18_5LPT gaussian 101 200" "L1000_N128_R18_5LPT fixed 1 100" "L1000_N128_R18_5LPT fixed 101 200" \
+                "L1000_N128_R14 gaussian 1 75" "L1000_N128_R14 gaussian 76 150" "L1000_N128_R14 fixed 1 75" "L1000_N128_R14 fixed 76 150" \
+                "L1000_N64_R18 gaussian 1 400" "L1000_N64_R18 fixed 1 400" "L500_N64_R18 gaussian 1 400" "L500_N64_R18 fixed 1 400"
+     mkdir -p data/FEM_L500_N64 data/FEM_L500_N128 data/FEM_L500_N64_steps100
+     nohup julia -t 4 --project=. bin/run_fem.jl config/FEM_L500_N64.toml 1 10 > data/FEM_L500_N64/stdout.txt 2>&1 &
+     nohup julia -t 4 --project=. bin/run_fem.jl config/FEM_L500_N128.toml 1 3 > data/FEM_L500_N128/stdout.txt 2>&1 &
+     nohup julia -t 4 --project=. bin/run_fem.jl config/FEM_L500_N64_steps.toml 1 1 > data/FEM_L500_N64_steps100/stdout.txt 2>&1 & ;;
+  2) launch_all "L1000_N128_R22 gaussian 1 75" "L1000_N128_R22 gaussian 76 150" "L1000_N128_R22 fixed 1 75" "L1000_N128_R22 fixed 76 150" \
+                "L1000_N256_R18 gaussian 1 30" "L1000_N256_R18 gaussian 31 60" "L1000_N256_R18 fixed 1 30" "L1000_N256_R18 fixed 31 60" ;;
+  3) launch_all "L1000_N128_R18_6LPT gaussian 1 50" "L1000_N128_R18_6LPT fixed 1 50" \
+                "L2000_N256_R18 gaussian 1 30" "L2000_N256_R18 gaussian 31 60" "L2000_N256_R18 fixed 1 30" "L2000_N256_R18 fixed 31 60"
+     mkdir -p data/FEM_L500_N256
+     nohup julia -t 4 --project=. bin/run_fem.jl config/FEM_L500_N256.toml 1 1 > data/FEM_L500_N256/stdout.txt 2>&1 & ;;
+esac
+echo "stage $1 launched $(date)"

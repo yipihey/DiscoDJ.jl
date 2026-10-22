@@ -68,6 +68,22 @@ open(joinpath(resdir, "amplitude_fit_cov.txt"), "w") do io
 end
 jldsave(joinpath(resdir, "amplitude_fit_cov.jld2"); cov = af.cov)
 
+# 5b. sensitivity to a J_min selection: refit A1, A3 on the subsets of realizations with min J(4LPT, ε=1) above a threshold
+jsel = Dict{Symbol,Any}[]
+for ic in unique(rows.ic_type)
+    r4 = rows[(rows.ic_type .== ic) .& (rows.method .== "4LPT") .& (rows.growth .== "Dn") .& (rows.eps .== 1.0), :]
+    for thr in [0.0, 0.1, 0.15, 0.2, 0.25, 0.3]
+        keep = Set(r4.seed[r4.minJ .> thr]); isempty(keep) && continue
+        sub = rows[(rows.ic_type .== ic) .& (rows.method .== "4LPT") .& (rows.growth .== "Dn") .& in.(rows.seed, Ref(keep)), :]
+        length(keep) >= 8 || continue
+        a = M.amplitude_fits(sub).summary; o = a[a.fit .== "O", :]
+        push!(jsel, Dict(:ic_type => ic, :minJ_threshold => thr, :n_seeds => length(keep), :frac_kept => length(keep) / nrow(r4),
+                         :A1 => o.A_mean[o.power .== 1][1], :A1_se => o.A_se[o.power .== 1][1], :A3 => o.A_mean[o.power .== 3][1], :A3_se => o.A_se[o.power .== 3][1],
+                         :minJ_min_kept => minimum(r4.minJ[r4.minJ .> thr])))
+    end
+end
+jseldf = DataFrame(jsel); nrow(jseldf) > 0 && M.write_csv(joinpath(resdir, "jmin_selection.csv"), jseldf)
+
 # 6. m4 conditioning
 if nrow(E.mcond) > 0
     M.write_csv(joinpath(resdir, "m4_conditioning.csv"), M.m4_extrapolation(E.mcond))
@@ -117,5 +133,11 @@ end
 for f in ("realization_summary.csv", "shear_bins_per_seed.csv", "m4_conditioning_per_seed.csv", "amplitude_fit_per_seed.csv")
     p = joinpath(resdir, f)
     isfile(p) && filesize(p) > 5_000_000 && run(`gzip -f $p`)
+end
+if nrow(jseldf) > 0
+    println("\n=== sensitivity to J_min selection (4LPT, paired odd fit) ===")
+    for r in eachrow(jseldf)
+        @printf("%-9s minJ>%.2f  n=%3d (%.0f%%)  A1=%.6f±%.6f  A3=%+.5f±%.5f\n", r.ic_type, r.minJ_threshold, r.n_seeds, 100r.frac_kept, r.A1, r.A1_se, r.A3, r.A3_se)
+    end
 end
 println("\nwrote tables to $resdir")
