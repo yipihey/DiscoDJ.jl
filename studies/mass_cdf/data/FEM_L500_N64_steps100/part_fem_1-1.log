@@ -1,0 +1,3 @@
+FEM ensemble FEM_L500_N64_steps100 N=64 L=500.0 h=7.8125 R_f=18.0 nsteps=100 a_ini=0.05 σ_box=0.21071880305646634
+seed    1 ε=+1.00 σ=0.2097  Y_FEM=+0.02855  Y_4LPT=+0.01640  ΔY=+0.01215  rms(ψ_FEM−ψ_4LPT)/rms=0.0512  minJ_fem=0.429  [fem 136s, total 146s]
+wrote /Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/data/FEM_L500_N64_steps100/part_fem_1-1.jld2

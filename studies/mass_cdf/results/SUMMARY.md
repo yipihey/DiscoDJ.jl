@@ -1,5 +1,11 @@
 # Mass-CDF study — results summary
 
+**Headline.** On a smoothed single-stream sheet (Planck18 ΛCDM, Gaussian filter R_f = 18 h⁻¹Mpc, σ = 0.21 at a = 1, 4LPT with 5–6LPT
+checks, 1100 (Gpc/h)³ of Gaussian realizations plus fixed-amplitude pairs): A₁ = 0.075984 ± 0.000054 (prediction 0.075989); exact ΛCDM
+growth A₁ = 0.075496 ± 0.000030 (prediction 0.075509); even powers of σ consistent with zero; A₃ = (2.1 ± 1.0)×10⁻³ (prediction
+1.6×10⁻³); the fourth-order conditional coefficient of J is −0.01526 ± 0.00001 (prediction −0.0152); the mean-density shear
+regression slope → 2/7; F₋₊ = 0 exactly; FEM N-body and 4LPT agree to (3–4)×10⁻⁵ in F_M once the FEM's own linear field is used.
+
 All numbers come from the machine-readable tables in `results/<ensemble>/` (see README.md for the
 column definitions and conventions).  Errors are standard errors from realization-to-realization scatter
 unless stated otherwise; jackknife and bootstrap errors (also tabulated) agree with them to a few per cent.
@@ -52,7 +58,7 @@ of F, fraction J ≤ 0, J percentiles, the transition matrix, and F_M, F_V at th
 | L1000_N128_R22 | fixed | 150 | 0.076051 ± 0.000090 | | +0.7σ |
 | L1000_N128_R18_6LPT (6LPT) | Gaussian / fixed | 50 / 50 | 0.075909 ± 0.000150 / 0.075935 ± 0.000119 | | −0.5σ / −0.5σ |
 | L1000_N256_R18 | Gaussian / fixed | 60 / 60 | 0.075889 ± 0.000122 / 0.075917 ± 0.000085 | | −0.8σ / −0.8σ |
-| L2000_N256_R18 | Gaussian / fixed | 60 / 60 | *(filled at the end)* | | |
+| L2000_N256_R18 | Gaussian / fixed | 60 / 60 | 0.076004 ± 0.000047 / 0.075975 ± 0.000036 | | +0.3σ / −0.4σ |
 
 The parameter-free prediction is confirmed at the 10⁻⁴ (relative 0.1 %) level in the 400-realization Gaussian ensemble.  Two
 systematic trends at the 10⁻⁴ level are visible: (i) fixed-amplitude ensembles return A₁ higher by (5–10)×10⁻⁵ — the
@@ -90,12 +96,15 @@ Odd-constrained fits Y_even = c₁ε + c₃ε³ + c₅ε⁵ converted to A_k = c
 | L1000_N128_R22 | Gaussian 150 / fixed 150 | +0.0059 ± 0.0038 / −0.0017 ± 0.0043 | | |
 | L1000_N128_R18_6LPT (4/5/6LPT, same seeds) | Gaussian 50 | −0.00414 / −0.00414 / −0.00413 (± 0.0043) | | |
 | L1000_N256_R18 | Gaussian 60 / fixed 60 | +0.0023 ± 0.0014 / +0.0055 ± 0.0013 | +0.0018 ± 0.0031 / +0.0029 ± 0.0022 | |
-| L2000_N256_R18 | Gaussian 60 / fixed 60 | *(filled at the end)* | | |
+| L2000_N256_R18 (480 (Gpc/h)³ each) | Gaussian 60 / fixed 60 | **+0.0029 ± 0.0013** / +0.0026 ± 0.0012 | +0.0016 ± 0.0016 / +0.0015 ± 0.0012 | |
+| **combined, independent Gaussian phases** (L1000_N128 + L2000_N256, 880 (Gpc/h)³) | | **(2.1 ± 1.0)×10⁻³** | | |
+| combined, all Gaussian R_f = 14/18/22 (assuming R_f-independent A₃) | | (1.9 ± 0.8)×10⁻³ | | |
 
-**A₃ = (1.1 ± 1.5)×10⁻³** (primary Gaussian ensemble; (1.9 ± 1.3)×10⁻³ from the straight-line representation Y_even/σ = A₁ + A₃σ²,
-Fig. 1) is consistent with the predicted 1.6×10⁻³ but only at the ~1σ level: the cubic term contributes 1.5×10⁻⁵ to F_M at σ = 0.21
-and the present 400 (Gpc/h)³ Gaussian ensemble resolves it to ±1.4×10⁻⁵.  Fig. 2 shows Y_even − A₁σ rising as ε³ along the predicted
-curve.  A₃ is not detected at better than 1.5σ, and is **not** inconsistent with zero either.  The LPT-order dependence of A₃ is
+**A₃ = (2.1 ± 1.0)×10⁻³** from the two ensembles with independent phases (400 (Gpc/h)³ at L = 1000 giving (1.1 ± 1.5)×10⁻³ and
+480 (Gpc/h)³ at L = 2000 giving (2.9 ± 1.3)×10⁻³; the line-fit representation Y_even/σ = A₁ + A₃σ², Fig. 1, gives (1.9 ± 1.3) and
+(1.6 ± 1.6)×10⁻³).  This is consistent with the predicted 1.6×10⁻³ (0.5σ) and excludes A₃ = 0 at 2.1σ: the cubic term contributes
+1.5×10⁻⁵ to F_M at σ = 0.21 and the full Gaussian ensemble (880 (Gpc/h)³) resolves it to ±1.0×10⁻⁵.  Fig. 2 shows Y_even − A₁σ rising
+as ε³ along the predicted curve.  Including the R_f = 14 and 22 ensembles (assuming the weak scale dependence) gives (1.9 ± 0.8)×10⁻³.  The LPT-order dependence of A₃ is
 strong below 4LPT (2LPT −0.0073, 3LPT +0.0103, both ±0.0015) because the degree-k parts of −ln J with k ≤ 4 all enter at O(σ³);
 4LPT → 5LPT changes A₃ by only +4×10⁻⁵ and Y(ε = 1) by −2.2×10⁻⁶ (same phases), and 5LPT → 6LPT by 1×10⁻⁵, so 4LPT is converged for this test (the LPT-truncation systematic on A₃ is < 10⁻⁴, 30× below the statistical error).
 
@@ -145,7 +154,7 @@ Shrinking symmetric bins |δ_L|/σ < w, w = 0.01 … 0.5, extrapolated linearly 
 | ⟨D₄ \| δ_L=0⟩/σ⁴ (degree-4 part of 1/J) | 0.0660 ± 0.0001 | | — |
 
 The analytic m₄ ≃ −0.0152 is reproduced to 0.4 % when "j₄" is identified with the degree-4 part of J itself (J₄ = −j₄ + ½j₂² at δ_L = 0);
-for the degree-4 part of −ln J the value is +0.0407.  Resolution: N = 64 gives −0.01511, N = 128 −0.01526, (N = 256 *pending*); R_f = 14 gives −0.01524.
+for the degree-4 part of −ln J the value is +0.0407.  Resolution: N = 64 gives −0.01511, N = 128 −0.01526, N = 256 −0.01526 (resolution-converged; the N = 64 value is 1 % low); R_f = 14 gives −0.01524.
 
 ## 8. Exact ΛCDM growth (`nLPTx` rows)
 
@@ -182,7 +191,9 @@ costs ≈ 35 min per run).
 * Resolution (same phases, L = 1000): Y(4LPT, ε = 1) differs between N = 64 and N = 128 by (−1.3 ± 7.9)×10⁻⁶ (Gaussian, 800 pairs) and
   between N = 128 and N = 256 by (+5 ± 6)×10⁻⁶ (120 pairs), i.e. the grid is converged at the 10⁻⁵ level in Y (≲ 10⁻³ in A₃);
   A₁ = 0.076015 ± 0.000089 / 0.075984 ± 0.000054 / 0.075889 ± 0.000122 at N = 64 / 128 / 256 (Gaussian); m₄(J) = −0.01511 / −0.01526 / −0.01526.
-* Box: L = 500 gives A₁ high by (1.8 ± 1.6)×10⁻⁴ relative to L = 1000; L = 2000 *(pending)*.
+* Box: L = 500 gives A₁ high by (1.8 ± 1.6)×10⁻⁴ relative to L = 1000 (Gaussian; +2.8×10⁻⁴ ± 1.3×10⁻⁴ fixed); L = 2000 (h = 7.8, 60 seeds)
+  gives A₁ = 0.076004 ± 0.000047 (Gaussian) and 0.075975 ± 0.000036 (fixed), both within 0.5σ of the prediction, and A₃ = (2.9 ± 1.3) /
+  (2.6 ± 1.2)×10⁻³; m₄(J) = −0.01526 / −0.01525.  No box-size trend beyond L = 1000 is resolved.
 * LPT order: 4LPT → 5LPT changes Y(ε=1) by −2.2×10⁻⁶ ± 1.5×10⁻⁷ and A₃ by +4×10⁻⁵; 5LPT → 6LPT changes A₃ by 1×10⁻⁵ (50 seeds, same phases). A₁ is identical to 6 digits across 4–6LPT.
 * Filter scale: R_f = 14 gives A₁ = 0.075897 ± 0.000071 / 0.076018 ± 0.000053 (Gaussian / fixed) and A₃ = (0.7 ± 1.4)×10⁻³;
   R_f = 22 gives A₁ = 0.075978 ± 0.000113 / 0.076051 ± 0.000090 and A₃ = (5.9 ± 3.8)×10⁻³ / (−1.7 ± 4.3)×10⁻³; m₄(J) = −0.01524 at R_f = 14 and −0.01524 at R_f = 22 (no measurable R_f dependence between 14 and 22).
@@ -196,9 +207,9 @@ costs ≈ 35 min per run).
 2. "F₋₊ should be much smaller" — it is exactly zero for every element at all amplitudes and orders tested (pre-caustic sheet).
 3. The predicted m₄ ≈ −0.0152 is reproduced only for the degree-4 coefficient of J; the same conditional average of the degree-4
    part of −ln J is +0.0407 (both tabulated).
-4. A₃ is confirmed in sign and consistent in magnitude at 1σ, but not detected at the 3σ level even with 400 (Gpc/h)³; the fixed-amplitude
-   ensemble does **not** reduce the A₃ error (its Y_even scatter is similar: the realization scatter of Y is dominated by the
-   sampling of the Lagrangian neighbourhood of δ_L = 0, not by σ fluctuations).
+4. A₃ = (2.1 ± 1.0)×10⁻³ is confirmed in sign and consistent in magnitude with 1.6×10⁻³, but only a 2σ detection even with 880 (Gpc/h)³
+   of independent Gaussian phases; the fixed-amplitude ensembles do **not** reduce the A₃ error (their Y_even scatter is similar: the
+   realization scatter of Y is dominated by the sampling of the Lagrangian neighbourhood of δ_L = 0, not by σ fluctuations).
 5. Fixed-amplitude ICs bias A₁ upward by ~(5–10)×10⁻⁵ (non-Gaussian field); the Gaussian ensemble must be used for the formal test.
 6. The FEM solver as implemented is a valid dynamical check of 4LPT only after removing its linear-operator discretisation (matched
    partner); raw FEM−LPT differences of 5–8 % in Y at h = 7.8 Mpc/h are mesh artefacts, not dynamics.

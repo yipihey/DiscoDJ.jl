@@ -3,5 +3,5 @@ data/**/*.jld2
 data/**/stdout_*.txt
 data/**/stdout.txt
 data/stage*.log
-Manifest.toml
+
 .CondaPkg/

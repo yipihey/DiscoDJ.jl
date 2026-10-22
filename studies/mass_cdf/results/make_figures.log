@@ -1,0 +1,16 @@
+┌ Warning: Assignment to `d` in soft scope is ambiguous because a global variable by the same name exists: `d` will be treated as a new local. Disambiguate by using `local d` to suppress this warning or `global d` to assign to the existing global variable.
+└ @ ~/Projects/DiscoDJ.jl/studies/mass_cdf/bin/make_figures.jl:69
+┌ Warning: Assignment to `d` in soft scope is ambiguous because a global variable by the same name exists: `d` will be treated as a new local. Disambiguate by using `local d` to suppress this warning or `global d` to assign to the existing global variable.
+└ @ ~/Projects/DiscoDJ.jl/studies/mass_cdf/bin/make_figures.jl:105
+┌ Warning: Assignment to `d` in soft scope is ambiguous because a global variable by the same name exists: `d` will be treated as a new local. Disambiguate by using `local d` to suppress this warning or `global d` to assign to the existing global variable.
+└ @ ~/Projects/DiscoDJ.jl/studies/mass_cdf/bin/make_figures.jl:126
+┌ Warning: Assignment to `xs` in soft scope is ambiguous because a global variable by the same name exists: `xs` will be treated as a new local. Disambiguate by using `local xs` to suppress this warning or `global xs` to assign to the existing global variable.
+└ @ ~/Projects/DiscoDJ.jl/studies/mass_cdf/bin/make_figures.jl:185
+  wrote fig1_Yodd_over_sigma_vs_sigma2
+  wrote fig2_odd_even_vs_eps
+  wrote fig3_transition_fractions
+  wrote fig4_shear_focusing
+  wrote fig5_mass_cdf_curves
+  wrote fig6_convergence_A1_A3
+  wrote fig7_m4_extrapolation
+figures in /Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/results/figures

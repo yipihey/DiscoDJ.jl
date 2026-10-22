@@ -1,0 +1,1 @@
+FEM ensemble FEM_L500_N256 N=256 L=500.0 h=1.953125 R_f=18.0 nsteps=50 a_ini=0.05 ε_lin=0.1 σ_box=0.21071880305646634
