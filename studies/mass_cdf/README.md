@@ -25,9 +25,12 @@ studies/mass_cdf/
   bin/analyze.jl          aggregate one ensemble into results/<name>/*.csv
   bin/analyze_fem.jl      aggregate the FEM ensembles into results/fem/*.csv
   bin/make_figures.jl     figures into results/figures/
+  bin/stage_launch.sh     the worker launch commands used for the campaign (stages 1–3)
+  bin/finalize.sh         waits for the last ensembles, then runs every analysis script
   config/*.toml           ensemble definitions (cosmology, box, resolution, filter, amplitudes, …)
   data/<name>/            worker outputs (JLD2; element-level dumps *_elements_seed*.jld2 are large and not committed)
-  results/<name>/         tables; results/figures/; results/SUMMARY.md
+  results/<name>/         tables (large per-realization tables gzipped); results/figures/; results/fem/;
+                          results/convergence/; results/SUMMARY.md (the written-up results)
 ```
 
 Run (from the repository root; the Python interpreter is DISCO-DJ's venv, resolved by `DiscoDJLib`):

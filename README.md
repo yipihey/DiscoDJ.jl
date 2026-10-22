@@ -33,6 +33,11 @@ bulk displacement, the linear-growth gate (ψ ∝ D(a), D∝a to 0.5% deep in ma
 domination), 2LPT−Zel'dovich difference present but perturbative at z≈50, and
 seed reproducibility to f32 round-off.
 
+## Studies
+- `studies/mass_cdf/` — high-statistics tests of the pre-shell-crossing mass-CDF prediction
+  F_M(>ρ̄) = 1/2 + A₁σ + A₃σ³ + … (1–6LPT, exact ΛCDM growth, FEM N-body on identical phases);
+  see its README.md and `results/SUMMARY.md`.
+
 ## Roadmap
 - MultiCode injectors: `DiscoSpec` as a cosmological problem-setup source next
   to `MusicSpec`/`GenicSpec`, with a 3-way IC cross-check (DISCO-DJ vs MUSIC vs

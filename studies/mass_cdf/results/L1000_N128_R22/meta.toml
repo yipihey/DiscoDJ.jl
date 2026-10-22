@@ -1,0 +1,40 @@
+A1_exact_a1 = 0.0755086216830595
+n_parts = 4
+A1_EdS = 0.07598900579074909
+sigma2_cont = 0.028597388992963192
+k0_cutoff = 0.032141217326661246
+ensemble = "L1000_N128_R22"
+sigma2_box = 0.028600807639551994
+
+[commits]
+"commit_DiscoDJ.jl" = "2a18245ab3e0efafb7a5e8310daebc7363bf40af"
+commit_disco-dj-fem = "fcf2b472370f78feb20815fcf1cebba8571e9b4a"
+
+[config]
+shear_widths = [0.02, 0.05, 0.1, 0.2]
+n_seeds = 150
+pk_file = "none"
+exact_growth = true
+L = 1000.0
+precision = "single"
+m_widths = [0.01, 0.02, 0.03, 0.05, 0.07, 0.1, 0.15, 0.2, 0.3, 0.5]
+name = "L1000_N128_R22"
+N = 128
+R_f = 22.0
+cosmo = "Planck18EEBAOSN"
+a_exact = [0.5, 1.0]
+save_elements_seeds = [1, 2, 3]
+config_path = "/Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/config/L1000_N128_R22.toml"
+eps = [0.2, 0.3, 0.4, 0.5, 0.65, 0.8, 1.0]
+save_elements_eps = [0.5, 1.0]
+ic_types = ["gaussian", "fixed"]
+lpt_order = 4
+N_fine = 256
+
+[seeds_per_ic_type]
+fixed = 150
+gaussian = 150
+
+[total_volume_per_ic_type_Gpc3]
+fixed = 150.0
+gaussian = 150.0

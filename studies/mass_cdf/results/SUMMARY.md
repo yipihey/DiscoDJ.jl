@@ -48,7 +48,11 @@ of F, fraction J ≤ 0, J percentiles, the transition matrix, and F_M, F_V at th
 | L1000_N64_R18 | fixed | 400 | 0.076020 ± 0.000081 | | +0.4σ |
 | L500_N64_R18 | Gaussian | 400 | 0.076167 ± 0.000150 | | +1.2σ |
 | L500_N64_R18 | fixed | 400 | 0.076264 ± 0.000115 | | +2.4σ |
-| L1000_N128_R22, L1000_N256_R18, L2000_N256_R18 | | | *(pending)* | | |
+| L1000_N128_R22 | Gaussian | 150 | 0.075978 ± 0.000113 | | −0.1σ |
+| L1000_N128_R22 | fixed | 150 | 0.076051 ± 0.000090 | | +0.7σ |
+| L1000_N128_R18_6LPT (6LPT) | Gaussian / fixed | 50 / 50 | 0.075909 ± 0.000150 / 0.075935 ± 0.000119 | | −0.5σ / −0.5σ |
+| L1000_N256_R18 | Gaussian / fixed | 60 / 60 | 0.075889 ± 0.000122 / 0.075917 ± 0.000085 | | −0.8σ / −0.8σ |
+| L2000_N256_R18 | Gaussian / fixed | 60 / 60 | *(filled at the end)* | | |
 
 The parameter-free prediction is confirmed at the 10⁻⁴ (relative 0.1 %) level in the 400-realization Gaussian ensemble.  Two
 systematic trends at the 10⁻⁴ level are visible: (i) fixed-amplitude ensembles return A₁ higher by (5–10)×10⁻⁵ — the
@@ -83,14 +87,17 @@ Odd-constrained fits Y_even = c₁ε + c₃ε³ + c₅ε⁵ converted to A_k = c
 | L1000_N128_R14 | Gaussian 150 / fixed 150 | +0.0007 ± 0.0014 / +0.0004 ± 0.0012 | | |
 | L1000_N64_R18 | Gaussian 400 / fixed 400 | −0.0028 ± 0.0044 / +0.0025 ± 0.0041 | | |
 | L500_N64_R18 | Gaussian 400 / fixed 400 | −0.0005 ± 0.0041 / +0.0042 ± 0.0045 | | |
-| L1000_N256_R18, L2000_N256_R18, R22, 6LPT | | *(pending)* | | |
+| L1000_N128_R22 | Gaussian 150 / fixed 150 | +0.0059 ± 0.0038 / −0.0017 ± 0.0043 | | |
+| L1000_N128_R18_6LPT (4/5/6LPT, same seeds) | Gaussian 50 | −0.00414 / −0.00414 / −0.00413 (± 0.0043) | | |
+| L1000_N256_R18 | Gaussian 60 / fixed 60 | +0.0023 ± 0.0014 / +0.0055 ± 0.0013 | +0.0018 ± 0.0031 / +0.0029 ± 0.0022 | |
+| L2000_N256_R18 | Gaussian 60 / fixed 60 | *(filled at the end)* | | |
 
 **A₃ = (1.1 ± 1.5)×10⁻³** (primary Gaussian ensemble; (1.9 ± 1.3)×10⁻³ from the straight-line representation Y_even/σ = A₁ + A₃σ²,
 Fig. 1) is consistent with the predicted 1.6×10⁻³ but only at the ~1σ level: the cubic term contributes 1.5×10⁻⁵ to F_M at σ = 0.21
 and the present 400 (Gpc/h)³ Gaussian ensemble resolves it to ±1.4×10⁻⁵.  Fig. 2 shows Y_even − A₁σ rising as ε³ along the predicted
 curve.  A₃ is not detected at better than 1.5σ, and is **not** inconsistent with zero either.  The LPT-order dependence of A₃ is
 strong below 4LPT (2LPT −0.0073, 3LPT +0.0103, both ±0.0015) because the degree-k parts of −ln J with k ≤ 4 all enter at O(σ³);
-4LPT → 5LPT changes A₃ by only +4×10⁻⁵ and Y(ε = 1) by −2.2×10⁻⁶ (same phases), so 4LPT is converged for this test.
+4LPT → 5LPT changes A₃ by only +4×10⁻⁵ and Y(ε = 1) by −2.2×10⁻⁶ (same phases), and 5LPT → 6LPT by 1×10⁻⁵, so 4LPT is converged for this test (the LPT-truncation systematic on A₃ is < 10⁻⁴, 30× below the statistical error).
 
 ## 5. Transition fractions and full cumulative curves (4LPT, R_f = 18, Gaussian, ε = 1; `ensemble_summary.csv`, `cdf_curves.csv`)
 
@@ -149,7 +156,7 @@ relative to the EdS coefficient is therefore measured directly; the D^n (EdS-coe
 ## 9. FEM versus LPT (`results/fem/`)
 
 DISCO-DJ's P1 FEM Poisson solver on the Kuhn mesh integrates the sheet vertices (EdS background, ΛCDM spectrum shape, 3LPT ICs at
-a = 0.05, 50 FastPM D-time steps; 25/50/100 steps and CG tolerances 10⁻⁷/10⁻⁹ give identical results to 2×10⁻⁵).  Its *linear*
+a = 0.05, 50 FastPM D-time steps; 100 steps with CG tolerance 10⁻⁹ instead of 50 steps with 10⁻⁷ changes Y_FEM by 5×10⁻⁵ at ε = 1, i.e. the time-integration systematic is 0.3 % of Y, `FEM_L500_N64_steps100`).  Its *linear*
 response is distorted by the mesh: at h = 7.8 Mpc/h the linear density has std(δ_FEM)/std(δ) = 0.925, corr 0.9964, 5.0 % rms
 displacement error (2.2 % at h = 3.9, 0.6 % at 1.95), with its second-order displacement 0.89 (h = 7.8) to 0.97 (h = 3.9) of ψ₂ and
 correlated at 0.99.  Because Y is a statistic of the field at δ_L ≈ 0, this linear distortion dominates the *raw* FEM−LPT difference:
@@ -159,10 +166,12 @@ correlated at 0.99.  Because Y is a statistic of the field at δ_L ≈ 0, this l
 | 7.8 (10 seeds) | 1.0 | −1.10×10⁻³ ± 0.37×10⁻³ (−7 % of Y) | **(−3 ± 4)×10⁻⁵** (−0.2 %) |
 | 7.8 | 0.5 | −0.53×10⁻³ ± 0.38×10⁻³ | (0 ± 2)×10⁻⁵ |
 | 7.8 | 0.1 | ±4×10⁻⁴ (realization-dependent sign) | (0 ± 1)×10⁻⁵ |
-| 3.9 (3 seeds) | | *(pending)* | |
-| 1.95 (1 seed) | | *(pending)* | |
+| 3.9 (3 seeds) | 1.0 | (−0.9 ± 1.9)×10⁻⁴ (−0.5 %) | **(−4 ± 2)×10⁻⁵** (−0.2 %) |
+| 3.9 | 0.5 | (+0.8 ± 1.6)×10⁻⁴ | (−2 ± 1)×10⁻⁵ |
+| 3.9 | 0.1 | ±1.4×10⁻⁴ | (−1 ± 2)×10⁻⁵ |
+| 1.95 | | not completed: the N = 256 FEM run is single-threaded in JAX on this machine (> 2 h per run) and was stopped | |
 
-With the linear-operator discretisation removed, **FEM and 4LPT agree to within (3 ± 4)×10⁻⁵ in Y at σ = 0.21**, i.e. to 0.2 % of the
+The raw difference scales as h² (−1.1×10⁻³ → −0.9×10⁻⁴ from h = 7.8 to 3.9, with the linear density distortion 7.5 % → 2.0 % and the second-order displacement deficit 11 % → 3 %).  With the linear-operator discretisation removed, **FEM and 4LPT agree to within (3–4 ± 2–4)×10⁻⁵ in Y at σ = 0.21 on both meshes** (h²-extrapolated matched difference (−4 ± 3)×10⁻⁵ at ε = 1, (−3 ± 2)×10⁻⁵ at ε = 0.5, (0 ± 2)×10⁻⁵ at ε = 0.1; odd and even parts both ≤ 3×10⁻⁵), i.e. to 0.2 % of the
 nonlinear migration and at the level of the A₃σ³ term itself; the tet-volume (Lagrangian-element) Jacobian gives the same picture.
 The FEM cannot, however, test A₃ independently: its mesh error in Y (even after matching) and the FEM's second-order content deficit
 at h ≥ 3.9 are comparable to A₃σ³ ≈ 1.5×10⁻⁵, and a mesh fine enough to beat this is beyond the feasible cost (N = 256 at L = 500
@@ -170,12 +179,13 @@ costs ≈ 35 min per run).
 
 ## 10. Convergence (`results/convergence/`)
 
-* Resolution (same phases, L = 1000): Y(4LPT, ε = 1) differs between N = 64 and N = 128 by *(same-seed table pending N = 256)*;
-  A₁(N = 64) = 0.076015 ± 0.000089 vs A₁(N = 128) = 0.075984 ± 0.000054 (Gaussian).
+* Resolution (same phases, L = 1000): Y(4LPT, ε = 1) differs between N = 64 and N = 128 by (−1.3 ± 7.9)×10⁻⁶ (Gaussian, 800 pairs) and
+  between N = 128 and N = 256 by (+5 ± 6)×10⁻⁶ (120 pairs), i.e. the grid is converged at the 10⁻⁵ level in Y (≲ 10⁻³ in A₃);
+  A₁ = 0.076015 ± 0.000089 / 0.075984 ± 0.000054 / 0.075889 ± 0.000122 at N = 64 / 128 / 256 (Gaussian); m₄(J) = −0.01511 / −0.01526 / −0.01526.
 * Box: L = 500 gives A₁ high by (1.8 ± 1.6)×10⁻⁴ relative to L = 1000; L = 2000 *(pending)*.
-* LPT order: 4LPT → 5LPT changes Y(ε=1) by −2.2×10⁻⁶ ± 1.5×10⁻⁷ and A₃ by +4×10⁻⁵; 6LPT *(pending)*.
+* LPT order: 4LPT → 5LPT changes Y(ε=1) by −2.2×10⁻⁶ ± 1.5×10⁻⁷ and A₃ by +4×10⁻⁵; 5LPT → 6LPT changes A₃ by 1×10⁻⁵ (50 seeds, same phases). A₁ is identical to 6 digits across 4–6LPT.
 * Filter scale: R_f = 14 gives A₁ = 0.075897 ± 0.000071 / 0.076018 ± 0.000053 (Gaussian / fixed) and A₃ = (0.7 ± 1.4)×10⁻³;
-  R_f = 22 *(pending)*; m₄(J) = −0.01524 at R_f = 14.
+  R_f = 22 gives A₁ = 0.075978 ± 0.000113 / 0.076051 ± 0.000090 and A₃ = (5.9 ± 3.8)×10⁻³ / (−1.7 ± 4.3)×10⁻³; m₄(J) = −0.01524 at R_f = 14 and −0.01524 at R_f = 22 (no measurable R_f dependence between 14 and 22).
 * Single vs double precision: not run (float32 LPT fields; the Taylor-coefficient closure test reproduces −ln J to 5×10⁻⁶ rms
   at ε = 0.1 and ⟨J⟩ = 1 to 10⁻⁷).
 
@@ -192,3 +202,70 @@ costs ≈ 35 min per run).
 5. Fixed-amplitude ICs bias A₁ upward by ~(5–10)×10⁻⁵ (non-Gaussian field); the Gaussian ensemble must be used for the formal test.
 6. The FEM solver as implemented is a valid dynamical check of 4LPT only after removing its linear-operator discretisation (matched
    partner); raw FEM−LPT differences of 5–8 % in Y at h = 7.8 Mpc/h are mesh artefacts, not dynamics.
+
+## 12. Single-cube second-order CDF (`results/local_diagnostics/single_cube_cdf.csv`, `_fits.csv`, `fig_single_cube_cdf_residual`)
+
+F_M^(2)(σ) = ∫ p_χ²₅(u) Φ(2gσu/15) du with g = (1 + D₂/D₁²)/2 (EdS 2/7; exact Planck18 growth 0.28391 at a = 1, 0.28534 at a = 0.5),
+compared with the measured paired estimator F_M = ½ + Y_even.  F_M^(2) = ½ + A₁σ − 1.158×10⁻³σ³ + … (checked numerically), so the
+weak-amplitude intercept of Δ_tide/σ³ should be A₃ + 1.158×10⁻³ ≈ 2.8×10⁻³ if A₃ = 1.6×10⁻³.  Weighted fits Δ_tide/σ³ = a₀ + a₁σ²:
+
+| ensemble | ICs | method | a₀ = A₃,tide | implied A₃ = a₀ − 1.158×10⁻³ |
+|---|---|---|---|---|
+| L1000_N128_R18 | Gaussian 400 | 4LPT | (1.7 ± 2.0)×10⁻³ | (0.6 ± 2.0)×10⁻³ |
+| L1000_N128_R18 | fixed 200 | 4LPT | (5.8 ± 2.8)×10⁻³ | (4.6 ± 2.8)×10⁻³ |
+| L1000_N128_R18 | Gaussian 400 | 3LPT exact growth, a = 1 | (11.3 ± 1.9)×10⁻³ | (10.2 ± 1.9)×10⁻³ (3LPT, not converged — cf. §4) |
+| L1000_N128_R18_5LPT | Gaussian 200 / fixed 200 | 5LPT | (−0.9 ± 2.8) / (5.8 ± 2.8)×10⁻³ | |
+| L1000_N64_R18 | Gaussian 400 / fixed 400 | 4LPT | (0.6 ± 3.2) / (6.5 ± 3.3)×10⁻³ | |
+| L1000_N128_R14 | Gaussian 150 / fixed 150 | 4LPT | (−3.3 ± 1.5) / (3.2 ± 1.5)×10⁻³ | |
+| L1000_N128_R22 | Gaussian 150 / fixed 150 | 4LPT | (5.3 ± 6.4) / (9.0 ± 6.9)×10⁻³ | |
+
+The residual above the single-cube law is positive and of the expected order (10⁻³ in A₃ units) but, as for A₃ itself, only at the
+1–2σ level; this diagnostic is a re-expression of §4 (it is dominated by the same ε³ term) and inherits its noise.  Caution: any A₁
+offset (fixed-amplitude bias, finite box at L = 500) enters Δ_tide/σ³ as δA₁/σ² and dominates the small-σ end — the L = 500 rows
+(not listed; a₀ ≈ 0.02–0.03) are an artefact of that, and the fixed-amplitude rows are biased upward for the same reason.
+
+## 13. Fourth-order residual at initially mean density (`mean_density_residual*.csv`, `fig_mean_density_residual_and_shape`)
+
+R ≡ −ln J − gD²S and the exact second-order remainder R₂ ≡ −ln J − [δ_L + (13/42)δ_L² + gD²S] for |δ_L|/σ < w, binned in S = T:T and
+fitted on elements as R/σ⁴ = c₀ + c₁(S/σ²) + c₂(S/σ²)² (4 Gaussian seeds, R_f = 18, N = 128; ± seed scatter):
+
+| quantity (w = 0.05) | c₀ | c₁ | c₂ | residual rms/σ⁴ |
+|---|---|---|---|---|
+| exact j₄ (degree-4 part of −ln J, the ε → 0 law) | 0.0042 ± 0.0001 | 0.0217 ± 0.0003 | 0.0356 ± 0.0002 | 0.019 |
+| R₂, 4LPT, ε = 1 | 0.0101 ± 0.0013 | 0.0051 ± 0.0042 | 0.0427 ± 0.0027 | 0.22 |
+| R₂, 4LPT, ε = 0.5 | 0.0147 ± 0.0026 | −0.0085 ± 0.0084 | 0.0467 ± 0.0054 | 0.43 |
+| R₂, 4LPT, ε = 0.2 | 0.030 ± 0.007 | −0.052 ± 0.021 | 0.062 ± 0.014 | 1.07 |
+| R₂, 2LPT, ε = 1 | 0.0184 ± 0.0017 | −0.0242 ± 0.0049 | 0.0447 ± 0.0031 | 0.39 |
+| R₂, 3LPT exact growth, ε = 1 | 0.0142 ± 0.0012 | 0.0437 ± 0.0040 | 0.0331 ± 0.0027 | 0.22 |
+| R₂, FEM (own linear tensor), N = 128, ε = 1 (1 seed) | −0.27 | 0.36 | 0.08 | 0.58 |
+| R₂, matched 4LPT, N = 128, ε = 1 (1 seed) | 0.030 | −0.065 | 0.067 | 0.22 |
+
+The clean fourth-order law is the j₄ row: ⟨j₄ | S, δ_L = 0⟩/σ⁴ = 0.0042 + 0.0217 (S/σ²) + 0.0356 (S/σ²)², whose S-average
+(⟨S/σ²⟩ = 2/3, ⟨(S/σ²)²⟩ = 28/45) reproduces m₄(−ln J) = 0.0408 of §7.  At finite ε the remainder R₂ is dominated by the third-order
+term (ε³, zero mean at δ_L = 0 but large scatter, hence the rms/σ⁴ ∝ 1/ε) so the finite-ε fits are noisy and do not converge
+cleanly to the j₄ coefficients within their errors; R (with the δ_L terms left in, as defined in the request) is in addition dominated by
+the δ_L spread inside the bin and is useless for this purpose at any w (`target = R` rows).  The FEM at h = 3.9 differs from
+matched 4LPT at the level c₀ ≈ −0.3 (i.e. ⟨R₂⟩ ≈ 0.023σ⁴ vs 0.028σ⁴): a 3×10⁻⁴ offset in −ln J at mean density, again the
+linear-operator distortion.
+
+## 14. Shear shape beyond T:T (`shear_shape_test*.csv`)
+
+Within |δ_L|/σ < 0.05 and S/σ² bins, R₂ is regressed on χ₃ = tr T³/(T:T)^{3/2} (quadratic in χ₃, linear in S inside the bin).
+A clear, highly significant dependence exists; it scales exactly as ε³ (third order), i.e. it is the tr T³ term that second order
+cannot contain: d⟨R₂⟩/dχ₃ / σ³ = −0.0247, −0.051, −0.094, −0.163, −0.286 for S/σ² ≈ 0.3, 0.5, 0.75, 1.1, 1.65 (identical at ε = 0.2,
+0.5, 1 to < 2 %), i.e. ⟨R₂ | T⟩ ≃ −0.145 tr(T³) (the coefficient −0.145 ± 0.005 is the same in every S bin; the local Zel'dovich
+piece alone would give −1/3, so the non-local 2LPT/3LPT contributions supply +0.19).  Fraction of the R₂ residual variance explained
+by χ₃ in the cells (all S bins, w = 0.05): 4LPT 0.38–0.39, 2LPT 0.14 (2LPT lacks the third-order tr T³ pieces), matched 4LPT on the
+FEM grid 0.25–0.33, FEM itself 0.004–0.04 (its residual is dominated by the mesh linear response).  **The first local tensor
+information needed beyond (δ_L, T:T) is tr T³ at third order; it is sizeable per element but, being odd in the field, averages out
+of F_M at O(σ²) and only enters the CDF at O(σ³) through its correlation with the fourth-order terms.**
+
+## 15. Multiscale (centred 3h parent) locality diagnostic (`results/multiscale/REPORT.md` and tables; parallel work package)
+
+Decision: **do not build a multiscale parent/child theory.**  The Gaussian new-information fraction f_s^new = 1 − r_s² is 3.4×10⁻³
+(h = 7.8, R_f = 18), 8×10⁻³ (R_f = 14), 1.7×10⁻³ (R_f = 22), 2.2×10⁻⁴ (h = 3.9), identical in the three cubic sectors, predicted by
+the box sums and measured to < 1 %, scaling as (h/R_f)^{3.5–3.8}.  The literal R_gain of the invariant regressions is 0.65–0.69, but
+the one-scale residual is already 3×10⁻⁵–2×10⁻⁴ of Var[ln J], and the gain is a deterministic quadrature effect (cube-averaged tensor
+versus the edge-sampled tensor the Kuhn cube actually sees): with the consistent cube tensor A_K the one-scale residual drops 6–11×
+and R_gain falls to 0.11–0.13 (ε = 1) / 0.01 (ε = 0.5).  The integrated fractions are unchanged by the parent (|ΔF_M| ≤ 4×10⁻⁵, same
+size as the definition effect), and the residual does not respond to the parent-conditioned innovations (|corr| ≤ 0.03).

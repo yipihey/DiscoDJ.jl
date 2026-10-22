@@ -113,7 +113,8 @@ if nrow(j2) > 0
     d = combine(groupby(j2, :width), :slope => mean => :slope); sort!(d, :width)
     hlines!(ax2, [d.slope[1]]; color = :black, linestyle = :dot, label = @sprintf("exact j₂ regression (w=%.2f): %.4f", d.width[1], d.slope[1]))
 end
-axislegend(ax2; position = :rb, framevisible = false, labelsize = 10)
+ylims!(ax2, 0.27, 0.52)
+axislegend(ax2; position = :lt, framevisible = false, labelsize = 10)
 save_fig("fig4_shear_focusing", fig)
 
 # ── Fig 5: full F_M(>ρ★) curves: 2LPT, 4LPT (main ensemble) and FEM (L=500 runs) ────────

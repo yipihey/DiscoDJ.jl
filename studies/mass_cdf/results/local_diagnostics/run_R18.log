@@ -1,0 +1,11 @@
+seed 1 done (56 s)
+seed 2 done (35 s)
+seed 3 done (38 s)
+seed 4 done (35 s)
+FEM part_fem_1-3_elements_seed1_eps-0.1.jld2 done
+FEM part_fem_1-3_elements_seed1_eps-0.5.jld2 done
+FEM part_fem_1-3_elements_seed1_eps-1.0.jld2 done
+FEM part_fem_1-3_elements_seed1_eps0.1.jld2 done
+FEM part_fem_1-3_elements_seed1_eps0.5.jld2 done
+FEM part_fem_1-3_elements_seed1_eps1.0.jld2 done
+wrote /Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/results/local_diagnostics (_L1000_N128_R18_s1-4_fem)
