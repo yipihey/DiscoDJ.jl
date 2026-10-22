@@ -1,0 +1,13 @@
+name = "test_N32"
+L = 1000.0
+N = 32
+N_fine = 64
+R_f = 18.0
+cosmo = "Planck18EEBAOSN"
+precision = "single"
+eps = [0.5, 1.0]
+lpt_order = 4
+exact_growth = true
+a_exact = [1.0]
+save_elements_seeds = [1]
+save_elements_eps = [1.0]

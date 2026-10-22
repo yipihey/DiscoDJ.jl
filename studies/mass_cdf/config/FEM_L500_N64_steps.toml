@@ -1,0 +1,16 @@
+# time-step convergence of the FEM run (seed 1, eps=1)
+name = "FEM_L500_N64_steps100"
+L = 500.0
+N = 64
+N_fine = 256
+R_f = 18.0
+ic_type = "gaussian"
+pk_file = "/Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/data/pk/planck18_pk_z0.txt"
+pk_cosmo = "Planck18EEBAOSN"
+precision = "single"
+eps_fem = [1.0]
+n_steps = 100
+a_ini = 0.05
+ic_order = 3
+cg_tol = 1e-9
+cg_maxiter = 30

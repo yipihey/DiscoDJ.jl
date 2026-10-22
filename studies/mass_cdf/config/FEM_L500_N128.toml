@@ -1,0 +1,18 @@
+# FEM (Kuhn P1 Poisson) N-body vs nLPT, identical phases, EdS background with the Planck18 P(k) shape (from pk_file)
+name = "FEM_L500_N128"
+L = 500.0
+N = 128
+N_fine = 256
+R_f = 18.0
+ic_type = "gaussian"
+pk_file = "/Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/data/pk/planck18_pk_z0.txt"
+pk_cosmo = "Planck18EEBAOSN"
+precision = "single"
+eps_fem = [-1.0, -0.5, -0.1, 0.1, 0.5, 1.0]
+n_steps = 50
+a_ini = 0.05
+ic_order = 3
+cg_tol = 1e-7
+cg_maxiter = 10
+n_seeds = 3
+save_elements_seeds = [1]

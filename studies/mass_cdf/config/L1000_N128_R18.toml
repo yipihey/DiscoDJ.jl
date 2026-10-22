@@ -1,0 +1,16 @@
+# Mass-CDF ensemble: box L [Mpc/h], N^3 grid, master white-noise grid N_fine (matched phases across N), Gaussian filter R_f [Mpc/h]
+name = "L1000_N128_R18"
+L = 1000.0
+N = 128
+N_fine = 256
+R_f = 18.0
+cosmo = "Planck18EEBAOSN"
+precision = "single"
+eps = [0.2, 0.3, 0.4, 0.5, 0.65, 0.8, 1.0]
+lpt_order = 4
+exact_growth = true
+a_exact = [0.5, 1.0]
+ic_types = ["gaussian", "fixed"]
+n_seeds = 400
+save_elements_seeds = [1, 2, 3]
+save_elements_eps = [0.5, 1.0]

@@ -1,0 +1,6 @@
+# worker outputs (reproducible from config + seed; large) — results tables are committed under results/
+data/**/*.jld2
+data/**/stdout_*.txt
+data/**/stdout.txt
+data/stage*.log
+Manifest.toml
