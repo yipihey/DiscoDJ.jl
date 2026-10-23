@@ -280,3 +280,67 @@ the one-scale residual is already 3×10⁻⁵–2×10⁻⁴ of Var[ln J], and th
 versus the edge-sampled tensor the Kuhn cube actually sees): with the consistent cube tensor A_K the one-scale residual drops 6–11×
 and R_gain falls to 0.11–0.13 (ε = 1) / 0.01 (ε = 0.5).  The integrated fractions are unchanged by the parent (|ΔF_M| ≤ 4×10⁻⁵, same
 size as the definition effect), and the residual does not respond to the parent-conditioned innovations (|corr| ≤ 0.03).
+
+## 16. Smaller smoothing scales and the post-shell-crossing regime (`results/smallscale/`, `bin/run_smallscale.jl`)
+
+Setup: L = 500 h⁻¹Mpc, N = 256 (h = 1.95), EdS background with the Planck18 P(k) shape (D^n LPT exact in time, g = 2/7),
+R_f ∈ {4, 6, 8, 10, 14} h⁻¹Mpc (σ₀ = 0.78, 0.58, 0.46, 0.38, 0.27 at a = 1), ε ∈ {0.35, 0.5, 0.7, 1}; seed 1 on the full grid,
+seeds 2–3 at ε ∈ {0.5, 1} for R_f ≤ 10 (errors quoted where n = 3).  Elements are the 6 Kuhn tetrahedra of every cube, with the
+*signed* Jacobian J = V_tet/(h³/6) computed identically from the LPT positions and from the PM particles (nothing discarded;
+crossed elements, J ≤ 0, count as above every threshold; an |J| variant is tabulated and changes nothing in the tail).  PM
+reference: DISCO-DJ `run_nbody` (fastpm, 40 log-a steps from a = 0.02, 2LPT ICs) with force grid 2N, exact ik gradient, TSC,
+window deconvolution and sheet-resampled particles — the default PM settings distort the linear response by 19 % at h/R_f = 0.56;
+with these settings the linear-regime error is 0.19–0.41 % rms in ψ (measured per R_f at ε = 0.05 and tabulated), 40 → 80 steps
+changes F_M by 3×10⁻⁵, and PM reproduces 4LPT to ≤ 2×10⁻⁵ in Y wherever nothing has crossed.
+Theory curves: the σ-series ½ + A₁σ + A₃σ³ at ρ★ = ρ̄, and the single-cube second-order law extended to every threshold,
+F_M^(2)(>ρ★) = P[δ_L + (13/42)δ_L² + (2/7)T:T > ln ρ★] (Gaussian δ_L, T:T = (2σ²/15)χ²₅), `F2quad`; `F2lin` drops the δ_L² term.
+
+Crossed fractions P(J ≤ 0): R_f = 8: 1.0×10⁻³ (σ = 0.46); R_f = 6: 9.0×10⁻³ (σ = 0.58); R_f = 4: 4.2×10⁻³ at σ = 0.54 and
+**5.2 % at σ = 0.78**; 4LPT predicts the crossed fraction 15–30 % low (5.0 % vs 5.2 %; 7.6×10⁻³ vs 9.0×10⁻³).
+
+**Mean threshold.** Y = F_M(>ρ̄) − P(δ_L>0) versus the series A₁σ + A₃σ³ (A₃ = 1.6×10⁻³):
+
+| R_f | σ | crossed (PM) | Y_PM | Y_4LPT | series | PM − series | PM − 4LPT |
+|---|---|---|---|---|---|---|---|
+| 8 | 0.461 | 1.0×10⁻³ | 0.03511 | 0.03504 | 0.03519 | (−0.8 ± 1.2)×10⁻⁴ | (+0.8 ± 0.1)×10⁻⁴ |
+| 6 | 0.580 | 9.0×10⁻³ | 0.04422 | 0.04406 | 0.04442 | (−2.0 ± 0.8)×10⁻⁴ | (+1.6 ± 0.1)×10⁻⁴ |
+| 4 | 0.542 | 4.2×10⁻³ | 0.04120 | 0.04110 | 0.04143 | −2.4×10⁻⁴ | +1.0×10⁻⁴ |
+| 4 | 0.780 | 5.2 % | 0.05972 | 0.05900 | 0.06002 | (−3.0 ± 1.3)×10⁻⁴ | (+7.2 ± 0.2)×10⁻⁴ |
+
+The three-term series stays within 0.5 % of the PM value up to σ = 0.78 with 5 % of the mass crossed (the single-seed scatter
+is ≈ ±2×10⁻⁴ at L = 500, so only the σ ≥ 0.58 deviations are marginally significant; they are negative, i.e. the true excess
+grows a little slower than A₁σ + A₃σ³).  4LPT itself falls 1.2 % below PM at σ = 0.78 (and 0.4 % at σ = 0.58) once elements
+cross: the LPT breakdown at the caustics affects the mean threshold before the series does.  The second-order single-cube value
+F_M^(2) − ½ overshoots by 1–3 % at σ ≥ 0.5 (it lacks A₃ and the higher odd terms).
+
+**Low-density tail** (1 − F_M(>ρ★) = mass fraction in voids below ρ★):
+
+| R_f | σ | crossed | ρ★/ρ̄ | 1 − F_M: PM | 4LPT | 2LPT | F_M^(2) theory | PM − 4LPT |
+|---|---|---|---|---|---|---|---|---|
+| 14 | 0.272 | 0 | 0.5 | 1.44×10⁻³ | 1.41×10⁻³ | 1.12×10⁻³ | 6×10⁻⁵ | −3×10⁻⁵ |
+| 4 | 0.390 | 6×10⁻⁵ | 0.5 | 1.10×10⁻² | 1.10×10⁻² | 0.96×10⁻² | 2.8×10⁻³ | (−0.7 ± 0.0)×10⁻⁴ |
+| 6 | 0.580 | 9×10⁻³ | 0.5 | 5.69×10⁻² | 5.71×10⁻² | 5.43×10⁻² | 1.95×10⁻² | (+2.4 ± 0.1)×10⁻⁴ |
+| 4 | 0.780 | 5.2 % | 0.5 | 0.1085 | 0.1103 | 0.1081 | 0.0298 | (+1.8 ± 0.0)×10⁻³ |
+| 4 | 0.780 | 5.2 % | 0.25 | 1.7×10⁻³ | 1.5×10⁻⁴ | 4×10⁻⁵ | 0 | −1.6×10⁻³ |
+| 4 | 0.780 | 5.2 % | 0.75 | 0.2938 | 0.2954 | 0.2995 | 0.2718 | (+1.6 ± 0.0)×10⁻³ |
+
+* **The dynamics-based tail is robust to crossing elsewhere:** with 1 % of the mass crossed, 4LPT (and even 2LPT) reproduce the
+  PM void mass fraction at ρ★ = 0.5 to 2×10⁻⁴ (0.4 %); with 5 % crossed the 4LPT error at ρ★ = 0.5–0.75 is 1.6–1.8×10⁻³, i.e.
+  ≈ 1.6 % of the void fraction and the same size as the shift of the mean-threshold value.  Deep voids (ρ★ = 0.25) are the one
+  place where LPT is qualitatively wrong at σ = 0.78: PM puts 1.7×10⁻³ of the mass there, 4LPT 1.5×10⁻⁴ — the PM elements with
+  J > 4 are stretched tets adjacent to the caustics (|J| up to 22), a non-perturbative geometry that no LPT order captures.
+* **The second-order single-cube theory fails in the tail at every σ, independently of crossing:** because
+  −ln J = δ_L + (13/42)δ_L² + (2/7)T:T has the minimum −21/26, it cannot produce J > 2.25 (ρ < 0.44 ρ̄) at all (F_M^(2)(>0.25ρ̄) ≡ 1),
+  and at ρ★ = 0.5 it underestimates the void fraction by 24× at σ = 0.27, 4× at σ = 0.39 and 3.6× at σ = 0.78; at ρ★ = 0.75 it
+  overestimates F_M by 0.4–2 %.  This is a truncation artefact of the quadratic δ_L law, not a dynamical breakdown: the resummed
+  det(I + Σ εⁿGₙ) of LPT has the right tail.  The mean-threshold expansion is unaffected because P(J<1) only probes the field
+  near δ_L = 0 where the quadratic law is accurate.
+* Where the universal single-cube model ends: at σ ≳ 0.5 the mean-threshold series is still good to ≤ 0.5 %, but the per-element
+  law needs the higher odd terms (tr T³ at third order, §14) and the resummed δ_L dependence for the tail; after a few per cent
+  of the mass has crossed, the remaining single-stream elements are still described by 4LPT to ~10⁻³ in the CDF except for the
+  deepest voids (ρ < 0.3 ρ̄), which inherit non-perturbative stretching from the neighbouring caustics.
+
+Tables: `smallscale_summary.csv` (per method/jtype/variant × R_f × ε: σ, crossed fraction, min J, Y, transition fractions, F_M at
+12 thresholds, theory values), `smallscale_tail_comparison.csv` (same-seed differences PM−4LPT, PM−theory, 4LPT−theory per threshold
+with seed scatter), `smallscale_cdf_curves.csv` (full curves), `smallscale_realizations.csv`; figure `fig_smallscale_tail`.
+Element-level signed tet Jacobians for seed 1 at ε = 1 (PM and 4LPT, every R_f) are in `data/smallscale/*Jtet*.jld2`.

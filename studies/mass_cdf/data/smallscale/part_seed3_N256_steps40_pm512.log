@@ -1,0 +1,14 @@
+smallscale seed=3 N=256 L=500.0 h=1.953125 n_steps=40 res_pm=512 R_f=[4.0, 6.0, 8.0, 10.0] eps=[0.5, 1.0]  started 2026-10-22T16:24:45.867
+R_f= 4.0 PM linear response (ε=0.05): rms(ψ_PM−ψ_1LPT)/rms=0.0042 (vs 2LPT 0.0011) std(δ_PM)/std(δ)=0.9982 corr=0.99995 [682s]
+R_f= 4.0 ε=0.50 σ=0.3926 | crossed: 4LPT 6.07e-05 PM 9.69e-05 | F_M(ρ̄): 4LPT 0.52844 PM 0.52846 series 0.52993 F2 0.53015 | F_M(ρ★=0.5): 4LPT 0.98889 PM 0.98883 F2 0.99710 | F_M(0.25): 4LPT 1.00000 PM 1.00000 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0031 [pm 688s, total 792s]
+R_f= 4.0 ε=1.00 σ=0.7852 | crossed: 4LPT 5.21e-02 PM 5.45e-02 | F_M(ρ̄): 4LPT 0.55822 PM 0.55898 series 0.56044 F2 0.56252 | F_M(ρ★=0.5): 4LPT 0.88922 PM 0.89104 F2 0.97022 | F_M(0.25): 4LPT 0.99983 PM 0.99816 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0864 [pm 722s, total 829s]
+R_f= 6.0 PM linear response (ε=0.05): rms(ψ_PM−ψ_1LPT)/rms=0.0034 (vs 2LPT 0.0009) std(δ_PM)/std(δ)=0.9992 corr=0.99996 [558s]
+R_f= 6.0 ε=0.50 σ=0.2930 | crossed: 4LPT 0.00e+00 PM 0.00e+00 | F_M(ρ̄): 4LPT 0.52014 PM 0.52016 series 0.52231 F2 0.52240 | F_M(ρ★=0.5): 4LPT 0.99866 PM 0.99863 F2 0.99983 | F_M(0.25): 4LPT 1.00000 PM 1.00000 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0010 [pm 568s, total 669s]
+R_f= 6.0 ε=1.00 σ=0.5861 | crossed: 4LPT 9.71e-03 PM 1.12e-02 | F_M(ρ̄): 4LPT 0.54253 PM 0.54267 series 0.54486 F2 0.54564 | F_M(ρ★=0.5): 4LPT 0.94274 PM 0.94297 F2 0.97996 | F_M(0.25): 4LPT 1.00000 PM 0.99993 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0295 [pm 553s, total 642s]
+R_f= 8.0 PM linear response (ε=0.05): rms(ψ_PM−ψ_1LPT)/rms=0.0029 (vs 2LPT 0.0009) std(δ_PM)/std(δ)=0.9996 corr=0.99997 [550s]
+R_f= 8.0 ε=0.50 σ=0.2331 | crossed: 4LPT 0.00e+00 PM 0.00e+00 | F_M(ρ̄): 4LPT 0.51515 PM 0.51516 series 0.51774 F2 0.51778 | F_M(ρ★=0.5): 4LPT 0.99992 PM 0.99992 F2 1.00000 | F_M(0.25): 4LPT 1.00000 PM 1.00000 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0005 [pm 549s, total 641s]
+R_f= 8.0 ε=1.00 σ=0.4662 | crossed: 4LPT 1.21e-03 PM 1.65e-03 | F_M(ρ̄): 4LPT 0.53300 PM 0.53306 series 0.53559 F2 0.53597 | F_M(ρ★=0.5): 4LPT 0.97462 PM 0.97453 F2 0.99177 | F_M(0.25): 4LPT 1.00000 PM 1.00000 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0096 [pm 579s, total 672s]
+R_f=10.0 PM linear response (ε=0.05): rms(ψ_PM−ψ_1LPT)/rms=0.0026 (vs 2LPT 0.0009) std(δ_PM)/std(δ)=0.9998 corr=0.99996 [560s]
+R_f=10.0 ε=0.50 σ=0.1927 | crossed: 4LPT 0.00e+00 PM 0.00e+00 | F_M(ρ̄): 4LPT 0.51128 PM 0.51129 series 0.51466 F2 0.51468 | F_M(ρ★=0.5): 4LPT 1.00000 PM 1.00000 F2 1.00000 | F_M(0.25): 4LPT 1.00000 PM 1.00000 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0004 [pm 555s, total 646s]
+R_f=10.0 ε=1.00 σ=0.3855 | crossed: 4LPT 4.87e-05 PM 1.05e-04 | F_M(ρ̄): 4LPT 0.52620 PM 0.52624 series 0.52938 F2 0.52959 | F_M(ρ★=0.5): 4LPT 0.99000 PM 0.98990 F2 0.99746 | F_M(0.25): 4LPT 1.00000 PM 1.00000 F2 1.00000 | rms(ψ_PM−ψ_4LPT)/rms=0.0034 [pm 559s, total 649s]
+wrote /Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/data/smallscale/part_seed3_N256_steps40_pm512.jld2

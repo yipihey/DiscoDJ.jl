@@ -25,6 +25,10 @@ studies/mass_cdf/
   bin/analyze.jl          aggregate one ensemble into results/<name>/*.csv
   bin/analyze_fem.jl      aggregate the FEM ensembles into results/fem/*.csv
   bin/make_figures.jl     figures into results/figures/
+  bin/diag_single_cube.jl single-cube second-order CDF residual (SUMMARY §12)
+  bin/diag_local.jl, bin/diag_local_summary.jl   mean-density fourth-order residual and shear-shape test (§13–14)
+  bin/run_smallscale.jl, bin/analyze_smallscale.jl   small R_f / post-shell-crossing test with PM N-body reference (§16)
+  multiscale/             centred 3h parent/child locality diagnostic (results/multiscale/REPORT.md, §15)
   bin/stage_launch.sh     the worker launch commands used for the campaign (stages 1–3)
   bin/finalize.sh         waits for the last ensembles, then runs every analysis script
   config/*.toml           ensemble definitions (cosmology, box, resolution, filter, amplitudes, …)

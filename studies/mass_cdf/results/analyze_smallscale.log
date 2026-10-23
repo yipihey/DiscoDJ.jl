@@ -1,0 +1,108 @@
+rows: 540; seeds [1, 2, 3]; R_f [4.0, 6.0, 8.0, 10.0, 14.0]; eps [0.35, 0.5, 0.7, 1.0]
+
+=== PM linear-response accuracy and crossed fractions ===
+R_f= 4.0 ε=0.35 σ=0.271 n=1  PM lin err 0.0041  rms(ψ_PM−ψ_4LPT)/rms=0.0012  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.033
+R_f= 4.0 ε=0.50 σ=0.390 n=3  PM lin err 0.0040  rms(ψ_PM−ψ_4LPT)/rms=0.0030  crossed: PM 5.92e-05 4LPT(tet) 3.47e-05 4LPT(vertex) 3.99e-05  minJ_PM=-0.089
+R_f= 4.0 ε=0.70 σ=0.542 n=1  PM lin err 0.0041  rms(ψ_PM−ψ_4LPT)/rms=0.0171  crossed: PM 4.22e-03 4LPT(tet) 3.46e-03 4LPT(vertex) 3.72e-03  minJ_PM=-5.780
+R_f= 4.0 ε=1.00 σ=0.780 n=3  PM lin err 0.0040  rms(ψ_PM−ψ_4LPT)/rms=0.0781  crossed: PM 5.23e-02 4LPT(tet) 4.99e-02 4LPT(vertex) 5.16e-02  minJ_PM=-22.481
+R_f= 6.0 ε=0.35 σ=0.201 n=1  PM lin err 0.0033  rms(ψ_PM−ψ_4LPT)/rms=0.0007  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.184
+R_f= 6.0 ε=0.50 σ=0.290 n=3  PM lin err 0.0032  rms(ψ_PM−ψ_4LPT)/rms=0.0009  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.017
+R_f= 6.0 ε=0.70 σ=0.402 n=1  PM lin err 0.0033  rms(ψ_PM−ψ_4LPT)/rms=0.0054  crossed: PM 1.15e-04 4LPT(tet) 7.21e-05 4LPT(vertex) 7.57e-05  minJ_PM=-0.224
+R_f= 6.0 ε=1.00 σ=0.580 n=3  PM lin err 0.0032  rms(ψ_PM−ψ_4LPT)/rms=0.0262  crossed: PM 9.00e-03 4LPT(tet) 7.62e-03 4LPT(vertex) 7.86e-03  minJ_PM=-11.475
+R_f= 8.0 ε=0.35 σ=0.159 n=1  PM lin err 0.0028  rms(ψ_PM−ψ_4LPT)/rms=0.0005  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.308
+R_f= 8.0 ε=0.50 σ=0.231 n=3  PM lin err 0.0028  rms(ψ_PM−ψ_4LPT)/rms=0.0005  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.116
+R_f= 8.0 ε=0.70 σ=0.318 n=1  PM lin err 0.0028  rms(ψ_PM−ψ_4LPT)/rms=0.0016  crossed: PM 2.73e-06 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=-0.005
+R_f= 8.0 ε=1.00 σ=0.461 n=3  PM lin err 0.0028  rms(ψ_PM−ψ_4LPT)/rms=0.0094  crossed: PM 9.67e-04 4LPT(tet) 6.92e-04 4LPT(vertex) 7.11e-04  minJ_PM=-12.011
+R_f=10.0 ε=0.35 σ=0.131 n=1  PM lin err 0.0024  rms(ψ_PM−ψ_4LPT)/rms=0.0004  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.422
+R_f=10.0 ε=0.50 σ=0.190 n=3  PM lin err 0.0024  rms(ψ_PM−ψ_4LPT)/rms=0.0004  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.238
+R_f=10.0 ε=0.70 σ=0.262 n=1  PM lin err 0.0024  rms(ψ_PM−ψ_4LPT)/rms=0.0007  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.063
+R_f=10.0 ε=1.00 σ=0.381 n=3  PM lin err 0.0024  rms(ψ_PM−ψ_4LPT)/rms=0.0033  crossed: PM 6.23e-05 4LPT(tet) 2.88e-05 4LPT(vertex) 2.97e-05  minJ_PM=-0.051
+R_f=14.0 ε=0.35 σ=0.095 n=1  PM lin err 0.0019  rms(ψ_PM−ψ_4LPT)/rms=0.0003  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.623
+R_f=14.0 ε=0.50 σ=0.136 n=1  PM lin err 0.0019  rms(ψ_PM−ψ_4LPT)/rms=0.0003  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.482
+R_f=14.0 ε=0.70 σ=0.190 n=1  PM lin err 0.0019  rms(ψ_PM−ψ_4LPT)/rms=0.0003  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.315
+R_f=14.0 ε=1.00 σ=0.272 n=1  PM lin err 0.0019  rms(ψ_PM−ψ_4LPT)/rms=0.0006  crossed: PM 0.00e+00 4LPT(tet) 0.00e+00 4LPT(vertex) 0.00e+00  minJ_PM=+0.119
+
+=== mean threshold: Y = F_M(>ρ̄) − P(δ_L>0) ; series = A₁σ + A₃σ³ ; F2 = single-cube second-order ===
+R_f= 4.0 ε=0.35 σ=0.271  Y: PM 0.02056 4LPT 0.02056 (vertex 0.02059) series 0.02062 F2 0.02069 | PM−4LPT +0.00000±NaN  PM−series -0.00006±NaN  4LPT−series -0.00006
+R_f= 4.0 ε=0.50 σ=0.390  Y: PM 0.02958 4LPT 0.02956 (vertex 0.02969) series 0.02973 F2 0.02994 | PM−4LPT +0.00002±0.00000  PM−series -0.00015±0.00006  4LPT−series -0.00017
+R_f= 4.0 ε=0.70 σ=0.542  Y: PM 0.04120 4LPT 0.04110 (vertex 0.04136) series 0.04143 F2 0.04204 | PM−4LPT +0.00010±NaN  PM−series -0.00024±NaN  4LPT−series -0.00034
+R_f= 4.0 ε=1.00 σ=0.780  Y: PM 0.05972 4LPT 0.05900 (vertex 0.05947) series 0.06002 F2 0.06205 | PM−4LPT +0.00072±0.00002  PM−series -0.00030±0.00013  4LPT−series -0.00102
+R_f= 6.0 ε=0.35 σ=0.201  Y: PM 0.01526 4LPT 0.01525 (vertex 0.01529) series 0.01528 F2 0.01530 | PM−4LPT +0.00001±NaN  PM−series -0.00001±NaN  4LPT−series -0.00002
+R_f= 6.0 ε=0.50 σ=0.290  Y: PM 0.02200 4LPT 0.02199 (vertex 0.02206) series 0.02209 F2 0.02218 | PM−4LPT +0.00002±0.00000  PM−series -0.00009±0.00005  4LPT−series -0.00011
+R_f= 6.0 ε=0.70 σ=0.402  Y: PM 0.03057 4LPT 0.03052 (vertex 0.03064) series 0.03063 F2 0.03087 | PM−4LPT +0.00005±NaN  PM−series -0.00006±NaN  4LPT−series -0.00011
+R_f= 6.0 ε=1.00 σ=0.580  Y: PM 0.04422 4LPT 0.04406 (vertex 0.04422) series 0.04442 F2 0.04517 | PM−4LPT +0.00016±0.00001  PM−series -0.00020±0.00008  4LPT−series -0.00036
+R_f= 8.0 ε=0.35 σ=0.159  Y: PM 0.01208 4LPT 0.01207 (vertex 0.01205) series 0.01208 F2 0.01210 | PM−4LPT +0.00002±NaN  PM−series +0.00000±NaN  4LPT−series -0.00002
+R_f= 8.0 ε=0.50 σ=0.231  Y: PM 0.01752 4LPT 0.01751 (vertex 0.01754) series 0.01754 F2 0.01758 | PM−4LPT +0.00002±0.00000  PM−series -0.00001±0.00005  4LPT−series -0.00003
+R_f= 8.0 ε=0.70 σ=0.318  Y: PM 0.02418 4LPT 0.02415 (vertex 0.02418) series 0.02421 F2 0.02432 | PM−4LPT +0.00003±NaN  PM−series -0.00002±NaN  4LPT−series -0.00005
+R_f= 8.0 ε=1.00 σ=0.461  Y: PM 0.03511 4LPT 0.03504 (vertex 0.03513) series 0.03519 F2 0.03555 | PM−4LPT +0.00008±0.00001  PM−series -0.00008±0.00012  4LPT−series -0.00015
+R_f=10.0 ε=0.35 σ=0.131  Y: PM 0.01005 4LPT 0.01004 (vertex 0.01002) series 0.00994 F2 0.00995 | PM−4LPT +0.00001±NaN  PM−series +0.00010±NaN  4LPT−series +0.00009
+R_f=10.0 ε=0.50 σ=0.190  Y: PM 0.01458 4LPT 0.01456 (vertex 0.01459) series 0.01448 F2 0.01451 | PM−4LPT +0.00001±0.00000  PM−series +0.00010±0.00006  4LPT−series +0.00008
+R_f=10.0 ε=0.70 σ=0.262  Y: PM 0.02011 4LPT 0.02009 (vertex 0.02006) series 0.01991 F2 0.01997 | PM−4LPT +0.00003±NaN  PM−series +0.00021±NaN  4LPT−series +0.00018
+R_f=10.0 ε=1.00 σ=0.381  Y: PM 0.02921 4LPT 0.02916 (vertex 0.02922) series 0.02903 F2 0.02923 | PM−4LPT +0.00005±0.00001  PM−series +0.00018±0.00015  4LPT−series +0.00013
+R_f=14.0 ε=0.35 σ=0.095  Y: PM 0.00739 4LPT 0.00738 (vertex 0.00737) series 0.00723 F2 0.00723 | PM−4LPT +0.00001±NaN  PM−series +0.00016±NaN  4LPT−series +0.00016
+R_f=14.0 ε=0.50 σ=0.136  Y: PM 0.01056 4LPT 0.01054 (vertex 0.01054) series 0.01033 F2 0.01034 | PM−4LPT +0.00001±NaN  PM−series +0.00023±NaN  4LPT−series +0.00021
+R_f=14.0 ε=0.70 σ=0.190  Y: PM 0.01480 4LPT 0.01478 (vertex 0.01478) series 0.01447 F2 0.01449 | PM−4LPT +0.00002±NaN  PM−series +0.00033±NaN  4LPT−series +0.00032
+R_f=14.0 ε=1.00 σ=0.272  Y: PM 0.02117 4LPT 0.02113 (vertex 0.02117) series 0.02068 F2 0.02075 | PM−4LPT +0.00003±NaN  PM−series +0.00048±NaN  4LPT−series +0.00045
+
+=== low-density tail F_M(>ρ★) (fraction of mass above ρ★; 1 − F_M is the void mass fraction) ===
+R_f= 4.0 ε=0.35 σ=0.271 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f= 4.0 ε=0.35 σ=0.271 crossed=0.0e+00 ρ★=0.50  PM 0.99944 (|J| 0.99944)  4LPT 0.99944  2LPT 0.99959  theory 0.99994 | PM−4LPT -0.00001±NaN  PM−theory -0.00050±NaN
+R_f= 4.0 ε=0.35 σ=0.271 crossed=0.0e+00 ρ★=0.75  PM 0.88797 (|J| 0.88797)  4LPT 0.88776  2LPT 0.88789  theory 0.89289 | PM−4LPT +0.00022±NaN  PM−theory -0.00491±NaN
+R_f= 4.0 ε=0.50 σ=0.390 crossed=5.9e-05 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±0.00000  PM−theory +0.00000±0.00000
+R_f= 4.0 ε=0.50 σ=0.390 crossed=5.9e-05 ρ★=0.50  PM 0.98897 (|J| 0.98897)  4LPT 0.98904  2LPT 0.99041  theory 0.99724 | PM−4LPT -0.00007±0.00000  PM−theory -0.00826±0.00006
+R_f= 4.0 ε=0.50 σ=0.390 crossed=5.9e-05 ρ★=0.75  PM 0.81126 (|J| 0.81126)  4LPT 0.81100  2LPT 0.81031  theory 0.81897 | PM−4LPT +0.00026±0.00000  PM−theory -0.00770±0.00024
+R_f= 4.0 ε=0.70 σ=0.542 crossed=4.2e-03 ρ★=0.25  PM 0.99998 (|J| 0.99998)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT -0.00002±NaN  PM−theory -0.00002±NaN
+R_f= 4.0 ε=0.70 σ=0.542 crossed=4.2e-03 ρ★=0.50  PM 0.95387 (|J| 0.95387)  4LPT 0.95375  2LPT 0.95648  theory 0.98434 | PM−4LPT +0.00013±NaN  PM−theory -0.03046±NaN
+R_f= 4.0 ε=0.70 σ=0.542 crossed=4.2e-03 ρ★=0.75  PM 0.75154 (|J| 0.75154)  4LPT 0.75102  2LPT 0.74907  theory 0.76431 | PM−4LPT +0.00052±NaN  PM−theory -0.01277±NaN
+R_f= 4.0 ε=1.00 σ=0.780 crossed=5.2e-02 ρ★=0.25  PM 0.99827 (|J| 0.99827)  4LPT 0.99985  2LPT 0.99996  theory 1.00000 | PM−4LPT -0.00159±0.00006  PM−theory -0.00173±0.00007
+R_f= 4.0 ε=1.00 σ=0.780 crossed=5.2e-02 ρ★=0.50  PM 0.89146 (|J| 0.89145)  4LPT 0.88969  2LPT 0.89186  theory 0.97023 | PM−4LPT +0.00177±0.00003  PM−theory -0.07877±0.00033
+R_f= 4.0 ε=1.00 σ=0.780 crossed=5.2e-02 ρ★=0.75  PM 0.70617 (|J| 0.70615)  4LPT 0.70456  2LPT 0.70048  theory 0.72818 | PM−4LPT +0.00161±0.00003  PM−theory -0.02202±0.00043
+R_f= 6.0 ε=0.35 σ=0.201 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f= 6.0 ε=0.35 σ=0.201 crossed=0.0e+00 ρ★=0.50  PM 0.99999 (|J| 0.99999)  4LPT 0.99999  2LPT 0.99999  theory 1.00000 | PM−4LPT -0.00000±NaN  PM−theory -0.00001±NaN
+R_f= 6.0 ε=0.35 σ=0.201 crossed=0.0e+00 ρ★=0.75  PM 0.94497 (|J| 0.94497)  4LPT 0.94490  2LPT 0.94525  theory 0.94914 | PM−4LPT +0.00008±NaN  PM−theory -0.00417±NaN
+R_f= 6.0 ε=0.50 σ=0.290 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±0.00000  PM−theory +0.00000±0.00000
+R_f= 6.0 ε=0.50 σ=0.290 crossed=0.0e+00 ρ★=0.50  PM 0.99868 (|J| 0.99868)  4LPT 0.99871  2LPT 0.99899  theory 0.99985 | PM−4LPT -0.00003±0.00000  PM−theory -0.00116±0.00006
+R_f= 6.0 ε=0.50 σ=0.290 crossed=0.0e+00 ρ★=0.75  PM 0.87331 (|J| 0.87331)  4LPT 0.87320  2LPT 0.87321  theory 0.87870 | PM−4LPT +0.00011±0.00000  PM−theory -0.00539±0.00051
+R_f= 6.0 ε=0.70 σ=0.402 crossed=1.2e-04 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f= 6.0 ε=0.70 σ=0.402 crossed=1.2e-04 ρ★=0.50  PM 0.98583 (|J| 0.98583)  4LPT 0.98594  2LPT 0.98753  theory 0.99659 | PM−4LPT -0.00010±NaN  PM−theory -0.01076±NaN
+R_f= 6.0 ε=0.70 σ=0.402 crossed=1.2e-04 ρ★=0.75  PM 0.80485 (|J| 0.80485)  4LPT 0.80464  2LPT 0.80380  theory 0.81336 | PM−4LPT +0.00021±NaN  PM−theory -0.00851±NaN
+R_f= 6.0 ε=1.00 σ=0.580 crossed=9.0e-03 ρ★=0.25  PM 0.99995 (|J| 0.99995)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT -0.00005±0.00001  PM−theory -0.00005±0.00001
+R_f= 6.0 ε=1.00 σ=0.580 crossed=9.0e-03 ρ★=0.50  PM 0.94312 (|J| 0.94312)  4LPT 0.94288  2LPT 0.94568  theory 0.98050 | PM−4LPT +0.00024±0.00001  PM−theory -0.03739±0.00031
+R_f= 6.0 ε=1.00 σ=0.580 crossed=9.0e-03 ρ★=0.75  PM 0.74115 (|J| 0.74115)  4LPT 0.74055  2LPT 0.73816  theory 0.75530 | PM−4LPT +0.00060±0.00000  PM−theory -0.01415±0.00057
+R_f= 8.0 ε=0.35 σ=0.159 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f= 8.0 ε=0.35 σ=0.159 crossed=0.0e+00 ρ★=0.50  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f= 8.0 ε=0.35 σ=0.159 crossed=0.0e+00 ρ★=0.75  PM 0.97601 (|J| 0.97601)  4LPT 0.97599  2LPT 0.97628  theory 0.97961 | PM−4LPT +0.00003±NaN  PM−theory -0.00360±NaN
+R_f= 8.0 ε=0.50 σ=0.231 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±0.00000  PM−theory +0.00000±0.00000
+R_f= 8.0 ε=0.50 σ=0.231 crossed=0.0e+00 ρ★=0.50  PM 0.99992 (|J| 0.99992)  4LPT 0.99992  2LPT 0.99995  theory 1.00000 | PM−4LPT -0.00000±0.00000  PM−theory -0.00008±0.00000
+R_f= 8.0 ε=0.50 σ=0.231 crossed=0.0e+00 ρ★=0.75  PM 0.92039 (|J| 0.92039)  4LPT 0.92034  2LPT 0.92063  theory 0.92494 | PM−4LPT +0.00005±0.00000  PM−theory -0.00455±0.00103
+R_f= 8.0 ε=0.70 σ=0.318 crossed=2.7e-06 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f= 8.0 ε=0.70 σ=0.318 crossed=2.7e-06 ρ★=0.50  PM 0.99657 (|J| 0.99657)  4LPT 0.99663  2LPT 0.99721  theory 0.99955 | PM−4LPT -0.00005±NaN  PM−theory -0.00298±NaN
+R_f= 8.0 ε=0.70 σ=0.318 crossed=2.7e-06 ρ★=0.75  PM 0.85381 (|J| 0.85381)  4LPT 0.85370  2LPT 0.85348  theory 0.85980 | PM−4LPT +0.00010±NaN  PM−theory -0.00599±NaN
+R_f= 8.0 ε=1.00 σ=0.461 crossed=9.7e-04 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT -0.00000±0.00000  PM−theory -0.00000±0.00000
+R_f= 8.0 ε=1.00 σ=0.461 crossed=9.7e-04 ρ★=0.50  PM 0.97392 (|J| 0.97392)  4LPT 0.97401  2LPT 0.97621  theory 0.99223 | PM−4LPT -0.00009±0.00000  PM−theory -0.01830±0.00054
+R_f= 8.0 ε=1.00 σ=0.461 crossed=9.7e-04 ρ★=0.75  PM 0.77886 (|J| 0.77886)  4LPT 0.77857  2LPT 0.77721  theory 0.78900 | PM−4LPT +0.00028±0.00000  PM−theory -0.01015±0.00069
+R_f=10.0 ε=0.35 σ=0.131 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=10.0 ε=0.35 σ=0.131 crossed=0.0e+00 ρ★=0.50  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=10.0 ε=0.35 σ=0.131 crossed=0.0e+00 ρ★=0.75  PM 0.99076 (|J| 0.99076)  4LPT 0.99075  2LPT 0.99092  theory 0.99327 | PM−4LPT +0.00001±NaN  PM−theory -0.00251±NaN
+R_f=10.0 ε=0.50 σ=0.190 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±0.00000  PM−theory +0.00000±0.00000
+R_f=10.0 ε=0.50 σ=0.190 crossed=0.0e+00 ρ★=0.50  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±0.00000  PM−theory +0.00000±0.00000
+R_f=10.0 ε=0.50 σ=0.190 crossed=0.0e+00 ρ★=0.75  PM 0.95343 (|J| 0.95343)  4LPT 0.95341  2LPT 0.95376  theory 0.95736 | PM−4LPT +0.00002±0.00000  PM−theory -0.00393±0.00165
+R_f=10.0 ε=0.70 σ=0.262 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=10.0 ε=0.70 σ=0.262 crossed=0.0e+00 ρ★=0.50  PM 0.99924 (|J| 0.99924)  4LPT 0.99926  2LPT 0.99944  theory 0.99996 | PM−4LPT -0.00002±NaN  PM−theory -0.00072±NaN
+R_f=10.0 ε=0.70 σ=0.262 crossed=0.0e+00 ρ★=0.75  PM 0.89454 (|J| 0.89454)  4LPT 0.89449  2LPT 0.89461  theory 0.90007 | PM−4LPT +0.00004±NaN  PM−theory -0.00554±NaN
+R_f=10.0 ε=1.00 σ=0.381 crossed=6.2e-05 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±0.00000  PM−theory +0.00000±0.00000
+R_f=10.0 ε=1.00 σ=0.381 crossed=6.2e-05 ρ★=0.50  PM 0.98938 (|J| 0.98938)  4LPT 0.98949  2LPT 0.99078  theory 0.99767 | PM−4LPT -0.00010±0.00000  PM−theory -0.00829±0.00036
+R_f=10.0 ε=1.00 σ=0.381 crossed=6.2e-05 ρ★=0.75  PM 0.81536 (|J| 0.81536)  4LPT 0.81522  2LPT 0.81452  theory 0.82349 | PM−4LPT +0.00014±0.00000  PM−theory -0.00813±0.00068
+R_f=14.0 ε=0.35 σ=0.095 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=0.35 σ=0.095 crossed=0.0e+00 ρ★=0.50  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=0.35 σ=0.095 crossed=0.0e+00 ρ★=0.75  PM 0.99891 (|J| 0.99891)  4LPT 0.99891  2LPT 0.99894  theory 0.99964 | PM−4LPT +0.00000±NaN  PM−theory -0.00073±NaN
+R_f=14.0 ε=0.50 σ=0.136 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=0.50 σ=0.136 crossed=0.0e+00 ρ★=0.50  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=0.50 σ=0.136 crossed=0.0e+00 ρ★=0.75  PM 0.98716 (|J| 0.98716)  4LPT 0.98716  2LPT 0.98737  theory 0.99137 | PM−4LPT +0.00000±NaN  PM−theory -0.00421±NaN
+R_f=14.0 ε=0.70 σ=0.190 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=0.70 σ=0.190 crossed=0.0e+00 ρ★=0.50  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=0.70 σ=0.190 crossed=0.0e+00 ρ★=0.75  PM 0.95060 (|J| 0.95060)  4LPT 0.95059  2LPT 0.95090  theory 0.95753 | PM−4LPT +0.00001±NaN  PM−theory -0.00693±NaN
+R_f=14.0 ε=1.00 σ=0.272 crossed=0.0e+00 ρ★=0.25  PM 1.00000 (|J| 1.00000)  4LPT 1.00000  2LPT 1.00000  theory 1.00000 | PM−4LPT +0.00000±NaN  PM−theory +0.00000±NaN
+R_f=14.0 ε=1.00 σ=0.272 crossed=0.0e+00 ρ★=0.50  PM 0.99856 (|J| 0.99856)  4LPT 0.99859  2LPT 0.99888  theory 0.99994 | PM−4LPT -0.00003±NaN  PM−theory -0.00138±NaN
+R_f=14.0 ε=1.00 σ=0.272 crossed=0.0e+00 ρ★=0.75  PM 0.88627 (|J| 0.88627)  4LPT 0.88622  2LPT 0.88623  theory 0.89228 | PM−4LPT +0.00005±NaN  PM−theory -0.00601±NaN
+wrote /Users/tabel/Projects/DiscoDJ.jl/studies/mass_cdf/results/smallscale
