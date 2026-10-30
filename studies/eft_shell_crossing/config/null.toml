@@ -1,0 +1,38 @@
+# Variant of fiducial.toml: null pair, band amplitude 0 (UV ≡ IR): PM reproducibility floor
+# Fiducial experiment: EdS background (D = a), Planck18 spectral shape (σ8 = 0.8105 at D = 1).
+# Long modes |k| < k_split shared bitwise; the UV member adds the band k_split ≤ |k| < k_uv.
+name = "null"
+ir_from = "fiducial"   # same long modes and solver: share the IR members
+L = 500.0            # Mpc/h
+N_ic = 256           # white-noise grid defining each realization (embedded exactly into finer grids)
+k_split = 0.2        # h/Mpc
+k_uv = 1.2           # h/Mpc
+band_amp = 0.0
+k_store = 0.25       # store Fourier modes with |k| ≤ k_store
+epochs = [0.02, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2, 0.225, 0.25, 0.275, 0.3, 0.35, 0.4,
+          0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]   # D = a (EdS)
+
+[lpt]
+N = 256              # grid-converged (256³ = 384³ to < 0.5 %, config/conv_lpt384.toml)
+n_max = 7
+mode = "fast"
+
+[pm]
+# Discreteness-suppressed PM (DISCO-DJ BullFrog defaults of arXiv:2309.10865): reproduces 7LPT to ~1e-4
+# before shell crossing and the 384³ run after it (config/conv_pm*bf.toml); plain CIC PM does not.
+N = 256
+res_pm = 512
+n_steps = 200        # uniform in D over [D_ini, 1]; 400 steps identical (config/conv_pm384m2s400.toml)
+D_ini = 0.02
+ic_order = 3
+ic_mode = "fast"
+worder = 4           # PCS
+grad_kernel_order = 0  # spectral ik
+deconvolve = true
+antialias = 1        # interlacing
+n_resample = 2       # 2³ Fourier sheet resampling
+
+[seeds]
+long = [1]
+short = [1001]
+signs = [1]

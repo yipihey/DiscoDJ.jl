@@ -1,0 +1,6 @@
+# raw per-job outputs live in $EFTSC_SCRATCH; only reduced results are committed
+*.jls
+results/dev_combined.h5
+results/summary_dev_combined.csv
+results/spheres_modes_*.txt
+__pycache__/
