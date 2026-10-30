@@ -166,4 +166,25 @@ end
     end
 end
 
+
+@testset "kinetic stress: zero for bulk flow, smooth-flow artifact removed, dispersion in crossed cells" begin
+    q = lattice_q(zeros(Float64, N, N, N, 3), N, L)
+    Ψ0 = zeros(Float64, N, N, N, 3); U = zeros(Float64, N, N, N, 3); U[:, :, :, 1] .= 3.7; U[:, :, :, 3] .= -1.2
+    r = stress_modes(ModeSet(8, L, 0.12), Ψ0, U, q, L, 8)
+    @test maximum(abs.(r.modes)) < 1e-9 && r.mass_frac == 0 && abs(r.mean_trace) < 1e-9
+    qq = [(i - 1) * L / N for i in 1:N]
+    # smooth single stream (wavelength = box, 64 particles per cell): the per-cell linear-flow fit removes the
+    # velocity-gradient "dispersion" that a plain cell variance reports
+    k1 = 2π / L
+    Ψ = zeros(Float64, N, N, N, 3); Ψ[:, :, :, 3] .= reshape(-0.1 / k1 .* sin.(k1 .* qq), 1, 1, N)
+    r8 = stress_modes(ModeSet(8, L, 0.06), Ψ, copy(Ψ), q, L, 8); r4 = stress_modes(ModeSet(4, L, 0.06), Ψ, copy(Ψ), q, L, 4)
+    @test r8.mass_frac == 0 && r8.mean_trace < 0.02 * r8.mean_trace_raw
+    @test r8.mean_trace < 0.1 * r4.mean_trace          # remainder is curvature, falling faster than Δ³
+    # crossed plane wave: multistream cells flagged, and they carry the dispersion
+    k = 2π / L * 2
+    Ψ = zeros(Float64, N, N, N, 3); Ψ[:, :, :, 3] .= reshape(-1.5 / k .* sin.(k .* qq), 1, 1, N)
+    r = stress_modes(ModeSet(8, L, 0.12), Ψ, copy(Ψ), q, L, 8)
+    @test r.mass_frac > 0.3 && r.sigma2_ms > r.mean_trace > 0
+end
+
 end

@@ -132,4 +132,143 @@ DiscoDJNative changes made for this study (commits on this branch): Float32 deco
 memory-lean PM solver `PMSolverLean` / `run_nbody(lean=true, callback_when=…)` (4e61176), which puts
 512³ particles on a 1024³ mesh on the 48 GB GPU in Float32 at no accuracy cost.
 
-<!--RESULTS-->
+## 4. Numerical convergence — what had to be fixed before any physics
+
+**LPT.** 256³ and 384³ agree to < 0.5 % for every order and epoch (`conv_lpt256` vs `conv_lpt384`), including
+orders 5–7 whose intermediate fields formally extend beyond the 256³ Nyquist frequency. The odd-order
+series is the object of interest: in the ensemble mean only odd orders contribute to R (the even orders' cross
+term with ψ_L is an odd-point function of a Gaussian field), and indeed C₂^(2n) ≈ C₂^(2n−1) (Table 1).
+
+**PM: particle discreteness, not time stepping, was the problem** ([fig10](figures/fig10_pm_convergence.png)).
+A standard PM (CIC, 4th-order finite-difference force) reproduces the *one-loop* (3LPT) pre-crossing response but
+misses the two-loop D⁴ part, by an amount that depends on the particle grid:
+
+| PM (one realization) | PM − 7LPT at D = 0.2 | at D = 0.4 |
+|---|---|---|
+| CIC 256³ / 512³ mesh | 0.0218 | 0.181 |
+| CIC 384³ / 768³ | 0.0084 | 0.121 |
+| CIC 384³ / 768³, 400 instead of 200 steps | 0.0084 | 0.121 |
+| CIC 512³ / 1024³ (`PMSolverLean`) | 0.0042 | 0.1005 |
+| Richardson limit of the CIC sequence (p ≈ 2.4–2.9) | ≈ 0.000 | ≈ 0.080 |
+| **suppressed\*, 256³ / 512³ (production)** | **0.0001** | **0.0797** |
+| suppressed\*, 384³ / 768³ | −0.0002 | 0.0803 |
+
+\*PCS + deconvolution + spectral gradient + interlacing + 2³ Fourier sheet resampling (the DISCO-DJ
+discreteness-suppression settings; the density is effectively that of the continuous Lagrangian sheet).
+The band (k ≤ 1.2) reaches 0.75 of the 256³ particle Nyquist frequency, and its *nonlinear products* reach the
+particle Nyquist, so a lattice of point masses cannot follow the fluid there; doubling the time steps changes
+nothing (10⁻⁴). Two independent routes to the continuum collisionless answer — extrapolating plain PM in
+resolution, and suppressing discreteness directly — agree, also after crossing (0.080 vs 0.0797 at D = 0.4). The
+suppressed PM at 256³ and 384³ agree to ≲ 10 % of the residual after crossing and to 10⁻⁴ before. A naive PM
+comparison would have reported a large spurious "pre-crossing EFT residual".
+
+Other checks (`scripts/diagnostics.jl`, `results/diagnostics_fiducial.json`):
+* PM total momentum |ΣP|/(N³ rms P) ≤ 1.8×10⁻⁴ over all runs and epochs (the spectral-gradient/interlaced force
+  is not exactly momentum conserving; plain CIC/FD conserves it to round-off). Mass is conserved exactly.
+* Isotropy: C₂ from modes near the grid axes (Σk̂ᵢ⁴ > 0.7) and near the diagonals (< 0.5) agree within 1–2σ up to
+  D = 0.6 (e.g. −0.2172 ± 0.0018 vs −0.2169 ± 0.0019 at D = 0.3); at D = 1 they differ by 4.5 %
+  (1.609 ± 0.015 vs 1.540 ± 0.013, 3.6σ) — a modest late-time grid anisotropy, larger than the 0.7 % axis/diagonal
+  difference of 7LPT on the same modes.
+* The stochastic residual of the density is ∝ k^4.0–4.2 and of the displacement ∝ k^2.0 (mass and momentum
+  conservation).
+
+## 5. Controls
+
+* **Null pair** (band amplitude 0): Δψ ≡ 0 at every LPT order (test); the PM null pair measures the GPU
+  reproducibility floor (`config/null.toml`).
+* **Shared long modes** are bitwise identical (test), and **1LPT gives C₂ ≡ 0** at every epoch (Table 1).
+* **IC artifacts** ([fig11](figures/fig11_ic_controls.png), `scripts/controls.jl`): a PreCrossedSheet-style
+  Gaussian pair (R = 3 / 6 h⁻¹Mpc) has a 1LPT "response" C₂ = −14.0 (analytic −13.5 = (R_UV²−R_IR²)/2) at
+  *all* D — ~80× the dynamical 3LPT response at D = 0.3; "match linear variance" adds a k-independent offset
+  that a k² fit turns into C₂ = +73. A dynamical response must vanish as D → 0; these do not.
+* **Odd/even in L**: with both signs of every long realization, the plain estimator *is* the odd estimator
+  (x(−L) = −x(+L)), so the L-independent short × short term cancels exactly in R.
+* **Estimator recovery**: injected −C₂k² + C₄k⁴ responses and k² stochastic noise are recovered (tests).
+* **Kinematic check**: 1LPT density response = σ²_ψ,band D²/6 = 2.67 D² (measured 2.64–2.80 for D = 0.2–0.8),
+  a pure projection effect with no dynamics.
+* **Time stepping, mesh, particle number, IC order and start time** — §4 and `config/conv_*`.
+
+## 6. Results — fiducial ensemble (k_split = 0.2, band 0.2–1.2 h Mpc⁻¹)
+
+4 long seeds × (2 short seeds, 6 for seed 1) × ±L: 32 UV + 8 IR members, each evolved with 1–7LPT and with PM.
+
+**Table 1** — displacement response C₂/D² [(h⁻¹Mpc)²] (k ≤ 0.08; jackknife errors over long seeds), the
+realization-level residual PM − 7LPT, and the shell-crossed (inverted) mass fraction of the UV member (PM).
+
+| D | 3LPT | 5LPT | 7LPT | PM | PM − 7LPT [C₂] | inverted |
+|---|---|---|---|---|---|---|
+| 0.10 | −2.128 | −2.164 | −2.166 | −2.162 ± 0.052 | +0.00002 ± 0.00000 | 0 |
+| 0.20 | −2.072 | −2.213 | −2.232 | −2.231 ± 0.024 | +0.00002 ± 0.00002 | 0 |
+| 0.225 | −2.066 | −2.243 | −2.274 | −2.274 ± 0.021 | +0.00001 ± 0.00001 | 2×10⁻⁴ |
+| 0.25 | −2.061 | −2.279 | −2.326 | −2.323 ± 0.019 | +0.00026 ± 0.00002 | 8×10⁻⁴ |
+| 0.30 | −2.053 | −2.366 | −2.463 | −2.419 ± 0.015 | +0.0042 ± 0.0001 | 0.006 |
+| 0.35 | −2.046 | −2.471 | −2.651 | −2.469 ± 0.013 | +0.0229 ± 0.0001 | 0.020 |
+| 0.40 | −2.041 | −2.595 | −2.901 | −2.435 ± 0.009 | +0.0757 ± 0.0002 | 0.043 |
+| 0.50 | −2.032 | −2.896 | −3.643 | −2.072 ± 0.005 | +0.395 ± 0.001 | 0.104 |
+| 0.60 | −2.026 | −3.269 | −4.818 | −1.414 ± 0.011 | +1.229 ± 0.004 | 0.167 |
+| 0.80 | −2.019 | −4.226 | −9.124 | +0.198 ± 0.011 | +5.97 ± 0.02 | 0.266 |
+| 1.00 | −2.014 | −5.462 | −17.415 | +1.511 ± 0.018 | +18.90 ± 0.09 | 0.330 |
+
+(Even orders: 2LPT ≡ 1LPT, 4LPT ≈ 3LPT, 6LPT ≈ 5LPT to the precision shown; `results/summary_fiducial.csv`.)
+
+**Experiment A — the single-stream series converges onto PM before crossing, and PM leaves it at crossing.**
+([fig3](figures/fig3_c2_vs_time.png), [fig4](figures/fig4_lpt_convergence.png))
+* One loop: C₂^(3) = −2.05 D² (Mpc/h)², i.e. ≈ −0.128 σ²_ψ,band — short modes *enhance* the long displacement
+  (negative C₂). Higher odd orders add −3.7 D⁴ and −12.9 D⁶.
+* Before first crossing (D ≤ 0.2) PM − LPT_n falls by ~an order of magnitude per odd order and PM − 7LPT is
+  ≤ 2×10⁻⁵ — 10⁻⁵ of C₂ while 7LPT − 3LPT is 8 %: the pressureless series converges onto the collisionless
+  answer (prediction P1).
+* The residual switches on immediately after first crossing (inverted fraction 2×10⁻⁴ at D = 0.225) and is
+  then common to 3, 5, 7LPT and to the extrapolated series limit LPT∞ (Shanks transform of the odd partial sums,
+  where their increment ratio < 0.7): at D = 0.3 it is 0.004, at 0.35 0.02–0.04, at 0.4 ≈ 0.08–0.15. It does
+  **not** decrease with order (prediction P2). The odd series itself stops converging only at D ≈ 0.5
+  (increment ratio → 1, fig4 right), so for 0.225 < D < 0.5 the comparison is with a *convergent*
+  single-stream series: the departure is not LPT truncation error.
+* Sign: the departure is positive (C₂^PM > C₂^LPT): the collisionless response is *less* enhancing — the
+  pressure-like sign of the CHS c_s². PM's C₂/D² bottoms out at −2.47 (D ≈ 0.35), crosses zero at D ≈ 0.78 and
+  reaches +1.51 ± 0.02 at D = 1 (net *suppression* of the long displacement), while every LPT order runs away
+  negative.
+
+**The departure has the EFT form** ([fig7](figures/fig7_pm_vs_lpt.png), [fig5](figures/fig5_kmax_stability.png)).
+(R_PM − R_7LPT)/k² is flat in k up to 0.19 h Mpc⁻¹ at every post-crossing epoch (prediction P3): a pure
+−ΔC₂k² term, with no k⁴ structure visible. The PM C₂ itself has a genuine k_max plateau (−0.089 ± 0.002 for
+k_max = 0.03–0.18 at D = 0.2; 1.46–1.51 at D = 1), and adding C₄k⁴ changes it by ≤ 5 %.
+
+**k⁴ convergence** (`scripts/c4_convergence.jl`, `results/c4_convergence.txt`). The absolute C₄ is not a robust
+parameter for k_split = 0.2 (k_max = 0.18 approaches the band edge, where R(k) is not polynomial: C₄ changes from
+−17.6 to −5.2 D² between k_max = 0.12 and 0.18), so convergence is judged on realization-level differences with
+fixed weights. Before crossing the k⁴ part of the odd LPT series converges (ΔC₄ of 5−3 / 7−5 LPT: −0.022 / −0.004
+at D = 0.2, −0.107 / −0.038 at 0.3), more slowly than C₂ (ratio 0.36 vs 0.32 at D = 0.3, 0.58 vs 0.57 at 0.4,
+→ 1 near D = 0.5, as for C₂). The suppressed PM matches 7LPT in C₄ before crossing (ΔC₄ = 0.000–0.002 ± 0.001),
+whereas plain-CIC 512³ PM is off by −0.11 ± 0.017 — C₄ is a far more sensitive discreteness diagnostic than C₂.
+After crossing, the suppressed PM at 256³ and 384³ agree in ΔC₄ within ~1σ at every epoch (D = 0.4: 0.23 / 0.26 ±
+0.05; D = 0.6: 4.29 / 4.34 ± 0.5; D = 1: 71.3 / 71.4 ± 7). The multistream residual's own k⁴ part is small
+(≈ 6 % of its k² part at k = 0.15, D = 0.4) but from D ≈ 0.35 it is comparable to 7LPT's k⁴ truncation, so it is
+not separable from LPT truncation at this k_split.
+
+**Experiment B — deterministic vs stochastic** ([fig6](figures/fig6_deterministic_vs_stochastic.png)).
+With 6 short seeds at fixed long modes the conditional variance Var_{S|L}(Δ) is measured directly. At D = 1,
+k = 0.064 h Mpc⁻¹: coherent ΔP/P = 2R ≈ −1.6 %, stochastic P_ε/P_L ≈ 7×10⁻⁵ — the coherent response
+dominates by ~200×; P_ε,δ ∝ k^4.0–4.2 and P_ε,ψ ∝ k^2.0 at every epoch (mass and momentum conservation),
+before and after crossing (prediction P4). UV → IR coupling at these scales is a coherent modification of
+existing long modes, not added noise.
+
+**Density vs displacement** ([fig8](figures/fig8_density_vs_displacement.png)). The Eulerian density response
+is dominated by the *kinematic* smearing of the long mode by the short displacements: 1LPT gives
+C₂,δ = σ²_ψ,band D²/6 = 2.67 D² with no dynamics at all; one loop (3LPT) gives 1.68 D² at D = 0.2 (SPT UV
+limit: (61/105)·2.67 = 1.55). PM's density coefficient stays 1.6–2.3 D² through crossing (it does not change
+sign), while 7LPT's density coefficient runs away (45 D² at D = 1). P(k)-ratio and density-based fits are
+therefore far less sensitive to the multistream physics than the Lagrangian displacement.
+
+**Velocity** ([fig9](figures/fig9_velocity_response.png)): the Lagrangian velocity response obeys
+C₂^v = d(D C₂^ψ)/dD to 1–2 % up to D = 0.4 (finite-difference limited later) — a consistency check, not new
+information.
+
+**Time dependence / effective sound speed.** The local slope m = d ln C₂,δ/d ln D of the PM density
+coefficient is ≈ 2.2–2.4 for 0.3 ≤ D ≤ 0.6 and falls to 1.4 by D = 1; the displacement coefficient changes
+sign. Under the time-local power-law mapping of §2, ℓ² = m(m+5/2)C₂ ≈ 10–12 C₂,δ in the plateau region, but
+the drifting m means **no single time-independent c_s²** describes the response, and the CHS assumption
+(their Eq. 59) that c²(a) follows the one-loop (P13) time dependence fails for the multistream part.
+
+<!--RESULTS_RG-->
+

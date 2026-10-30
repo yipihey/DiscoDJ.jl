@@ -33,7 +33,8 @@ for (tag, mask) in (("axis", k -> sum((k ./ sqrt(sum(abs2, k))) .^ 4) > 0.7),
 end
 mom = [maximum(abs.(r["mom"]); init=0.0) for (k, r) in runs if k[1] == "pm"]
 out["max_momentum"] = maximum(filter(isfinite, vcat([vec(r["mom"]) for (k, r) in runs if k[1] == "pm"]...)) .|> abs)
-open(io -> JSON3.write(io, out), joinpath(@__DIR__, "..", "results", "diagnostics_$name.json"), "w")
+clean(x) = x isa AbstractFloat && !isfinite(x) ? nothing : x isa AbstractVector ? clean.(x) : x
+open(io -> JSON3.write(io, Dict(k => clean(v) for (k, v) in out)), joinpath(@__DIR__, "..", "results", "diagnostics_$name.json"), "w")
 for (e, D) in enumerate(cfg["epochs"])
     @printf "D=%.3f  PM axis %8.4f ± %.4f  diag %8.4f ± %.4f | 7LPT axis %8.4f diag %8.4f\n" D out["C2_axis_pm"][e] out["sC2_axis_pm"][e] out["C2_diagonal_pm"][e] out["sC2_diagonal_pm"][e] out["C2_axis_lpt7"][e] out["C2_diagonal_lpt7"][e]
 end

@@ -36,6 +36,9 @@ fname(cfg, j) = joinpath(scratch(), cfg["name"], @sprintf("%s_%s_L%d_S%d_s%+d.h5
 cis_plan(cfg, N, dev) = haskey(cfg, "cis") ?
     CiSPlan(N, cfg["L"], Float64.(cfg["cis"]["R"]); stride=get(cfg["cis"], "stride", 8), to_device=dev,
             kcut=Float64.(get(cfg["cis"], "kcuts", [cfg["k_split"]]))) : nothing
+# experiment 2: kinetic-stress meshes (ModeSets on each coarse-graining mesh)
+stress_sets(cfg, dev) = haskey(cfg, "stress") ?
+    [ModeSet(Nm, cfg["L"], cfg["k_store"]; to_device=dev) for Nm in cfg["stress"]["meshes"]] : nothing
 cis_epochs(cfg) = haskey(cfg, "cis") ? Float64.(get(cfg["cis"], "epochs", cfg["epochs"])) : Float64[]
 
 spec_of(cfg, N, sL, sS, sg) = PairSpec(N=N, N_ic=cfg["N_ic"], L=cfg["L"], k_split=cfg["k_split"], k_uv=cfg["k_uv"],
@@ -64,11 +67,14 @@ function run_job(cfg, j, pk, c)
         t = @elapsed r = run_lpt(f, K, ms, L, epochs; n_max=lc["n_max"], mode=Symbol(get(lc, "mode", "fast")), ms_band=msb,
                                  cis=cp_, cis_orders=haskey(cfg, "cis") ? Int.(cfg["cis"]["lpt_orders"]) : Int[],
                                  cis_epochs=cis_epochs(cfg), rsd=get(cfg, "rsd", false),
-                                 fgrowth=D -> DJ.growth_Dplusda(c, DJ.a_of_Dplus(c, D)) * DJ.a_of_Dplus(c, D) / D)
+                                 fgrowth=D -> DJ.growth_Dplusda(c, DJ.a_of_Dplus(c, D)) * DJ.a_of_Dplus(c, D) / D,
+                                 stress=stress_sets(cfg, CuArray), stress_order=haskey(cfg, "stress") ? cfg["stress"]["lpt_order"] : 0)
         h5open(fname(cfg, j), "w") do h
             write_common(h, cfg, ms, j)
             h["psi"] = ComplexF32.(r.psi); h["dens"] = ComplexF32.(r.dens); h["inv"] = r.inv; h["rms"] = r.rms
             r.dens_s === nothing || (h["dens_rsd"] = ComplexF32.(r.dens_s); h["inv_rsd"] = r.inv_s)
+            r.stress === nothing || (h["stress"] = ComplexF32.(r.stress); h["stress_scalars"] = r.stress_scalars;
+                                     h["stress_meshes"] = Int.(cfg["stress"]["meshes"]))
             if msb !== nothing
                 h["band_nvec"] = msb.nvec; h["band_psi"] = ComplexF32.(r.band)
             end
@@ -94,12 +100,15 @@ function run_job(cfg, j, pk, c)
               deconvolve=get(pc, "deconvolve", false), antialias=get(pc, "antialias", 0),
               n_resample=get(pc, "n_resample", 1), lean=get(pc, "lean", false))
         r = run_pm(c, Ψ0, Π0, ms, L, epochs; D_ini=pc["D_ini"], n_steps=pc["n_steps"], res_pm=pc["res_pm"],
-                   band=band, cis=cp_, cis_epochs=cis_epochs(cfg), rsd=get(cfg, "rsd", false), st...)
+                   band=band, cis=cp_, cis_epochs=cis_epochs(cfg), rsd=get(cfg, "rsd", false),
+                   stress=stress_sets(cfg, dev), st...)
         h5open(fname(cfg, j), "w") do h
             write_common(h, cfg, ms, j)
             h["psi"] = ComplexF32.(r.psi); h["vel"] = ComplexF32.(r.vel); h["dens"] = ComplexF32.(r.dens)
             h["inv"] = r.inv; h["rms"] = r.rms; h["mom"] = r.mom; h["grid"] = r.grid
             r.dens_s === nothing || (h["dens_rsd"] = ComplexF32.(r.dens_s); h["inv_rsd"] = r.inv_s)
+            r.stress === nothing || (h["stress"] = ComplexF32.(r.stress); h["stress_scalars"] = r.stress_scalars;
+                                     h["stress_meshes"] = Int.(cfg["stress"]["meshes"]))
             if band !== nothing
                 h["band_nvec"] = band[1].nvec; h["band_epochs"] = band[2]; h["band_psi"] = ComplexF32.(r.band)
             end

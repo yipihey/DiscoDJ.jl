@@ -18,7 +18,8 @@ export run_lpt, run_pm, pm_ics, d_grid
   inv   (E, n_max)    — inverted-tetrahedron fraction,
   rms   (E, n_max)    — rms |Ψ| (Mpc/h)."""
 function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::Int, mode::Symbol=:fast,
-                 ms_band=nothing, cis=nothing, cis_orders=Int[], cis_epochs=Float64[], rsd::Bool=false, fgrowth=D -> 1.0)
+                 ms_band=nothing, cis=nothing, cis_orders=Int[], cis_epochs=Float64[], rsd::Bool=false, fgrowth=D -> 1.0,
+                 stress=nothing, stress_order::Int=0)
     sh = compute_core(fphi, K; n_order=n_max, mode=mode)
     ψ1 = sh["psi_1"]; T = eltype(ψ1); N = size(ψ1, 1)
     M = length(ms); E = length(epochs)
@@ -34,15 +35,26 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
     co = [n for n in cis_orders if n <= n_max]
     # redshift space (line of sight ẑ): s = x + u_z ẑ, u = dΨ/dln a = f D Π, Π = dΨ/dD = Σ m Dᵐ⁻¹ ψ_m
     dens_s = rsd ? zeros(ComplexF64, E, n_max, M) : nothing; inv_s = rsd ? zeros(E, n_max) : nothing
-    Π = rsd ? similar(ψ1) : nothing; Ψs = rsd ? similar(ψ1) : nothing
+    Π = (rsd || stress !== nothing) ? similar(ψ1) : nothing; Ψs = rsd ? similar(ψ1) : nothing
+    st = stress === nothing ? nothing : zeros(ComplexF64, E, length(stress), 4, M, 6)
+    stsc = stress === nothing ? nothing : zeros(E, length(stress), 7)
     ce = [e for (e, D) in enumerate(epochs) if any(isapprox(D, x; atol=1e-9) for x in cis_epochs)]
     cisd = cis === nothing ? nothing : zeros(Float32, length(ce), length(co), length(cis.R), nchan(cis), (N ÷ cis.stride)^3)
     for (e, D) in enumerate(epochs)
-        fill!(Ψ, zero(T)); rsd && fill!(Π, zero(T))
+        fill!(Ψ, zero(T)); Π === nothing || fill!(Π, zero(T))
         for n in 1:n_max
             Ψ .+= T(D^n) .* sh["psi_$n"]
+            Π === nothing || (Π .+= T(n * D^(n - 1)) .* sh["psi_$n"])
+            if stress !== nothing && n == stress_order
+                U = T(fgrowth(D) * D) .* Π
+                for (ims, msm) in enumerate(stress)
+                    r = stress_modes(msm, Ψ, U, q, L, msm.N)
+                    st[e, ims, :, :, :] .= r.modes
+                    stsc[e, ims, :] .= (r.mass_frac, r.vol_frac, r.sigma2_ms, r.bnd_vol_frac, r.mean_trace, r.mean_trace_raw, msm.N)
+                end
+                U = nothing
+            end
             if rsd
-                Π .+= T(n * D^(n - 1)) .* sh["psi_$n"]
                 Ψs .= Ψ; Ψs[:, :, :, 3] .+= T(fgrowth(D) * D) .* view(Π, :, :, :, 3)
                 dens_s[e, n, :] .= density_modes(ms, Ψs, q; mesh=mesh, X=X)
                 inv_s[e, n] = inverted_fraction(Ψs, L; cnt=cnt)
@@ -58,7 +70,8 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
         end
     end
     sh = nothing
-    return (psi=psi, dens=dens, inv=invf, rms=rms, band=band, cis=cisd, cis_orders=co, dens_s=dens_s, inv_s=inv_s)
+    return (psi=psi, dens=dens, inv=invf, rms=rms, band=band, cis=cisd, cis_orders=co, dens_s=dens_s, inv_s=inv_s,
+            stress=st, stress_scalars=stsc)
 end
 
 """Time grid uniform in D from D_ini to D_end with ≈`n_steps` steps, every epoch inserted as a node."""
@@ -93,7 +106,7 @@ grid and the wall time.  With `band = (ms_band, epochs_band)` the displacement i
 second (typically larger) mode set at a few epochs (band-growth diagnostics)."""
 function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini::Real, n_steps::Int,
                 res_pm::Int, stepper::Symbol=:bullfrog, band=nothing, cis=nothing, cis_epochs=Float64[], rsd::Bool=false,
-                settings...)
+                stress=nothing, settings...)
     T = eltype(Ψ0); N = size(Ψ0, 1); M = length(ms)
     ep = [D for D in epochs if D > D_ini]
     E = length(epochs)
@@ -103,6 +116,8 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
     ce = [e for (e, D) in enumerate(epochs) if any(isapprox(D, x; atol=1e-9) for x in cis_epochs)]
     cisd = cis === nothing ? nothing : zeros(Float32, length(ce), length(cis.R), nchan(cis), (N ÷ cis.stride)^3)
     dens_s = rsd ? zeros(ComplexF64, E, M) : nothing; inv_s = rsd ? fill(NaN, E) : nothing
+    st = stress === nothing ? nothing : zeros(ComplexF64, E, length(stress), 4, M, 6)
+    stsc = stress === nothing ? nothing : fill(NaN, E, length(stress), 7)
     q = lattice_q(Ψ0, N, L)
     mesh = similar(Ψ0, T, N, N, N); Xb = similar(Ψ0); cnt = similar(Ψ0, Int32, N, N, N); Ψ = similar(Ψ0)
     grid = d_grid(D_ini, maximum(epochs), n_steps, vcat(ep, band === nothing ? Float64[] : band[2]))
@@ -119,6 +134,16 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         psi[e, :, :] .= vector_modes(ms, Ψ)
         Π = P ./ T(DJ.Fplus(c, a))
         vel[e, :, :] .= vector_modes(ms, Π)
+        if stress !== nothing   # u = dx/dln a = f D Π
+            fD = T(DJ.growth_Dplusda(c, a) * a)
+            U = fD .* Π
+            for (ims, msm) in enumerate(stress)
+                r = stress_modes(msm, Ψ, U, q, L, msm.N)
+                st[e, ims, :, :, :] .= r.modes
+                stsc[e, ims, :] .= (r.mass_frac, r.vol_frac, r.sigma2_ms, r.bnd_vol_frac, r.mean_trace, r.mean_trace_raw, msm.N)
+            end
+            U = nothing
+        end
         if rsd   # s = x + u_z ẑ, u = dΨ/dln a = f D Π  (EdS: f = 1, D = a)
             f = DJ.growth_Dplusda(c, a) * a / DJ._Dplus(c, a)
             Π[:, :, :, 1] .= view(Ψ, :, :, :, 1); Π[:, :, :, 2] .= view(Ψ, :, :, :, 2)
@@ -145,5 +170,6 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
                            return_displacement=true, step_callback=cb,
                            callback_when=(k, a) -> haskey(snap, round(a, digits=10)) || haskey(bsnap, round(a, digits=10)),
                            settings...)
-    return (psi=psi, vel=vel, dens=dens, inv=invf, rms=rms, mom=mom, grid=grid, seconds=t, band=bpsi, cis=cisd, dens_s=dens_s, inv_s=inv_s)
+    return (psi=psi, vel=vel, dens=dens, inv=invf, rms=rms, mom=mom, grid=grid, seconds=t, band=bpsi, cis=cisd, dens_s=dens_s, inv_s=inv_s,
+            stress=st, stress_scalars=stsc)
 end

@@ -223,3 +223,168 @@ function cross_transfer(ΨA::AbstractArray{T,4}, ΨB::AbstractArray{T,4}, L::Rea
     return (k=ks ./ n, T=ab ./ bb, n=n ./ 3)
 end
 export cross_transfer
+
+# ── Kinetic stress of the coarse-grained flow (experiment 2) ─────────────────────────────────────
+# CIC moments on an N_m³ mesh: mass n, momentum p_i = Σ u_i, kinetic K_ij = Σ u_i u_j (unit masses,
+# u = dx/dln a).  The velocity-dispersion stress τ_ij = K_ij − p_i p_j / n (in units of mass × u²) vanishes for
+# a single cold stream sampled infinitely finely; at finite cell size Δ a smooth flow contributes
+# ≈ n Δ²(∂u)²/12, which two meshes allow to remove.  Multistream cells are flagged from particles that touch
+# an inverted Lagrangian tetrahedron; "boundary" cells are flagged cells with an unflagged 6-neighbour
+# (the outermost caustic / splashback shell at the mesh resolution).
+
+@kernel function _k_inverted_flags!(flag, @Const(Ψ), N::Int, Δ)
+    i, j, k = @index(Global, NTuple)
+    T = eltype(Ψ)
+    x0 = _corner(Ψ, i, j, k, 0, 0, 0, N, Δ)
+    x7 = _corner(Ψ, i, j, k, 1, 1, 1, N, Δ)
+    any_inv = false
+    for (a, b, c, par) in _KUHN
+        e1 = (a == 1, a == 2, a == 3)
+        e2 = (a == 1 || b == 1, a == 2 || b == 2, a == 3 || b == 3)
+        x1 = _corner(Ψ, i, j, k, Int(e1[1]), Int(e1[2]), Int(e1[3]), N, Δ)
+        x2 = _corner(Ψ, i, j, k, Int(e2[1]), Int(e2[2]), Int(e2[3]), N, Δ)
+        u = (x1[1] - x0[1], x1[2] - x0[2], x1[3] - x0[3])
+        v = (x2[1] - x0[1], x2[2] - x0[2], x2[3] - x0[3])
+        w = (x7[1] - x0[1], x7[2] - x0[2], x7[3] - x0[3])
+        det = u[1] * (v[2] * w[3] - v[3] * w[2]) - u[2] * (v[1] * w[3] - v[3] * w[1]) +
+              u[3] * (v[1] * w[2] - v[2] * w[1])
+        any_inv |= det * par < zero(T)
+    end
+    if any_inv            # flag all 8 particles of the cube (race-free: every writer writes 1)
+        for bz in 0:1, by in 0:1, bx in 0:1
+            @inbounds flag[mod1(i + bx, N), mod1(j + by, N), mod1(k + bz, N)] = one(eltype(flag))
+        end
+    end
+end
+
+"""Per-particle flag (N,N,N): 1 if the particle is a vertex of a Lagrangian cube with an inverted Kuhn tet."""
+function inverted_flags(Ψ::AbstractArray{T,4}, L) where {T}
+    N = size(Ψ, 1); flag = similar(Ψ, T, N, N, N); fill!(flag, zero(T))
+    be = get_backend(Ψ)
+    _k_inverted_flags!(be)(flag, Ψ, N, T(L / N); ndrange=(N, N, N)); synchronize(be)
+    return flag
+end
+
+# NGP moments per cell, positions relative to the cell centre: n, Σx(3), Σu(3), Σxx(6), Σxu(9), Σuu(6), flag
+const _NMOM = 29
+@kernel function _k_ngp_moments!(M, @Const(X), @Const(U), @Const(w), Nm::Int, L)
+    p = @index(Global)
+    @inbounds begin
+        T = eltype(X); Δ = L / Nm
+        g = (mod(X[p, 1], L) / Δ, mod(X[p, 2], L) / Δ, mod(X[p, 3], L) / Δ)
+        c = (min(floor(Int, g[1]), Nm - 1) + 1, min(floor(Int, g[2]), Nm - 1) + 1, min(floor(Int, g[3]), Nm - 1) + 1)
+        x = ((g[1] - c[1] + T(0.5)) * Δ, (g[2] - c[2] + T(0.5)) * Δ, (g[3] - c[3] + T(0.5)) * Δ)
+        u = (U[p, 1], U[p, 2], U[p, 3])
+        KernelAbstractions.@atomic M[c[1], c[2], c[3], 1] += one(T)
+        for a in 1:3
+            KernelAbstractions.@atomic M[c[1], c[2], c[3], 1 + a] += x[a]
+            KernelAbstractions.@atomic M[c[1], c[2], c[3], 4 + a] += u[a]
+        end
+        s = 7
+        for a in 1:3, b in a:3
+            s += 1; KernelAbstractions.@atomic M[c[1], c[2], c[3], s] += x[a] * x[b]
+        end
+        for a in 1:3, b in 1:3
+            s += 1; KernelAbstractions.@atomic M[c[1], c[2], c[3], s] += x[a] * u[b]
+        end
+        for a in 1:3, b in a:3
+            s += 1; KernelAbstractions.@atomic M[c[1], c[2], c[3], s] += u[a] * u[b]
+        end
+        KernelAbstractions.@atomic M[c[1], c[2], c[3], 29] += w[p]
+    end
+end
+
+@inline _sym(S, a, b) = S[a <= b ? (a == 1 ? b : a == 2 ? b + 2 : 6) : (b == 1 ? a : b == 2 ? a + 2 : 6)]
+
+# per cell: raw dispersion τ⁰ = n Cov(u) and gradient-corrected τ = n [Cov(u) − Cov(u,x) Cov(x)⁻¹ Cov(x,u)]
+@kernel function _k_cell_stress!(τ0, τc, @Const(M), nmin::Int)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        T = eltype(M)
+        n = M[i, j, k, 1]
+        if n < one(T)
+            for c in 1:6; τ0[i, j, k, c] = zero(T); τc[i, j, k, c] = zero(T); end
+        else
+            mx = (M[i, j, k, 2] / n, M[i, j, k, 3] / n, M[i, j, k, 4] / n)
+            mu = (M[i, j, k, 5] / n, M[i, j, k, 6] / n, M[i, j, k, 7] / n)
+            # covariances (symmetric 6-vectors ordered 11,12,13,22,23,33)
+            Sxx = ntuple(Val(6)) do c
+                a, b = c == 1 ? (1, 1) : c == 2 ? (1, 2) : c == 3 ? (1, 3) : c == 4 ? (2, 2) : c == 5 ? (2, 3) : (3, 3)
+                M[i, j, k, 7 + c] / n - mx[a] * mx[b]
+            end
+            Suu = ntuple(Val(6)) do c
+                a, b = c == 1 ? (1, 1) : c == 2 ? (1, 2) : c == 3 ? (1, 3) : c == 4 ? (2, 2) : c == 5 ? (2, 3) : (3, 3)
+                M[i, j, k, 22 + c] / n - mu[a] * mu[b]
+            end
+            Sxu = ntuple(Val(9)) do c      # (a = x index, b = u index), c = 3(a−1) + b
+                a = (c - 1) ÷ 3 + 1; b = (c - 1) % 3 + 1
+                M[i, j, k, 13 + c] / n - mx[a] * mu[b]
+            end
+            for c in 1:6; τ0[i, j, k, c] = n * Suu[c]; end
+            # inverse of Sxx (adjugate)
+            a11, a12, a13, a22, a23, a33 = Sxx
+            det = a11 * (a22 * a33 - a23 * a23) - a12 * (a12 * a33 - a23 * a13) + a13 * (a12 * a23 - a22 * a13)
+            scale = (a11 + a22 + a33)^3
+            if n >= nmin && det > T(1e-6) * scale && scale > 0
+                i11 = (a22 * a33 - a23 * a23) / det; i12 = -(a12 * a33 - a13 * a23) / det; i13 = (a12 * a23 - a13 * a22) / det
+                i22 = (a11 * a33 - a13 * a13) / det; i23 = -(a11 * a23 - a13 * a12) / det; i33 = (a11 * a22 - a12 * a12) / det
+                Ii = (i11, i12, i13, i22, i23, i33)
+                for c in 1:6
+                    p_, q_ = c == 1 ? (1, 1) : c == 2 ? (1, 2) : c == 3 ? (1, 3) : c == 4 ? (2, 2) : c == 5 ? (2, 3) : (3, 3)
+                    # (Sux Sxx⁻¹ Sxu)_{pq} = Σ_ab Sxu[a,p] Iinv[a,b] Sxu[b,q]
+                    acc = zero(T)
+                    for a in 1:3, b in 1:3
+                        acc += Sxu[3(a - 1) + p_] * _sym(Ii, a, b) * Sxu[3(b - 1) + q_]
+                    end
+                    τc[i, j, k, c] = n * (Suu[c] - acc)
+                end
+            else
+                for c in 1:6; τc[i, j, k, c] = n * Suu[c]; end     # too few particles to fit a gradient
+            end
+        end
+    end
+end
+
+"""
+    stress_modes(ms, Ψ, U, q, L, Nm; nmin=6) -> NamedTuple
+
+Velocity-dispersion stress of the particles (positions q + Ψ, velocities U = dx/dln a) on an Nm³ NGP mesh,
+normalised by the mean number of particles per cell (τ/n̄ in units of u²):
+  modes[1, :, c]  raw τ⁰ = n Cov(u)                               (includes the smooth-flow gradient within cells)
+  modes[2, :, c]  corrected τ = n [Cov(u) − Cov(u,x)Cov(x)⁻¹Cov(x,u)] (linear smooth flow removed per cell)
+  modes[3, :, c]  corrected τ in multistream cells (cells containing a particle of a cube with an inverted tet)
+  modes[4, :, c]  corrected τ in multistream boundary cells (flagged cells with an unflagged 6-neighbour)
+c = 11, 12, 13, 22, 23, 33.  Also mass / volume fractions of multistream and boundary cells and the
+mass-weighted mean of tr τ/n in them."""
+function stress_modes(ms::ModeSet, Ψ::AbstractArray{T,4}, U::AbstractArray{T,4}, q, L, Nm::Int; nmin::Int=6) where {T}
+    N = size(Ψ, 1); np = N^3; nbar = T(np / Nm^3)
+    X = similar(Ψ)
+    for d in 1:3
+        X[:, :, :, d] .= view(Ψ, :, :, :, d) .+ q[d]
+    end
+    flag = inverted_flags(Ψ, L)
+    Mo = similar(Ψ, T, Nm, Nm, Nm, _NMOM); fill!(Mo, zero(T))
+    be = get_backend(Ψ)
+    _k_ngp_moments!(be)(Mo, reshape(X, np, 3), reshape(U, np, 3), reshape(flag, np), Nm, T(L); ndrange=np)
+    synchronize(be)
+    τ0 = similar(Ψ, T, Nm, Nm, Nm, 6); τc = similar(τ0)
+    _k_cell_stress!(be)(τ0, τc, Mo, nmin; ndrange=(Nm, Nm, Nm)); synchronize(be)
+    n = view(Mo, :, :, :, 1)
+    msk = T.(view(Mo, :, :, :, 29) .> 0)
+    nb = msk .* T.((circshift(msk, (1, 0, 0)) .* circshift(msk, (-1, 0, 0)) .* circshift(msk, (0, 1, 0)) .*
+                    circshift(msk, (0, -1, 0)) .* circshift(msk, (0, 0, 1)) .* circshift(msk, (0, 0, -1))) .< T(0.5))
+    out = zeros(ComplexF64, 4, length(ms), 6)
+    for c in 1:6
+        t0 = view(τ0, :, :, :, c) ./ nbar; tc = view(τc, :, :, :, c) ./ nbar
+        out[1, :, c] .= field_modes(ms, copy(t0)); out[2, :, c] .= field_modes(ms, copy(tc))
+        out[3, :, c] .= field_modes(ms, tc .* msk); out[4, :, c] .= field_modes(ms, tc .* nb)
+    end
+    trc = (view(τc, :, :, :, 1) .+ view(τc, :, :, :, 4) .+ view(τc, :, :, :, 6))
+    tr0 = (view(τ0, :, :, :, 1) .+ view(τ0, :, :, :, 4) .+ view(τ0, :, :, :, 6))
+    nms = sum(n .* msk)
+    return (modes=out, mass_frac=nms / np, vol_frac=sum(msk) / Nm^3,
+            sigma2_ms=nms > 0 ? sum(trc .* msk) / nms : zero(T),          # mass-weighted ⟨tr σ²⟩ in multistream cells
+            bnd_vol_frac=sum(nb) / Nm^3, mean_trace=sum(trc) / np,         # mass-weighted ⟨tr σ²⟩ over all mass
+            mean_trace_raw=sum(tr0) / np)
+end
+export inverted_flags, stress_modes
