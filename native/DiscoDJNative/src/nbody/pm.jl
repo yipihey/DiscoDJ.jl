@@ -148,7 +148,7 @@ end
 
 # inverse mass-assignment kernel (Jing 2005, no shot-noise term), exponent −2·worder (double)
 _invmak1d(k::Vector{T}, worder::Int) where {T} =
-    (m = maximum(abs.(k)) / π; [x == 0 ? one(T) : sin(π * x) / (π * x) for x in (k ./ (2π) ./ m)] .^ (-2worder))
+    (m = maximum(abs.(k)) / π; T[x == 0 ? one(T) : sin(π * x) / (π * x) for x in (k ./ (2π) ./ m)] .^ (-2worder))
 
 struct PMKernels{AC, AR}
     gx::AC; gy::AC; gz::AC           # gradient kernels, reshaped for broadcasting
