@@ -527,3 +527,115 @@ DISCO-DJ `calc_acc_PM(psi, …)`: particles at X = q + ψ, returns −∇φ (∇
 with all the options of `PMConfig` (a copy of the solver's output buffer)."""
 pm_acceleration(psi::AbstractArray{T,4}, cfg::PMConfig; solver::PMSolver = PMSolver(cfg, psi)) where {T} =
     copy(pm_acceleration!(solver, psi))
+
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# Memory-lean PM solver (opt-in: `run_nbody(...; lean=true)`), same mathematics as PMSolver for the
+# plain configuration (antialias = 0, n_resample = 1, finite-difference gradient order 2/4/6):
+#
+#  * ONE real mesh buffer: density → (r2c) → multiplied in place → (c2r) → potential φ
+#  * ONE complex half-spectrum, ONE force-component buffer: −D_c φ is formed and gathered to the
+#    particles one component at a time (the dense (3,res³) force array of PMSolver is not built)
+#  * on CUDA the transforms run in cuFFT's native layout (halved axis first) with the multiplier
+#    permuted once at setup, so no full-size permutedims copies per transform
+#
+# Mesh memory: 1 real + 1 complex + 1 real buffer ≈ 3·res³ floats (PMSolver: ≈ 8·res³), e.g. 12 vs
+# 28 GiB at res = 1024 in Float32.  Results agree with PMSolver to round-off (test/pm_lean_tests.jl).
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+export PMSolverLean
+
+struct PMSolverLean{T, AR3, AC3, AK, AR4, P1, P2, ANB}
+    cfg::PMConfig
+    Kφ::AK                      # combined real multiplier, in the layout of `fd`
+    mesh::AR3                   # (res,res,res) density, then potential
+    fd::AC3                     # half-spectrum (layout chosen by `_lean_fft_setup`)
+    F::AR3                      # one force component (res,res,res)
+    X::AR4; acc::AR4            # particle positions / accelerations (n,n,n,3)
+    pf::P1; pb::P2              # r2c / unnormalised c2r plans
+    nb::ANB                     # periodic neighbour table (res × 7)
+    q::NTuple{3,Any}            # lattice coordinates, broadcastable
+end
+
+# Host default: FFTW plans halving dim 3 (the PMSolver layout).  The CUDA extension overrides this for
+# CuArrays (cuFFT region [1,2,3], halved axis first, multiplier permuted).
+function _lean_fft_setup(mesh::Array{T,3}, Kφ_host::Array{T,3}) where {T}
+    res = size(mesh, 1)
+    fd = Array{Complex{T}}(undef, res, res, res ÷ 2 + 1)
+    pf = FFTW.plan_rfft(mesh, [3, 1, 2]; flags=FFTW.ESTIMATE)
+    pb = FFTW.plan_brfft(fd, res, [3, 1, 2]; flags=FFTW.ESTIMATE)
+    return fd, pf, pb, Kφ_host
+end
+
+function PMSolverLean(cfg::PMConfig, like::AbstractArray{T,4}) where {T}
+    (cfg.antialias == 0 && cfg.n_resample == 1 && cfg.grad_order in (2, 4, 6)) ||
+        error("PMSolverLean supports antialias = 0, n_resample = 1 and finite-difference gradients (2/4/6)")
+    res = cfg.res_pm; n = cfg.n_part
+    K = PMKernels(cfg, T, Array(like[1:1, 1:1, 1:1, 1:1]))
+    Kφ = K.invlap .* (K.mak === nothing ? one(T) : K.mak) ./ T(n^3 / res^3) ./ T(res)^3
+    Kφ[1, 1, 1] = zero(T)
+    dev(x) = (y = similar(like, eltype(x), size(x)); copyto!(y, x); y)
+    mesh = similar(like, T, res, res, res); F = similar(mesh)
+    fd, pf, pb, Kd = _lean_fft_setup(mesh, T.(Kφ))
+    X = similar(like, T, n, n, n, 3); acc = similar(X)
+    q1 = _lagr1d(n, cfg.boxsize, T)
+    q = (dev(reshape(q1, n, 1, 1)), dev(reshape(q1, 1, n, 1)), dev(reshape(q1, 1, 1, n)))
+    nb = dev(Int32[mod1(i + s, res) for i in 1:res, s in -3:3])
+    PMSolverLean{T, typeof(mesh), typeof(fd), typeof(Kd), typeof(X), typeof(pf), typeof(pb), typeof(nb)}(
+        cfg, Kd, mesh, fd, F, X, acc, pf, pb, nb, q)
+end
+
+@kernel function _k_fdgrad1!(F, @Const(φ), @Const(nb), ax::Int, c1, c2, c3)
+    i, j, k = @index(Global, NTuple)
+    @inbounds F[i, j, k] = ax == 1 ?
+        -(c1 * (φ[nb[i, 5], j, k] - φ[nb[i, 3], j, k]) + c2 * (φ[nb[i, 6], j, k] - φ[nb[i, 2], j, k]) +
+          c3 * (φ[nb[i, 7], j, k] - φ[nb[i, 1], j, k])) : ax == 2 ?
+        -(c1 * (φ[i, nb[j, 5], k] - φ[i, nb[j, 3], k]) + c2 * (φ[i, nb[j, 6], k] - φ[i, nb[j, 2], k]) +
+          c3 * (φ[i, nb[j, 7], k] - φ[i, nb[j, 1], k])) :
+        -(c1 * (φ[i, j, nb[k, 5]] - φ[i, j, nb[k, 3]]) + c2 * (φ[i, j, nb[k, 6]] - φ[i, j, nb[k, 2]]) +
+          c3 * (φ[i, j, nb[k, 7]] - φ[i, j, nb[k, 1]]))
+end
+
+@kernel function _k_gather1!(acc, @Const(F), @Const(X), res::Int, L, ::Val{W}, ax::Int) where {W}
+    p = @index(Global)
+    @inbounds begin
+        T = eltype(X)
+        gx = mod(X[p, 1], L) / L * res; gy = mod(X[p, 2], L) / L * res; gz = mod(X[p, 3], L) / L * res
+        bx = _wbase(Val(W), gx); by = _wbase(Val(W), gy); bz = _wbase(Val(W), gz)
+        s = zero(T)
+        for oz in _wlo(Val(W)):_whi(Val(W))
+            wz = _wk(Val(W), abs(gz - T(bz + oz))); kz = mod(bz + oz, res) + 1
+            for oy in _wlo(Val(W)):_whi(Val(W))
+                wy = _wk(Val(W), abs(gy - T(by + oy))); ky = mod(by + oy, res) + 1
+                for ox in _wlo(Val(W)):_whi(Val(W))
+                    wx = _wk(Val(W), abs(gx - T(bx + ox))); kx = mod(bx + ox, res) + 1
+                    s += F[kx, ky, kz] * (wx * wy * wz)
+                end
+            end
+        end
+        acc[p, ax] = s
+    end
+end
+
+"""
+    pm_acceleration!(S::PMSolverLean, psi) -> S.acc
+
+Memory-lean DISCO-DJ `calc_acc_PM` (plain configuration); same result as `PMSolver` to round-off."""
+function pm_acceleration!(S::PMSolverLean{T}, psi::AbstractArray{T,4}) where {T}
+    cfg = S.cfg; n = cfg.n_part; res = cfg.res_pm; L = cfg.boxsize; W = cfg.worder
+    be = get_backend(S.mesh)
+    for c in 1:3
+        S.X[:, :, :, c] .= view(psi, :, :, :, c) .+ S.q[c]
+    end
+    fill!(S.mesh, zero(T))
+    pm_scatter!(S.mesh, reshape(S.X, n^3, 3), res, L, W)
+    mul!(S.fd, S.pf, S.mesh)
+    S.fd .*= S.Kφ
+    mul!(S.mesh, S.pb, S.fd)                       # potential (1/N³ folded into Kφ)
+    c1, c2, c3 = T.(_fd_coeffs(cfg.grad_order, L / res))
+    for ax in 1:3
+        _k_fdgrad1!(be)(S.F, S.mesh, S.nb, ax, c1, c2, c3; ndrange=(res, res, res)); synchronize(be)
+        _k_gather1!(be)(reshape(S.acc, n^3, 3), S.F, reshape(S.X, n^3, 3), res, T(L), Val(W), ax; ndrange=n^3)
+        synchronize(be)
+    end
+    return S.acc
+end

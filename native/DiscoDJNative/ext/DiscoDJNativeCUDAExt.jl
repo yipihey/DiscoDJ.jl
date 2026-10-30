@@ -20,7 +20,7 @@ module DiscoDJNativeCUDAExt
 using DiscoDJNative
 using DiscoDJNative: FourierGrid, LPTResult, HalfField, NLPTKernels, ICOperator
 using CUDA
-using AbstractFFTs: plan_rfft, plan_irfft, rfft, irfft, brfft
+using AbstractFFTs: plan_rfft, plan_irfft, plan_brfft, rfft, irfft, brfft
 
 # (res,res,res÷2+1) half-on-dim3  →  device (res÷2+1,res,res) half-on-dim1.
 #
@@ -120,5 +120,19 @@ function DiscoDJNative.to_gpu(K::NLPTKernels{T}) where {T}
 end
 DiscoDJNative.to_gpu(op::ICOperator{T}) where {T} =
     ICOperator{T, CuArray{T,3}}(CuArray(op.scale), op.res, op.boxsize)
+
+
+# ── Memory-lean PM solver: cuFFT in its native layout (halved axis first) ─────────────────────
+# The PM multiplier K(kx,ky,kz) is invariant under axis permutations (isotropic −1/k² times the
+# separable, axis-symmetric deconvolution factor), so permuting the host (res,res,res÷2+1) table by
+# (3,1,2) gives exactly its values on the (res÷2+1,res,res) cuFFT half-spectrum — no per-transform
+# permutedims copies.
+function DiscoDJNative._lean_fft_setup(mesh::CuArray{T,3}, Kφ_host::Array{T,3}) where {T}
+    res = size(mesh, 1)
+    fd = CuArray{Complex{T}}(undef, res ÷ 2 + 1, res, res)
+    pf = plan_rfft(mesh, [1, 2, 3])
+    pb = plan_brfft(fd, res, [1, 2, 3])
+    return fd, pf, pb, CuArray(permutedims(Kφ_host, (3, 1, 2)))
+end
 
 end # module

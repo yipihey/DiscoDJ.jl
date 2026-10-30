@@ -117,14 +117,17 @@ and `pi_ini = dΨ/dD` at `a_ini` (defaults as in DISCO-DJ).  Returns positions w
 [0, L) (or the displacement with `return_displacement`), the canonical momentum P = a² dx/dt,
 and `a_end` (or every step's a with `collect_all`/`return_all_a`; with `collect_all` the first
 two outputs are vectors over steps 0..n_steps).  `step_callback(k, a_k, X, P)` is called for
-k = 0..n_steps with unwrapped X = q + Ψ.  Runs on the backend of `psi_ini` (CPU / CUDA)."""
+k = 0..n_steps with unwrapped X = q + Ψ (only for steps where `callback_when(k, a_k)` is true, if given,
+which avoids the per-step position/momentum copies).  `lean = true` uses the memory-lean `PMSolverLean`
+(plain configuration only: no antialiasing/resampling, finite-difference gradient).  Runs on the backend
+of `psi_ini` (CPU / CUDA)."""
 function run_nbody(c::Cosmology, psi_ini::AbstractArray{T,4}, pi_ini::AbstractArray{T,4};
                    boxsize::Real, a_ini::Real, a_end::Real, n_steps::Union{Int,Nothing}, res_pm::Int,
                    time_var=:D, stepper::Symbol=:bullfrog, antialias::Int=0, grad_kernel_order::Int=4,
                    laplace_kernel_order::Int=0, worder::Int=2, deconvolve::Bool=false,
                    n_resample::Int=1, resampling_method::Symbol=:fourier,
                    collect_all::Bool=false, return_all_a::Bool=false, return_displacement::Bool=false,
-                   step_callback=nothing) where {T}
+                   step_callback=nothing, callback_when=nothing, lean::Bool=false) where {T}
     n = size(psi_ini, 1); L = Float64(boxsize)
     if n_steps === nothing
         time_var isa AbstractVector || error("n_steps = nothing requires an explicit time_var vector")
@@ -134,7 +137,7 @@ function run_nbody(c::Cosmology, psi_ini::AbstractArray{T,4}, pi_ini::AbstractAr
     cfg = PMConfig(res_pm=res_pm, n_part=n, boxsize=L, worder=worder, deconvolve=deconvolve,
                    antialias=antialias, grad_order=grad_kernel_order, lap_order=laplace_kernel_order,
                    n_resample=n_resample, resampling=resampling_method)
-    solver = PMSolver(cfg, psi_ini)
+    solver = lean ? PMSolverLean(cfg, psi_ini) : PMSolver(cfg, psi_ini)
     acc(x) = pm_acceleration!(solver, x)          # returns the solver's buffer (no allocation)
 
     Psi = copy(psi_ini)
@@ -145,14 +148,15 @@ function run_nbody(c::Cosmology, psi_ini::AbstractArray{T,4}, pi_ini::AbstractAr
     addq(ψ) = (X = similar(ψ); for d in 1:3; X[:, :, :, d] .= view(ψ, :, :, :, d) .+ qd[d]; end; X)
     canon(M, a) = T.(_v_to_pi(c, stepper, M, a) .* Fplus(c, a))
 
-    step_callback === nothing || step_callback(0, co.all_a[1], addq(Psi), canon(Mom, co.all_a[1]))
+    want(k) = step_callback !== nothing && (callback_when === nothing || callback_when(k, co.all_a[k+1]))
+    want(0) && step_callback(0, co.all_a[1], addq(Psi), canon(Mom, co.all_a[1]))
     hist_psi = collect_all ? [copy(Psi)] : nothing
     hist_mom = collect_all ? [copy(Mom)] : nothing
     for k in 1:n_steps
         Psi .+= T(co.ddrift1[k]) .* Mom
         Mom .= T(co.alpha[k]) .* Mom .+ T(co.beta[k]) .* acc(Psi)
         Psi .+= T(co.ddrift2[k]) .* Mom
-        step_callback === nothing || step_callback(k, co.all_a[k+1], addq(Psi), canon(Mom, co.all_a[k+1]))
+        want(k) && step_callback(k, co.all_a[k+1], addq(Psi), canon(Mom, co.all_a[k+1]))
         if collect_all
             push!(hist_psi, copy(Psi)); push!(hist_mom, copy(Mom))
         end

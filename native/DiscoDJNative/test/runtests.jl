@@ -675,4 +675,5 @@ mean(x) = sum(x) / length(x)
 
     # ── N-body port: parity with the JAX DISCO-DJ run_nbody + linear growth ──
     include("nbody_parity_tests.jl")
+    include("pm_lean_tests.jl")
 end
