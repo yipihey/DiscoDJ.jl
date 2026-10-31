@@ -1,5 +1,6 @@
-# Publish the LPT vs N-body study report (studies/lpt_pdf/report.html + figures) to GitHub Pages
-# via the gh-pages branch, whenever the report or its figures change on main.
+# Publish the study reports to GitHub Pages via the gh-pages branch, whenever a report or its figures change on main:
+#   /                               LPT vs N-body report (studies/lpt_pdf/report.html + figures)
+#   /studies/eft_shell_crossing/    EFT / shell-crossing study (rendered from its README.md + figures)
 name: Report on GitHub Pages
 on:
   push:
@@ -10,6 +11,9 @@ on:
       - "studies/lpt_pdf/figures/**"
       - "studies/lpt_pdf/copula/figures/**"
       - "studies/lpt_pdf/sheet_pdf/figures/**"
+      - "studies/eft_shell_crossing/README.md"
+      - "studies/eft_shell_crossing/build_site.py"
+      - "studies/eft_shell_crossing/figures/**"
       - ".github/workflows/report-pages.yml"
   workflow_dispatch:
 permissions:
@@ -23,6 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: studies/lpt_pdf/build_site.sh _site
+      - run: python3 -m pip install --quiet markdown
+      - run: python3 studies/eft_shell_crossing/build_site.py _site/studies/eft_shell_crossing
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

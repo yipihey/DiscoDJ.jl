@@ -41,7 +41,8 @@ The report covers the studies, run on identical fixed-amplitude initial conditio
    - The tetrahedra resolve the caustic-dominated dense tail, where N-body carries 4–9× more mass
      than 4LPT and 2LPT.
 
-4. **[UV sensitivity of long modes across shell crossing (EFT effective stress)](studies/eft_shell_crossing/README.md):**
+4. **[UV sensitivity of long modes across shell crossing (EFT effective stress)](https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/)**
+   (source: [`studies/eft_shell_crossing/README.md`](studies/eft_shell_crossing/README.md)):
    paired 3D universes with bitwise-identical long modes and an added short-mode band, evolved with 1–7LPT and a
    discreteness-suppressed PM; field-level long-mode response Δψ_L = −C₂k²ψ_L, the CHS (2012) cutoff running, counts in
    spheres, redshift space, and the multistream kinetic stress.

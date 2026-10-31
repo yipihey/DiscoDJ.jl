@@ -1,5 +1,7 @@
 # Does shell crossing leave an irreducible k² long-mode response? — paired-IC 1–7LPT vs collisionless PM
 
+*Rendered with all figures: [https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/](https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/).*
+
 *Study of the "irreducible effective stress" claim of Carrasco, Hertzberg & Senatore (2012,
 [arXiv:1206.2926](https://arxiv.org/abs/1206.2926)) with DiscoDJ.jl (DiscoDJNative, GPU).*
 
@@ -61,11 +63,11 @@ chapter `chapters/05-eft.qmd`.  Read from the implementation:
 | Lab ingredient | Implementation (eft.rs) | Kept here? |
 |---|---|---|
 | UV / IR members | Two Gaussian IC filters of one seed, `R_UV` (≈1 % inverted tets at a = 1) and `R_IR` (auto: continuum σ_IR = σ_UV/3) | **Replaced** — a Gaussian pair differs at *all* k by e^{−k²(R_UV²−R_IR²)/2} ≈ 1 − k²ΔR²/2, an IC-level k² "response" (test `Gaussian-filter pair` reproduces the spurious C₂ = (R_UV²−R_IR²)/2) |
-| Pair-fixed soft modes (`pfs=1`) | One unsmoothed white-noise field, sharp cuts k = 1/R_UV, 1/R_IR, every |k| ≤ k_IR bitwise identical | **Adopted** as the only construction (split k_split, cutoff k_uv) |
+| Pair-fixed soft modes (`pfs=1`) | One unsmoothed white-noise field, sharp cuts k = 1/R_UV, 1/R_IR, every \|k\| ≤ k_IR bitwise identical | **Adopted** as the only construction (split k_split, cutoff k_uv) |
 | Match linear variance (`mlv=1`) | Rescale the IR δ₀ by σ_UV/σ_IR | **Rejected** — rescales the shared long modes, i.e. injects a k-independent R = s − 1 |
 | 1–4LPT | `build_lpt(4)`, positions per order | Extended to **1–7LPT** (DiscoDJNative `compute_core`, general-order EdS recursion, 3/2 de-aliased) |
 | Displacement comparison | `fit_displacement_sound_speed`: LS fit of Δψ = −α k² ψ_IR over all modes k ≤ k_max (regressor = *nonlinear* IR displacement) | Kept as a binned cross-correlation, regressor = the exact **linear** ψ_L (the δ_L of the EFT), longitudinal projection |
-| Density / P(k) | Exact P1 sheet deposit on a 2× mesh, ΔP = −2 c_s² k² P_lin fit | CIC (deconvolved) density; field-level R_δ = ⟨Δδ δ_L*⟩/⟨|δ_L|²⟩ rather than power ratios; T(k) = P_UV/P_IR − 1 kept as a raw observable |
+| Density / P(k) | Exact P1 sheet deposit on a 2× mesh, ΔP = −2 c_s² k² P_lin fit | CIC (deconvolved) density; field-level R_δ = ⟨Δδ δ_L*⟩/⟨\|δ_L\|²⟩ rather than power ratios; T(k) = P_UV/P_IR − 1 kept as a raw observable |
 | Native vs matched comparisons | Both IR amplitudes evolved, side-by-side ratios | Not needed (no amplitude matching) |
 | k_max stability | Refit on a ladder 0.4–2 × k_max | C₂(k_max) and (C₂, C₄)(k_max) on 12 cutoffs, jackknife errors |
 | Stochastic residual | Gaussian draws with the shell power of Δψ − ψ_ct (a *model* of the residual) | Measured directly: conditional variance over short-mode seeds at fixed long modes, and the even-in-L part |
