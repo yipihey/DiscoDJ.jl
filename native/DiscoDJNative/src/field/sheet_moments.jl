@@ -166,26 +166,35 @@ const TRACER_MODES = (:rho, :flux, :stress, :acc, :gdiv, :bulk, :disp, :vx, :vy,
 @inline _pcsw(f, i0, g) = (f(i0 - 1 - g), f(i0 - g), f(i0 + 1 - g), f(i0 + 2 - g))
 @inline _pcsi(i0, ng) = (mod(i0 - 1, ng) + 1, mod(i0, ng) + 1, mod(i0 + 1, ng) + 1, mod(i0 + 2, ng) + 1)
 
-# PCS gather of the first NC components of the mesh field G with precomputed weights / indices
-@inline function _pcs_gather(G, ::Val{NC}, Ix, Iy, Iz, wx, wy, wz) where {NC}
-    TG = eltype(G)
-    s = ntuple(_ -> zero(TG), Val(NC))
-    for oz in 1:4
-        wzz = TG(wz[oz])
-        for oy in 1:4
-            wyz = TG(wy[oy]) * wzz
-            for ox in 1:4
-                w = TG(wx[ox]) * wyz
-                s = ntuple(c -> s[c] + w * G[Ix[ox], Iy[oy], Iz[oz], c], Val(NC))
-            end
+# PCS gather of components 1..3 / 1..6 of the mesh field G with precomputed weights / indices
+# (explicit scalar accumulators: a tuple rebuilt through a closure capturing itself gets boxed)
+@inline function _pcs_gather3(G, Ix, Iy, Iz, wx, wy, wz)
+    TG = eltype(G); s1 = zero(TG); s2 = zero(TG); s3 = zero(TG)
+    for oz in 1:4, oy in 1:4
+        wyz = TG(wy[oy]) * TG(wz[oz]); J = Iy[oy]; K = Iz[oz]
+        for ox in 1:4
+            w = TG(wx[ox]) * wyz; I = Ix[ox]
+            s1 += w * G[I, J, K, 1]; s2 += w * G[I, J, K, 2]; s3 += w * G[I, J, K, 3]
         end
     end
-    return s
+    return (s1, s2, s3)
+end
+@inline function _pcs_gather6(G, Ix, Iy, Iz, wx, wy, wz)
+    TG = eltype(G); s1 = zero(TG); s2 = zero(TG); s3 = zero(TG); s4 = zero(TG); s5 = zero(TG); s6 = zero(TG)
+    for oz in 1:4, oy in 1:4
+        wyz = TG(wy[oy]) * TG(wz[oz]); J = Iy[oy]; K = Iz[oz]
+        for ox in 1:4
+            w = TG(wx[ox]) * wyz; I = Ix[ox]
+            s1 += w * G[I, J, K, 1]; s2 += w * G[I, J, K, 2]; s3 += w * G[I, J, K, 3]
+            s4 += w * G[I, J, K, 4]; s5 += w * G[I, J, K, 5]; s6 += w * G[I, J, K, 6]
+        end
+    end
+    return (s1, s2, s3, s4, s5, s6)
 end
 
-@kernel function _tracer_deposit!(mesh, @Const(ψ), @Const(vel), @Const(acc), @Const(G), @Const(off), @Const(bary),
-                                  nbary::Int, n::Int, dq, ng::Int, invh, mt, mode::Int)
-    t, i, j, k = @index(Global, NTuple)
+# one tetrahedron (t, i, j, k): its tracers' deposit; ATOMIC = false for a thread-private mesh
+@inline function _tracer_tet!(mesh, ψ, vel, acc, G, off, bary, nbary, n, dq, ng, invh, mt, mode, t, i, j, k,
+                              ::Val{ATOMIC}) where {ATOMIC}
     @inbounds begin
         TA = eltype(mesh); T = typeof(dq)
         y1 = _pvert(ψ, off, t, 1, i, j, k, n, dq); y2 = _pvert(ψ, off, t, 2, i, j, k, n, dq)
@@ -214,14 +223,14 @@ end
             elseif mode == 4
                 ux = _interp(l, a1, a2, a3, a4, 1); uy = _interp(l, a1, a2, a3, a4, 2); uz = _interp(l, a1, a2, a3, a4, 3)
             elseif mode == 5
-                gg = _pcs_gather(G, Val(3), Ix, Iy, Iz, w0x, w0y, w0z)
+                gg = _pcs_gather3(G, Ix, Iy, Iz, w0x, w0y, w0z)
                 ux = T(gg[1]); uy = T(gg[2]); uz = T(gg[3])
             elseif mode == 6
-                gg = _pcs_gather(G, Val(3), Ix, Iy, Iz, w0x, w0y, w0z)
+                gg = _pcs_gather3(G, Ix, Iy, Iz, w0x, w0y, w0z)
                 bx = T(gg[1]); by = T(gg[2]); bz = T(gg[3])
                 sxx = bx * bx; syy = by * by; szz = bz * bz; sxy = bx * by; sxz = bx * bz; syz = by * bz
             elseif mode == 7
-                gg = _pcs_gather(G, Val(6), Ix, Iy, Iz, w0x, w0y, w0z)
+                gg = _pcs_gather6(G, Ix, Iy, Iz, w0x, w0y, w0z)
                 sxx = T(gg[1]); syy = T(gg[2]); szz = T(gg[3]); sxy = T(gg[4]); sxz = T(gg[5]); syz = T(gg[6])
             else
                 c = mode == 8 ? vx : (mode == 9 ? vy : vz)
@@ -241,12 +250,64 @@ end
                     k2 = sxx * a0                                                           # × w2x
                     for ox in 1:4
                         w = w0x[ox] * k0 + w1x[ox] * k1 + w2x[ox] * k2
-                        KernelAbstractions.@atomic mesh[Ix[ox], Iy[oy], Iz[oz]] += TA(mt * w)
+                        if ATOMIC
+                            KernelAbstractions.@atomic mesh[Ix[ox], Iy[oy], Iz[oz]] += TA(mt * w)
+                        else
+                            mesh[Ix[ox], Iy[oy], Iz[oz]] += TA(mt * w)
+                        end
                     end
                 end
             end
         end
     end
+    return nothing
+end
+
+@kernel function _tracer_deposit!(mesh, @Const(ψ), @Const(vel), @Const(acc), @Const(G), @Const(off), @Const(bary),
+                                  nbary::Int, n::Int, dq, ng::Int, invh, mt, mode::Int)
+    t, i, j, k = @index(Global, NTuple)
+    _tracer_tet!(mesh, ψ, vel, acc, G, off, bary, nbary, n, dq, ng, invh, mt, mode, t, i, j, k, Val(true))
+end
+
+# ── CPU path: thread-private meshes, plain adds, threaded reduction ──────────────────────────
+# Float CAS atomics on a shared 512³ mesh (first-touched on one NUMA node) leave most cores stalled;
+# instead each task deposits a Lagrangian k-slab into one of `nbuf` private meshes taken from a pool.
+const _DEPOSIT_BUFFERS = Dict{Tuple{DataType,Int,Int},Vector{Array}}()
+_deposit_nbuf(ng, TA) = clamp(min(Threads.nthreads(),
+    floor(Int, parse(Float64, get(ENV, "DISCODJ_DEPOSIT_BUFFER_GB", "64")) * 2^30 / (sizeof(TA) * ng^3))), 1, 256)
+
+# function barrier: concrete argument types for the per-tetrahedron loop of one Lagrangian k-slab
+function _tracer_slab!(B::Array{TA,3}, ψ, vel, acc, G, off, bary, nbary::Int, n::Int, dq::T, ng::Int, invh::T, mt::T,
+                       mode::Int, k::Int) where {TA, T}
+    @inbounds for j in 1:n, i in 1:n, t in 1:6
+        _tracer_tet!(B, ψ, vel, acc, G, off, bary, nbary, n, dq, ng, invh, mt, mode, t, i, j, k, Val(false))
+    end
+    return nothing
+end
+
+function _tracer_deposit_cpu!(mesh::Array{TA,3}, ψ, vel, acc, G, off, bary, nbary, n, dq, ng, invh, mt, mode) where {TA}
+    nb = _deposit_nbuf(ng, TA)
+    bufs = get!(() -> Array[], _DEPOSIT_BUFFERS, (TA, ng, nb))
+    while length(bufs) < nb; push!(bufs, Array{TA,3}(undef, ng, ng, ng)); end
+    Threads.@threads :static for b in 1:nb; fill!(bufs[b], zero(TA)); end   # first touch by the worker
+    pool = Channel{Int}(nb); foreach(b -> put!(pool, b), 1:nb)
+    @sync for k in 1:n
+        Threads.@spawn begin
+            b = take!(pool)
+            _tracer_slab!(bufs[b]::Array{TA,3}, ψ, vel, acc, G, off, bary, nbary, n, dq, ng, invh, mt, mode, k)
+            put!(pool, b)
+        end
+    end
+    N = length(mesh); nt = Threads.nthreads(); ch = cld(N, nt)
+    Threads.@threads :static for c in 1:nt
+        r = (c - 1) * ch + 1 : min(c * ch, N)
+        @inbounds for I in r
+            s = zero(TA)
+            for b in 1:nb; s += (bufs[b]::Array{TA,3})[I]; end
+            mesh[I] = s
+        end
+    end
+    return mesh
 end
 
 """
@@ -269,8 +330,13 @@ function sheet_tracer_deposit_periodic(ψ::AbstractArray{T,4}, vel::AbstractArra
     bh = sheet_tracer_bary(level); bary = similar(ψ, T, size(bh)); copyto!(bary, T.(bh))
     mt = T((L / n)^3 / (L / ng)^3 / (6 * size(bh, 1)))
     Gd = G === nothing ? reshape(mesh, ng, ng, ng, 1) : G
-    _tracer_deposit!(backend)(mesh, ψ, vel, acc === nothing ? vel : acc, Gd, off, bary, size(bh, 1), n, T(L / n), ng,
-                              T(ng / L), mt, mi; ndrange=(6, n, n, n))
-    synchronize(backend)
+    if backend isa KernelAbstractions.CPU && mesh isa Array && Threads.nthreads() > 1
+        _tracer_deposit_cpu!(mesh, ψ, vel, acc === nothing ? vel : acc, Gd, off, bary, size(bh, 1), n, T(L / n), ng,
+                             T(ng / L), mt, mi)
+    else
+        _tracer_deposit!(backend)(mesh, ψ, vel, acc === nothing ? vel : acc, Gd, off, bary, size(bh, 1), n, T(L / n), ng,
+                                  T(ng / L), mt, mi; ndrange=(6, n, n, n))
+        synchronize(backend)
+    end
     return mesh
 end
