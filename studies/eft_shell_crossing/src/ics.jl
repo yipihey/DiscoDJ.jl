@@ -13,7 +13,7 @@
 # amplitude.  The masks depend on |k| only, so they commute with Hermitian conjugation and the
 # spectra stay canonical (required by cuFFT's C2R).
 
-export eds_cosmology, planck_pk, PairSpec, kmag_half, white_noise_hat, make_fphi, make_fphi_gauss, embed_fphi,
+export eds_cosmology, lcdm_cosmology, planck_pk, lcdm_pk, PairSpec, kmag_half, white_noise_hat, make_fphi, make_fphi_gauss, embed_fphi,
        band_sigmas
 
 """Einstein–de Sitter background (Ω_m = 1, D₊ = a) with Planck18 h, n_s: the nLPT growth
@@ -23,6 +23,16 @@ eds_cosmology() = compute_timetables(Cosmology{Float64}(Omega_c=1 - 0.0488911, O
 
 """Planck18EEBAOSN linear P(k) (Eisenstein–Hu, σ₈ = 0.8105) — used as the spectrum *shape* at D = 1."""
 planck_pk() = linear_power_spectrum(Cosmology("Planck18EEBAOSN"); kmin=1e-4, kmax=100.0, n_modes=2048)
+
+"""Flat ΛCDM with the Planck18EEBAOSN parameters (σ₈ overridable): D₊ normalised to 1 at a = 1.  nLPT
+(`compute_core`) then uses the EdS recursion with Dⁿ, the standard D-time approximation; PM integrates the
+exact ΛCDM equations (BullFrog)."""
+lcdm_cosmology(; sigma8=0.8105) = compute_timetables(Cosmology{Float64}(Omega_c=0.259622, Omega_b=0.0488911,
+                                                                        h=0.67742, sigma8=sigma8, n_s=0.96822))
+"""Linear P(k) at z = 0 (Eisenstein–Hu with BAO) of `lcdm_cosmology(; sigma8)`."""
+lcdm_pk(; sigma8=0.8105) = linear_power_spectrum(Cosmology{Float64}(Omega_c=0.259622, Omega_b=0.0488911,
+                                                                     h=0.67742, sigma8=sigma8, n_s=0.96822);
+                                                  kmin=1e-4, kmax=100.0, n_modes=2048)
 
 Base.@kwdef struct PairSpec
     N::Int = 256                 # particle / LPT grid
@@ -35,6 +45,7 @@ Base.@kwdef struct PairSpec
     long_sign::Int = 1           # s_L = ±1
     seed_L::Int = 1
     seed_S::Int = 1001
+    fixed_amp::Bool = false      # |ω̂(k)| set to its rms √N³ (Angulo–Pontzen "fixed"; with s_L = ±1 "paired")
 end
 
 """|k| on the rfft half-grid (N,N,N÷2+1), DISCO-DJ k-vector convention."""
@@ -66,6 +77,12 @@ function make_fphi(s::PairSpec, pk, which::Symbol; T=Float32, cache=nothing)
     kk = get!(() -> kmag_half(s.N, s.L), (:kmag, s.N, s.L))
     sc = get!(() -> _phi_scale(s.N, s.L, pk), (:scale, s.N, s.L))
     wL = get!(() -> white_noise_hat(s.seed_L, s.N), (:wn, s.seed_L, s.N))
+    if s.fixed_amp
+        wL = get!((:wnfix, s.seed_L, s.N)) do
+            r = sqrt(Float64(s.N)^3)
+            map(w -> abs(w) > 0 ? w * (r / abs(w)) : w, wL)
+        end
+    end
     out = similar(wL)
     lo = max(s.k_split, s.k_lo)
     if which === :IR || s.band_amp == 0

@@ -446,3 +446,56 @@ function pk_full(P::PkPlan, Ψ::AbstractArray{T,4}, q) where {T}
     return kc, Pd, Pp
 end
 export PkPlan, pk_full
+
+# ── exact (window- and alias-free) density modes: direct Fourier sum over the particles ────────────
+#
+# δ_k = (1/N_p) Σ_p e^{−ik·x_p}  (k ≠ 0), the same normalisation as `field_modes`.  The CIC deposit of a near-lattice
+# particle load carries a coherent, time-dependent k² bias at low k (≈ −0.18 k² h⁻²Mpc² in R at 256³/500 h⁻¹Mpc), which
+# is harmless when two particle sets are compared with the same deposit (PM vs LPT) but not against analytic PT.
+
+export ExactModes, exact_density_modes
+
+struct ExactModes{A}
+    nvec::Matrix{Int}          # (M,3) integer wave-vectors (ModeSet order for k ≤ k_exact)
+    nv::A                      # device copy (Int32)
+    kmag::Vector{Float64}
+end
+function ExactModes(N::Int, L::Real, k_exact::Real; to_device=identity)
+    ms = ModeSet(N, L, k_exact)
+    return ExactModes(ms.nvec, to_device(Int32.(ms.nvec)), ms.kmag)
+end
+Base.length(em::ExactModes) = length(em.kmag)
+
+@kernel function _k_dft_partial!(Pr, Pi, @Const(U), @Const(nv), Np::Int, chunk::Int)
+    m, c = @index(Global, NTuple)
+    nx = nv[m, 1]; ny = nv[m, 2]; nz = nv[m, 3]
+    sr = 0.0f0; si = 0.0f0
+    i0 = (c - 1) * chunk + 1; i1 = min(c * chunk, Np)
+    for i in i0:i1
+        t = nx * U[i, 1] + ny * U[i, 2] + nz * U[i, 3]          # k·x / 2π in cycles (U = x/L)
+        t -= round(t)
+        s, co = sincospi(2t)
+        sr += co; si -= s
+    end
+    @inbounds Pr[m, c] = sr; @inbounds Pi[m, c] = si
+end
+
+"""
+    exact_density_modes(em, Ψ, q, L; chunk=65536) -> Vector{ComplexF64}
+
+Density contrast of the particles X = q + Ψ on the modes of `em` by a direct sum (no mesh, no window, no aliasing)."""
+function exact_density_modes(em::ExactModes, Ψ::AbstractArray{T,4}, q, L::Real; chunk::Int=65536) where {T}
+    N = size(Ψ, 1); Np = N^3; M = length(em)
+    U = similar(Ψ, Float32, N, N, N, 3)
+    for d in 1:3
+        U[:, :, :, d] .= Float32.((view(Ψ, :, :, :, d) .+ q[d]) ./ T(L))
+    end
+    U2 = reshape(U, Np, 3)
+    nc = cld(Np, chunk)
+    Pr = similar(U, Float32, M, nc); Pi = similar(Pr)
+    be = get_backend(U)
+    _k_dft_partial!(be, (64, 1))(Pr, Pi, U2, em.nv, Np, chunk; ndrange=(M, nc))
+    KernelAbstractions.synchronize(be)
+    sr = vec(sum(Float64.(Pr); dims=2)); si = vec(sum(Float64.(Pi); dims=2))
+    return ComplexF64.(Array(sr), Array(si)) ./ Np
+end
