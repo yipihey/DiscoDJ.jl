@@ -187,4 +187,28 @@ end
     @test r.mass_frac > 0.3 && r.sigma2_ms > r.mean_trace > 0
 end
 
+
+@testset "full-range power spectra: linear density and displacement for a small Zel'dovich displacement" begin
+    s = PairSpec(N=N, N_ic=N, L=L, k_split=0.25, k_uv=0.45, seed_L=3, seed_S=7)
+    f = make_fphi(s, pk, :UV; T=Float64)
+    ψ1 = compute_core(f, nlpt_kernels(N, L; T=Float64); n_order=1)["psi_1"]
+    D = 1e-3; q = lattice_q(ψ1, N, L)
+    P = PkPlan(L, N; nbins=8, kmax=0.4)
+    k, Pd, Pp = pk_full(P, D .* ψ1, q)
+    # reference: the same binning of the exact linear field (δ̂ = −k² φ̂, Σ|Ψ̂|² = |δ̂|²/k²)
+    kk = kmag_half(N, L); b, w, _ = EFTShell._pk_bins(N, L, P.edges)
+    ref = zeros(8); refp = zeros(8); cnt = zeros(8)
+    for i in eachindex(kk)
+        b[i] == 0 && continue
+        v = abs2(kk[i]^2 * f[i]) * D^2
+        ref[b[i]] += w[i] * v; refp[b[i]] += w[i] * v / kk[i]^2; cnt[b[i]] += w[i]
+    end
+    ok = cnt .> 0
+    # density: CIC deposit of a near-lattice distribution has an effective window ∝ sinc (not the deconvolved
+    # sinc²), so only check where kΔ/2 ≤ 0.5 (production: Δ = 0.98 Mpc/h, i.e. k ≤ 1)
+    lo = ok .& (k .* (L / N) ./ 2 .<= 0.5)
+    @test maximum(abs.(Pd[lo] ./ (L^3 .* ref[lo] ./ cnt[lo] ./ N^6) .- 1)) < 0.1
+    @test maximum(abs.(Pp[ok] ./ (L^3 .* refp[ok] ./ cnt[ok] ./ N^6) .- 1)) < 1e-6
+end
+
 end

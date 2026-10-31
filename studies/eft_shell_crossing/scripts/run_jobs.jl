@@ -23,8 +23,10 @@ function shorts_of(sd, sL)
 end
 function jobs(cfg, model)
     sd = cfg["seeds"]; out = []
+    members = Symbol.(get(sd, "members", ["IR", "UV"]))
     for m in (model == "all" ? ("lpt", "pm") : (model,)), sL in sd["long"], sg in sd["signs"]
-        push!(out, (m, :IR, sL, 0, sg))
+        :IR in members && push!(out, (m, :IR, sL, 0, sg))
+        :UV in members || continue
         for sS in shorts_of(sd, sL)
             push!(out, (m, :UV, sL, sS, sg))
         end
@@ -101,7 +103,8 @@ function run_job(cfg, j, pk, c)
               n_resample=get(pc, "n_resample", 1), lean=get(pc, "lean", false))
         r = run_pm(c, Ψ0, Π0, ms, L, epochs; D_ini=pc["D_ini"], n_steps=pc["n_steps"], res_pm=pc["res_pm"],
                    band=band, cis=cp_, cis_epochs=cis_epochs(cfg), rsd=get(cfg, "rsd", false),
-                   stress=stress_sets(cfg, dev), st...)
+                   stress=stress_sets(cfg, dev),
+                   pkplan=haskey(cfg, "pk_full") ? PkPlan(L, cfg["pk_full"]["mesh"]; nbins=cfg["pk_full"]["nbins"]) : nothing, st...)
         h5open(fname(cfg, j), "w") do h
             write_common(h, cfg, ms, j)
             h["psi"] = ComplexF32.(r.psi); h["vel"] = ComplexF32.(r.vel); h["dens"] = ComplexF32.(r.dens)
@@ -109,6 +112,10 @@ function run_job(cfg, j, pk, c)
             r.dens_s === nothing || (h["dens_rsd"] = ComplexF32.(r.dens_s); h["inv_rsd"] = r.inv_s)
             r.stress === nothing || (h["stress"] = ComplexF32.(r.stress); h["stress_scalars"] = r.stress_scalars;
                                      h["stress_meshes"] = Int.(cfg["stress"]["meshes"]))
+            if r.pk_dens !== nothing
+                pp = PkPlan(L, cfg["pk_full"]["mesh"]; nbins=cfg["pk_full"]["nbins"])
+                h["pk_k"] = sqrt.(pp.edges[1:end-1] .* pp.edges[2:end]); h["pk_dens"] = r.pk_dens; h["pk_disp"] = r.pk_disp
+            end
             if band !== nothing
                 h["band_nvec"] = band[1].nvec; h["band_epochs"] = band[2]; h["band_psi"] = ComplexF32.(r.band)
             end

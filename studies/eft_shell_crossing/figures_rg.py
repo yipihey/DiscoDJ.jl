@@ -27,6 +27,14 @@ CHS = json.load(open(os.path.join(HERE, "chs", "chs_running.json")))
 DIG = json.load(open(os.path.join(HERE, "chs", "chs2012_fig3_digitized.json")))
 
 
+from matplotlib.ticker import NullFormatter, FixedLocator, FixedFormatter
+
+
+def tidy_logx(ax, ticks=(0.12, 0.15, 0.2, 0.3, 0.5, 0.7)):
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.xaxis.set_major_locator(FixedLocator(ticks)); ax.xaxis.set_major_formatter(FixedFormatter([f"{t:g}" for t in ticks]))
+
+
 def load_rg():
     out = {}
     for ks in SPLITS:
@@ -105,7 +113,7 @@ def fig_chs_comparison(rg, name="figR1_chs_fig3_comparison", D=1.0, units="respo
     a2.set_xlabel(r"$k_{\rm split}$ [$h$/Mpc]  (CHS Λ mapped to the sharp split with equal removed $\sigma_v^2$)")
     a2.set_ylabel("ratio"); a2.legend(fontsize=7, loc="best")
     for a in (a1, a2):
-        a.set_xticks([0.12, 0.15, 0.2, 0.3, 0.5, 0.7]); a.set_xticklabels(["0.12", "0.15", "0.2", "0.3", "0.5", "0.7"])
+        tidy_logx(a, (0.08, 0.12, 0.15, 0.2, 0.3, 0.5, 0.7, 1.0))
     save(fig, name if units == "response" else name + "_c2units")
     return dict(k_split=ks.tolist(), pm=pm.tolist(), spm=spm.tolist(), lpt4=l4.tolist(), lpt3=l3.tolist(),
                 pt1loop=pt_at.tolist(), chs_kren010=np.interp(ks, x10, c10 * CHS["chs"]["C2_per_c2"]).tolist())
@@ -126,7 +134,7 @@ def fig_running_shape(rg, name="figR2_running_shape", Ds=(0.3, 0.5, 1.0), ref=0.
         x10, c10, C10 = chs_curve("0.1")
         if D == 1.0:
             ax.plot(x10, C10 - np.interp(ref, x10, C10), color=VIOLET, lw=1.2, label="CHS running (response units)")
-        ax.axhline(0, color=MUTED, lw=0.8); ax.set_xscale("log")
+        ax.axhline(0, color=MUTED, lw=0.8); ax.set_xscale("log"); tidy_logx(ax)
         ax.set_title(f"D = {D}", loc="left"); ax.set_xlabel(r"$k_{\rm split}$ [$h$/Mpc]")
     axes[0].set_ylabel(rf"$C_2^\delta(k_{{\rm split}})-C_2^\delta({ref})$ [$(h^{{-1}}$Mpc$)^2$]")
     axes[0].legend(fontsize=7)
@@ -142,7 +150,7 @@ def knl_of_D(D):
 
 def fig_map(rg, name="figR3_c2_map", q="dens"):
     """C2(k_split, D)/D² for PM and 4LPT, with the IR member's shell-crossed fraction and k_NL(D)."""
-    ks = np.array(sorted(rg)); r0 = rg[ks[0]]; D = r0.D; sel = D >= 0.05
+    ks = np.array(sorted(rg)); r0 = rg[ks[0]]; D = r0.D; sel = D >= 0.125
     fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.0), sharey=True)
     vals = {}
     for m in ("pm", "lpt4"):
@@ -158,19 +166,19 @@ def fig_map(rg, name="figR3_c2_map", q="dens"):
         v = np.nanmax(np.abs(Z)) if ax is axes[2] else lim
         pc = ax.pcolormesh(np.arange(len(ks) + 1) - 0.5, np.arange(sel.sum() + 1) - 0.5, Z, cmap=cmap,
                            norm=TwoSlopeNorm(0, -v, v), shading="flat")
-        fig.colorbar(pc, ax=ax, fraction=0.046, pad=0.02, label=r"$(h^{-1}$Mpc$)^2$")
+        fig.colorbar(pc, ax=ax, fraction=0.046, pad=0.02).set_label(r"$(h^{-1}$Mpc$)^2$", fontsize=8)
         # shell crossing of the IR member (modes below each split) and of the UV member (all modes)
         inv_ir = np.array([rg[k].inv("pm", "ir")[sel] for k in ks]).T
         cs = ax.contour(np.arange(len(ks)), np.arange(sel.sum()), np.log10(np.maximum(inv_ir, 1e-7)),
                         levels=[-4, -3, -2, -1], colors=INK, linewidths=0.9)
         ax.clabel(cs, fmt=lambda v: f"IR inv. {10**v:.0e}", fontsize=6)
         knl = knl_of_D(D[sel])
-        ax.plot(np.interp(knl, ks, np.arange(len(ks)), left=np.nan, right=np.nan), np.arange(sel.sum()), color=YELLOW, lw=2,
-                label=r"$k_{\rm NL}(D)$: $\sigma_{\rm lin}(k<k_{\rm NL})=1$")
+        xk = np.interp(np.log(knl), np.log(ks), np.arange(len(ks)), left=np.nan, right=np.nan)
+        ax.plot(xk, np.arange(sel.sum()), color=YELLOW, lw=2.2, label=r"$k_{\rm NL}(D)$: $\sigma_{\rm lin}(k<k_{\rm NL})=1$")
         ax.set_xticks(range(len(ks))); ax.set_xticklabels([f"{k:g}" for k in ks]); ax.set_xlabel(r"$k_{\rm split}$ [$h$/Mpc]")
         ax.set_title(title, loc="left")
     axes[0].set_yticks(range(sel.sum())); axes[0].set_yticklabels([f"{d:g}" for d in D[sel]], fontsize=6.5)
-    axes[0].set_ylabel("D"); axes[0].legend(fontsize=7, loc="upper right")
+    axes[0].set_ylabel("D"); axes[0].legend(fontsize=7, loc="lower right")
     save(fig, name)
 
 
@@ -189,7 +197,7 @@ def fig_band_contrib(rg, name="figR4_band_contribution", Ds=(0.3, 0.5, 0.7, 1.0)
         a1.plot(mid, dpt, color=c, ls=":", lw=1.2)
         knl = float(knl_of_D(D))
         errbar(a2, mid / knl, dv / dpt, ds / np.abs(dpt), color=c, marker="o", ms=4, lw=1.5, label=f"D = {D}")
-    a1.set_xscale("log"); a1.axhline(0, color=MUTED, lw=0.8)
+    a1.set_xscale("log"); a1.axhline(0, color=MUTED, lw=0.8); tidy_logx(a1, (0.15, 0.2, 0.3, 0.5, 0.7))
     a1.set_xlabel(r"shell centre $k$ [$h$/Mpc]"); a1.set_ylabel(r"$-dC_2^\delta/d\ln k_{\rm split}$ [$(h^{-1}$Mpc$)^2$]")
     a1.set_title("Which modes carry the response (dotted: one-loop PT)", loc="left", fontsize=9)
     a1.legend(fontsize=7)
@@ -220,7 +228,7 @@ def bao_response(r, D=1.0, model="pm"):
 def fig_bao(rg, name="figR5_bao_consequence", D=1.0):
     ks = np.array(sorted(rg))
     cols = [BLUE, AQUA, ORANGE, RED]
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.0, 3.9))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.4, 4.0))
     table = {}
     for c, kb in zip(cols, BAO_K):
         coh = []; sc = []; st = []
@@ -236,58 +244,97 @@ def fig_bao(rg, name="figR5_bao_consequence", D=1.0):
     lam5 = np.interp(0.2, CHS["dictionary"]["Lambda"], CHS["dictionary"]["k_split_equiv_ours"])
     for a in (a1, a2):
         a.axvline(lam5, color=MUTED, ls=":", lw=1); a.set_xscale("log"); a.set_xlabel(r"$k_{\rm split}$ [$h$/Mpc]")
-        a.set_xticks([0.12, 0.15, 0.2, 0.3, 0.5, 0.7]); a.set_xticklabels(["0.12", "0.15", "0.2", "0.3", "0.5", "0.7"])
-    a1.text(lam5, a1.get_ylim()[1] if False else 0, " 5 Mpc/h (Λ = 0.2)", color=INK2, fontsize=7, rotation=90, va="bottom")
+        tidy_logx(a)
+    a1.text(lam5 * 1.02, 0.97, "Gaussian 5 Mpc/h\n(Λ = 0.2)", transform=a1.get_xaxis_transform(), color=INK2, fontsize=7, va="top")
     a1.axhline(0, color=MUTED, lw=0.8)
     a1.set_ylabel(r"coherent $\Delta P/P=(1+R)^2-1$  [%]")
-    a1.set_title(f"Modes above $k_{{\\rm split}}$ coherently change identical long modes (PM, D = {D})", loc="left", fontsize=8.5)
+    a1.set_title(f"Coherent change of identical long modes (PM, D = {D})", loc="left", fontsize=9)
     a2.set_yscale("log"); a2.set_ylabel(r"stochastic $P_\epsilon/P_L$")
-    a2.set_title("…while the stochastic (uncorrelated) power they add is tiny", loc="left", fontsize=8.5)
+    a2.set_title("Stochastic (uncorrelated) power added", loc="left", fontsize=9)
     a1.legend(fontsize=7.5); a2.legend(fontsize=7.5)
     save(fig, name)
     return table
 
 
-def fig_cis(name="figR6_counts_in_spheres", splits=(0.15, 0.2, 0.33), D=1.0):
+def _wth(x):
+    return 3 * (np.sin(x) - x * np.cos(x)) / x ** 3
+
+
+def fig_cis(name="figR6_counts_in_spheres", splits=(0.15, 0.2, 0.33), main=0.2, D=1.0):
     files = {ks: os.path.join(RES, f"cis_{TAG[ks]}.h5") for ks in splits}
     files = {k: v for k, v in files.items() if os.path.exists(v)}
     if not files: return
-    fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.0))
     cols = {0.12: GREEN, 0.15: AQUA, 0.2: BLUE, 0.25: VIOLET, 0.33: MAGENTA, 0.5: RED, 0.7: YELLOW}
+    fig = plt.figure(figsize=(13.5, 7.6))
+    gs = fig.add_gridspec(2, 3, height_ratios=[1, 1])
+    a0 = fig.add_subplot(gs[0, 0]); a2 = fig.add_subplot(gs[0, 1:])
+    scat = [fig.add_subplot(gs[1, c]) for c in range(3)]
     out = {}
+    # (a) decomposition for the main split, linear % axis
+    h = h5py.File(files[main], "r"); R = h["R"][:]; ep = h["epochs"][:]; e = int(np.argmin(abs(ep - D)))
+    g = lambda k: 100 * h[k][:, e, 0]; gs_ = lambda k: 100 * h[k + "_sigma"][:, e, 0] if k + "_sigma" in h else 0 * R
+    errbar(a0, R, g("ratio_total"), gs_("ratio_total"), color=INK, marker="o", ms=4, lw=1.8, label="total")
+    errbar(a0, R, g("coherent"), gs_("coherent"), color=BLUE, marker="o", ms=4, lw=1.5, label="coherent (∝ δ_R, k < k_s)")
+    errbar(a0, R, g("stoch"), gs_("stoch"), color=ORANGE, marker="^", ms=4, lw=1.3, label="stochastic (k < k_s)")
+    errbar(a0, R, g("remainder"), gs_("remainder"), color=AQUA, marker="s", ms=4, lw=1.3, label="band leakage (k ≥ k_s)")
+    a0.axhline(0, color=MUTED, lw=0.8); a0.set_xscale("log"); tidy_logx(a0, (20, 30, 40, 60, 80, 100, 150))
+    a0.set_xlabel(r"$R$ [$h^{-1}$Mpc]"); a0.set_ylabel(r"$\Delta\sigma_R^2/\sigma_R^2$ [%]")
+    a0.set_title(f"Sphere variance change, $k_s$ = {main} (PM, D = {D})", loc="left", fontsize=9); a0.legend(fontsize=7)
+    # (b) real-space EFT slope vs prediction from the Fourier response (k⁴ W² P weighting) and the k→0 C2
     for ks, p in files.items():
-        h = h5py.File(p, "r"); R = h["R"][:]; ep = h["epochs"][:]; e = int(np.argmin(abs(ep - D)))
-        g = lambda k: h[k][:, e, 0]                     # (R) for PM
-        gs = lambda k: h[k + "_sigma"][:, e, 0] if k + "_sigma" in h else np.zeros(len(R))
-        col = cols.get(ks, INK)
-        errbar(axes[0], R, 100 * g("coherent"), 100 * gs("coherent"), color=col, marker="o", ms=4, lw=1.6, label=f"coherent, $k_s$ = {ks}")
-        axes[0].plot(R, 100 * g("stoch"), color=col, ls="--", marker="^", ms=3, lw=1.0, label=f"stochastic ($k<k_s$)")
-        axes[0].plot(R, 100 * g("band_lin"), color=col, ls=":", lw=1.0, label="band leakage (linear)")
-        errbar(axes[2], R, g("C2R"), gs("C2R"), color=col, marker="o", ms=4, lw=1.5, label=f"spheres, $k_s$ = {ks}")
-        out[ks] = {k: h[k][:, e, 0].tolist() for k in ("ratio_total", "coherent", "stoch", "band_lin", "remainder", "b", "C2R", "r_eft")}
-        out[ks]["R"] = R.tolist()
-        # Fourier C2 of the same config
-        r = F.Result(TAG[ks]); C, s, *_ = r.C2("dens", "pm", kmax_for(ks))
-        axes[2].axhspan(C[r.ei(D)] - s[r.ei(D)], C[r.ei(D)] + s[r.ei(D)], color=col, alpha=0.2, lw=0)
-    axes[0].axhline(0, color=MUTED, lw=0.8); axes[0].set_xscale("log"); axes[0].set_yscale("symlog", linthresh=1e-2)
-    axes[0].set_xlabel(r"$R$ [$h^{-1}$Mpc]"); axes[0].set_ylabel(r"$\Delta\sigma_R^2/\sigma_R^2$ components [%]")
-    axes[0].set_title(f"Sphere variance change (PM, D = {D})", loc="left", fontsize=9); axes[0].legend(fontsize=6, ncol=1)
-    axes[2].set_xscale("log"); axes[2].set_xlabel(r"$R$ [$h^{-1}$Mpc]")
-    axes[2].set_ylabel(r"$C_{2,R}$: slope of $\Delta\delta_R$ on $\nabla^2\delta_R$ [$(h^{-1}$Mpc$)^2$]")
-    axes[2].set_title("Real-space EFT slope vs Fourier $C_2$ (bands)", loc="left", fontsize=9); axes[2].legend(fontsize=7)
-    # scatter for the middle split
-    ks = 0.2 if 0.2 in files else list(files)[0]
-    h = h5py.File(files[ks], "r"); R = h["R"][:]; ep = h["epochs"][:]; e = int(np.argmin(abs(ep - D)))
+        hh = h5py.File(p, "r"); RR = hh["R"][:]; ee = int(np.argmin(abs(hh["epochs"][:] - D))); col = cols.get(ks, INK)
+        sig = hh["C2R_sigma"][:, ee, 0] if "C2R_sigma" in hh else 0 * RR
+        errbar(a2, RR, hh["C2R"][:, ee, 0], sig, color=col, marker="o", ms=5, lw=0, elinewidth=1.2, label=f"spheres, $k_s$ = {ks}")
+        r = F.Result(TAG[ks]); e2 = r.ei(D); k = r.k; n = r.h["nmodes"][:]; Rk = r.R("dens", "pm")[0][:, e2]
+        PL = r.h["P_lin_delta"][:, e2]; ok = np.isfinite(Rk) & (k < ks)
+        pred = [np.sum((-Rk / k ** 2 * n * k ** 4 * _wth(k * x) ** 2 * PL)[ok]) / np.sum((n * k ** 4 * _wth(k * x) ** 2 * PL)[ok]) for x in RR]
+        a2.plot(RR, pred, color=col, lw=1.4, label=f"Fourier R(k), sphere weighting" if ks == main else None)
+        C, sC, *_ = r.C2("dens", "pm", kmax_for(ks))
+        a2.axhline(C[e2], color=col, ls=":", lw=1.2, label="Fourier $k\\to0$ fit" if ks == main else None)
+        out[ks] = {"R": RR.tolist(), "C2R": hh["C2R"][:, ee, 0].tolist(), "C2R_pred_fourier": pred, "C2_k0": float(C[e2]),
+                   **{k_: hh[k_][:, ee, 0].tolist() for k_ in ("ratio_total", "coherent", "stoch", "band_lin", "remainder", "b", "r_eft")}}
+    a2.set_xscale("log"); tidy_logx(a2, (20, 30, 40, 60, 80, 100, 150)); a2.set_xlabel(r"$R$ [$h^{-1}$Mpc]")
+    a2.set_ylabel(r"slope of $\Delta\delta_R$ on $\nabla^2\delta_R^L$ [$(h^{-1}$Mpc$)^2$]")
+    a2.set_title("Real-space EFT test: sphere slope = Fourier response weighted by $k^4W_{TH}^2(kR)P$", loc="left", fontsize=9)
+    a2.legend(fontsize=7, ncol=2)
+    # (c) scatter Δδ_R^{<k_s} vs ∇²δ_R^L, normalised
     sc = h["scatter"][:]          # (ns, 3, nR, E, nm)
-    for c, Rv in zip((BLUE, AQUA, ORANGE), (20.0, 40.0, 80.0)):
-        ir = int(np.argmin(abs(R - Rv))); x = sc[:, 0, ir, e, 0]; y = sc[:, 1, ir, e, 0]
-        sx = np.std(x)
-        axes[1].scatter(x / sx, y, s=2, color=c, alpha=0.35, lw=0, label=f"R = {Rv:.0f}")
-        sl = h["C2R"][ir, e, 0]; xx = np.linspace(-3, 3, 10)
-        axes[1].plot(xx, sl * xx * sx, color=c, lw=1.6)
-    axes[1].set_xlabel(r"$\nabla^2\delta_R^{L}/\sigma(\nabla^2\delta_R^{L})$"); axes[1].set_ylabel(r"$\Delta\delta_R^{<k_s}$")
-    axes[1].set_title(f"$\\Delta\\delta_R$ vs $\\nabla^2\\delta_R$ ($k_s$ = {ks}, PM, D = {D})", loc="left", fontsize=9)
-    axes[1].legend(fontsize=7, markerscale=4)
+    for ax, Rv, col in zip(scat, (20.0, 40.0, 80.0), (BLUE, AQUA, ORANGE)):
+        ir = int(np.argmin(abs(R - Rv))); x = sc[:, 0, ir, e, 0]; y = sc[:, 1, ir, e, 0]; sx = np.std(x); sR = np.sqrt(h["sigma2_ir"][ir, e, 0])
+        ax.scatter(x / sx, 100 * y / sR, s=2, color=col, alpha=0.3, lw=0)
+        xx = np.linspace(-3.5, 3.5, 10); sl = h["C2R"][ir, e, 0]
+        ax.plot(xx, 100 * sl * xx * sx / sR, color=INK, lw=1.6, label=f"slope $C_{{2,R}}$ = {sl:.2f}, r = {h['r_eft'][ir, e, 0]:.2f}")
+        ax.axhline(0, color=MUTED, lw=0.6); ax.axvline(0, color=MUTED, lw=0.6)
+        ax.set_xlabel(r"$\nabla^2\delta_R^L/\sigma(\nabla^2\delta_R^L)$"); ax.set_title(f"R = {Rv:.0f} $h^{{-1}}$Mpc", loc="left", fontsize=9)
+        ax.legend(fontsize=7, loc="upper left")
+    scat[0].set_ylabel(r"$\Delta\delta_R^{<k_s}/\sigma_R$ [%]")
+    fig.tight_layout()
+    save(fig, name)
+    return out
+
+
+def fig_flux_decomposition(name="figR7_flux_decomposition", Ds=(0.2, 0.5, 1.0)):
+    """Coherent sphere-variance change of the shared modes (fiducial ensemble, exact from the Fourier modes) for
+    1LPT (pure kinematic diffusion), 3LPT and 7LPT (+ single-stream gravitational infall) and PM (+ multistream)."""
+    p = os.path.join(RES, "spheres_modes_fiducial.json")
+    if not os.path.exists(p): return
+    d = json.load(open(p)); R = np.array(d["R"])
+    fig, axes = plt.subplots(1, len(Ds), figsize=(4.0 * len(Ds), 3.7), sharey=False)
+    out = {}
+    for ax, D in zip(axes, Ds):
+        for m, col, lab in (("lpt1", lpt_color(2), "1LPT: diffusion (kinematic)"), ("lpt3", lpt_color(4), "3LPT: + infall"),
+                            ("lpt7", lpt_color(7), "7LPT"), ("pm", PM_COLOR, "PM: + multistream pressure")):
+            key = lambda r: f"{m}_D{D}_R{int(r)}"
+            if key(R[0]) not in d: continue
+            v = np.array([d[key(r)]["coherent"] for r in R]); sg = np.array([d[key(r)]["sigma_coherent"] or 0 for r in R])
+            errbar(ax, R, 100 * v, 100 * sg, color=col, marker="o" if m == "pm" else "s", ms=4, lw=1.5, label=lab)
+            out[f"{m}_D{D}"] = v.tolist()
+        ax.axhline(0, color=MUTED, lw=0.8); ax.set_xscale("log"); tidy_logx(ax, (20, 30, 40, 60, 80, 100, 150))
+        ax.set_xlabel(r"$R$ [$h^{-1}$Mpc]"); ax.set_title(f"D = {D}", loc="left")
+    axes[0].set_ylabel(r"coherent $\Delta\sigma_R^2/\sigma_R^2$ of shared modes [%]")
+    axes[0].legend(fontsize=7)
+    fig.suptitle("Mass flux across the sphere boundary: diffusion (out) − infall (in) + multistream pressure (out)", fontsize=9.5, x=0.01, ha="left")
+    fig.tight_layout()
     save(fig, name)
     return out
 
@@ -303,5 +350,6 @@ if __name__ == "__main__":
         summary["bao_table"] = {str(ks): {m: {kk: (np.asarray(vv).tolist()) for kk, vv in bao_response(rg[ks], 1.0, m).items()}
                                          for m in ("pm", "lpt4")} for ks in sorted(rg)}
     summary["cis"] = {str(k): v for k, v in (fig_cis() or {}).items()}
+    summary["flux_decomposition"] = fig_flux_decomposition()
     json.dump(summary, open(os.path.join(RES, "rg_summary.json"), "w"), indent=1, default=float)
     print("wrote rg_summary.json")

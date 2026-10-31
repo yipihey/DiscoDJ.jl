@@ -106,7 +106,7 @@ grid and the wall time.  With `band = (ms_band, epochs_band)` the displacement i
 second (typically larger) mode set at a few epochs (band-growth diagnostics)."""
 function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini::Real, n_steps::Int,
                 res_pm::Int, stepper::Symbol=:bullfrog, band=nothing, cis=nothing, cis_epochs=Float64[], rsd::Bool=false,
-                stress=nothing, settings...)
+                stress=nothing, pkplan=nothing, settings...)
     T = eltype(Ψ0); N = size(Ψ0, 1); M = length(ms)
     ep = [D for D in epochs if D > D_ini]
     E = length(epochs)
@@ -118,6 +118,8 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
     dens_s = rsd ? zeros(ComplexF64, E, M) : nothing; inv_s = rsd ? fill(NaN, E) : nothing
     st = stress === nothing ? nothing : zeros(ComplexF64, E, length(stress), 4, M, 6)
     stsc = stress === nothing ? nothing : fill(NaN, E, length(stress), 7)
+    pkd = pkplan === nothing ? nothing : fill(NaN, E, length(pkplan.edges) - 1)
+    pkp = pkplan === nothing ? nothing : fill(NaN, E, length(pkplan.edges) - 1)
     q = lattice_q(Ψ0, N, L)
     mesh = similar(Ψ0, T, N, N, N); Xb = similar(Ψ0); cnt = similar(Ψ0, Int32, N, N, N); Ψ = similar(Ψ0)
     grid = d_grid(D_ini, maximum(epochs), n_steps, vcat(ep, band === nothing ? Float64[] : band[2]))
@@ -132,6 +134,9 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         b === nothing || (bpsi[b, :, :] .= vector_modes(band[1], Ψ))
         e === nothing && return
         psi[e, :, :] .= vector_modes(ms, Ψ)
+        if pkplan !== nothing
+            _, pd_, pp_ = pk_full(pkplan, Ψ, q); pkd[e, :] .= pd_; pkp[e, :] .= pp_
+        end
         Π = P ./ T(DJ.Fplus(c, a))
         vel[e, :, :] .= vector_modes(ms, Π)
         if stress !== nothing   # u = dx/dln a = f D Π
@@ -171,5 +176,5 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
                            callback_when=(k, a) -> haskey(snap, round(a, digits=10)) || haskey(bsnap, round(a, digits=10)),
                            settings...)
     return (psi=psi, vel=vel, dens=dens, inv=invf, rms=rms, mom=mom, grid=grid, seconds=t, band=bpsi, cis=cisd, dens_s=dens_s, inv_s=inv_s,
-            stress=st, stress_scalars=stsc)
+            stress=st, stress_scalars=stsc, pk_dens=pkd, pk_disp=pkp)
 end

@@ -234,17 +234,21 @@ realization-level residual PM − 7LPT, and the shell-crossed (inverted) mass fr
 −ΔC₂k² term, with no k⁴ structure visible. The PM C₂ itself has a genuine k_max plateau (−0.089 ± 0.002 for
 k_max = 0.03–0.18 at D = 0.2; 1.46–1.51 at D = 1), and adding C₄k⁴ changes it by ≤ 5 %.
 
-**k⁴ convergence** (`scripts/c4_convergence.jl`, `results/c4_convergence.txt`). The absolute C₄ is not a robust
-parameter for k_split = 0.2 (k_max = 0.18 approaches the band edge, where R(k) is not polynomial: C₄ changes from
-−17.6 to −5.2 D² between k_max = 0.12 and 0.18), so convergence is judged on realization-level differences with
-fixed weights. Before crossing the k⁴ part of the odd LPT series converges (ΔC₄ of 5−3 / 7−5 LPT: −0.022 / −0.004
-at D = 0.2, −0.107 / −0.038 at 0.3), more slowly than C₂ (ratio 0.36 vs 0.32 at D = 0.3, 0.58 vs 0.57 at 0.4,
-→ 1 near D = 0.5, as for C₂). The suppressed PM matches 7LPT in C₄ before crossing (ΔC₄ = 0.000–0.002 ± 0.001),
-whereas plain-CIC 512³ PM is off by −0.11 ± 0.017 — C₄ is a far more sensitive discreteness diagnostic than C₂.
-After crossing, the suppressed PM at 256³ and 384³ agree in ΔC₄ within ~1σ at every epoch (D = 0.4: 0.23 / 0.26 ±
-0.05; D = 0.6: 4.29 / 4.34 ± 0.5; D = 1: 71.3 / 71.4 ± 7). The multistream residual's own k⁴ part is small
-(≈ 6 % of its k² part at k = 0.15, D = 0.4) but from D ≈ 0.35 it is comparable to 7LPT's k⁴ truncation, so it is
-not separable from LPT truncation at this k_split.
+**k⁴ convergence** (`scripts/c4_convergence.jl`, `results/c4_convergence.txt`; band-edge control
+`chs/band_edge.py`). The absolute C₄ is noise-limited, not set by the proximity of the band edge: the exact one-loop
+response to the band [0.2, 1.2) departs from pure k² by only 1.2 / 2.6 / 5.1 % at k = 0.08 / 0.12 / 0.18, which shifts
+a fitted C₂ by < 0.5 % and contributes a smooth, computable C₄ ≈ +2.5 D² (Mpc/h)⁴ (density); for k_split = 0.33 and
+0.5 the edge effect is 2.5 % and 1.4 % at k = 0.18. The apparent k_max dependence of the ensemble C₄
+(−17.6 ± 9.5 at k_max = 0.12 vs −5.2 ± 1.1 at 0.18, D = 0.2) is statistical. Convergence is therefore judged on
+realization-level differences with fixed weights, where the cosmic-variance noise cancels. Before crossing the k⁴
+part of the odd LPT series converges (ΔC₄ of 5−3 / 7−5 LPT: −0.022 / −0.004 at D = 0.2, −0.107 / −0.038 at 0.3),
+more slowly than C₂ (increment ratio 0.36 vs 0.32 at D = 0.3, 0.58 vs 0.57 at 0.4, → 1 near D = 0.5, as for C₂).
+The suppressed PM matches 7LPT in C₄ before crossing (ΔC₄ = 0.000–0.002 ± 0.001), whereas plain-CIC 512³ PM is
+off by −0.11 ± 0.017 — C₄ is a far more sensitive discreteness diagnostic than C₂. After crossing, the suppressed
+PM at 256³ and 384³ agree in ΔC₄ within ~1σ at every epoch (D = 0.4: 0.23 / 0.26 ± 0.05; D = 0.6: 4.29 / 4.34 ± 0.5;
+D = 1: 71.3 / 71.4 ± 7). The multistream residual's own k⁴ part is small (≈ 6 % of its k² part at k = 0.15,
+D = 0.4) but from D ≈ 0.35 it is comparable to 7LPT's k⁴ truncation, so at this split it is not separable from LPT
+truncation; the RG splits k_split ≥ 0.33 (k/k_split ≤ 0.55 for k ≤ 0.18) test this with the same seeds.
 
 **Experiment B — deterministic vs stochastic** ([fig6](figures/fig6_deterministic_vs_stochastic.png)).
 With 6 short seeds at fixed long modes the conditional variance Var_{S|L}(Δ) is measured directly. At D = 1,
@@ -270,5 +274,121 @@ sign. Under the time-local power-law mapping of §2, ℓ² = m(m+5/2)C₂ ≈ 10
 the drifting m means **no single time-independent c_s²** describes the response, and the CHS assumption
 (their Eq. 59) that c²(a) follows the one-loop (P13) time dependence fails for the multistream part.
 
-<!--RESULTS_RG-->
+## 7. RG running: the cutoff experiment and CHS (2012) Fig. 3
+
+### 7.1 What CHS's Λ is, and how it maps onto a sharp split
+CHS smooth the fields with a Gaussian W_Λ(k) = exp(−k²/2Λ²) (their Eq. 14; real-space width 1/Λ, so Λ = 1/3 h Mpc⁻¹
+↔ σ_x = 3 h⁻¹Mpc), and the loops use P·exp(−k²/Λ²) (Eq. 49). Their running (Eq. 62, k_ext = 0.01) is
+c²(Λ) = c²(∞) + lim_{k→0}[P13(k,∞) − P13(k,Λ)] / (−2k² Γ P), with the counterterm Green's factor of their Eq. 57 /
+App. C Eq. 83, R_ct = −c² k²/(9ℋ₀²f₀²). In the k_ext → 0 limit P13 → −(61/105)k²σ_v²P, so the running depends on Λ
+**only through the removed velocity variance** Δσ_v² = (1/6π²)∫P(1 − e^{−q²/Λ²})dq. A sharp split k_s is therefore
+equivalent to the Λ that removes the same σ_v²: Λ = 1/3 ↔ k_s = 0.21, Λ = 1/6 ↔ 0.115, **Λ = 0.2 (a 5 h⁻¹Mpc
+Gaussian) ↔ k_s = 0.136** (`chs/chs_running.json`, nearly identical for their and our spectrum).
+
+**Units.** Our density coefficient is C₂,δ = c²/(9ℋ₀²f₀²). In our EdS run (f = 1, a = 1), c²[10⁻⁶ c²] = C₂,δ[(h⁻¹Mpc)²]
+exactly; in the CHS cosmology (Ω_m = 0.25, f₀ ≈ 0.48) the same c² is a 4.4× larger response. At fixed σ₈ the response
+C₂ (a length²) is the nearly cosmology-independent quantity; the c² normalisation carries f₀². Both are shown
+([figR1](figures/figR1_chs_fig3_comparison.png), [figR1 in c² units](figures/figR1_chs_fig3_comparison_c2units.png)).
+
+### 7.2 Reconstruction of CHS Fig. 3 (`chs/chs_fig3.py`)
+From CAMB (linear + halofit-original) in their cosmology and their App. C one-loop kernels (verified against
+50-digit evaluation): c²(∞) matched at k_ren = 0.16 = **0.614 × 10⁻⁶ c²** (quoted: 6.2 × 10⁻⁷); the running
+c²(0.1) − c²(1) = 0.79 × 10⁻⁶ c² vs 0.77 digitized (+2.5 %), and the k_ren = 0.10 curve agrees with the digitized one to
+2–3 % over Λ = 0.1–1 (`chs/chs2012_fig3_digitized.json`, calibrated on the axis labels and their N-body points). The
+k_ren = 0.18 curve (0.44 vs ≈ 0.53) is sensitive to their exact time dependence, since P22/P = 1.2 there.
+
+### 7.3 The cutoff (RG) experiment
+For each of 4 seeds, a single white-noise field defines the UV member (all modes < 1.2 h Mpc⁻¹, shared by every split)
+and one IR member per split k_s = 0.12, 0.15, 0.20, 0.25, 0.33, 0.50, 0.70 (configs `rg_ks*`), evolved with 1–7LPT and
+the suppressed PM. **Table 2** — density response C₂,δ at D = 1 [(h⁻¹Mpc)²], k ≤ min(0.08, 0.4 k_s), jackknife errors:
+
+| k_split | 0.12 | 0.15 | 0.20 | 0.25 | 0.33 | 0.50 | 0.70 |
+|---|---|---|---|---|---|---|---|
+| PM | 3.62 ± 0.14 | 2.90 ± 0.06 | 2.00 ± 0.02 | 1.375 ± 0.009 | 0.848 ± 0.005 | 0.294 ± 0.002 | 0.114 ± 0.004 |
+| one-loop PT (this setup) | 2.70 | 2.14 | 1.55 | 1.18 | 0.80 | 0.41 | 0.20 |
+| PM / one-loop | 1.34 | 1.35 | 1.29 | 1.17 | 1.06 | 0.72 | 0.57 |
+| 3LPT | 6.29 | 5.42 | 4.42 | 3.82 | 3.01 | 1.95 | 1.16 |
+| 4LPT | 12.3 | 11.2 | 9.27 | 8.28 | 6.98 | 4.97 | 3.21 |
+
+* **The running is real and steep**, and at D = 1 PM follows the shape of the one-loop / CHS running
+  ([figR2](figures/figR2_running_shape.png)) while 4LPT overshoots it ~2× and 7LPT ~15×; at D ≤ 0.5 PM, 4LPT and 7LPT
+  run identically. This is the visual form of the CHS argument: the collisionless response to integrated-out modes is
+  PT-like in its running, while the single-stream solution fails once those modes have crossed.
+* **Which modes carry it** ([figR4](figures/figR4_band_contribution.png)): per shell, PM exceeds one-loop PT by up to
+  ≈ 1.65× for modes just below the nonlinear scale (k ≈ 0.7 k_NL), and falls below it (0.85×) at k ≈ 1.8 k_NL — the
+  response is dominated by modes near k_NL and the deeper UV **decouples**, as EFT power counting expects.
+* **PM − PT is not k_s-independent** (0.9 → 0.05 from k_s = 0.12 to 0.33): the IR member also contains nonlinear modes
+  below k_s and needs its own counterterm, so the measurement is the difference of two universes' counterterms. Only
+  for k_s → 0 does PM − PT approach a CHS-style "c²(∞)" of the UV universe: ≈ 0.9–1.0 (h⁻¹Mpc)², i.e. ≈ 1.0 × 10⁻⁶ c² in
+  EdS units — 1.5× the CHS value in c² units and 0.35× it in response units. Given the different cosmology (EdS vs
+  ΛCDM, n_s, our band ending at k = 1.2) this factor-of-3 bracket is all the absolute comparison supports; the
+  *running* is the robust comparison.
+* **(k_split, D) map** ([figR3](figures/figR3_c2_map.png)): the PM − 4LPT departure switches on at nearly the same D for
+  every split (it is carried by the shared UV member's multistreaming); the IR members' own shell crossing (contours)
+  marks where each IR universe acquires its own counterterm.
+
+### 7.4 The "below 5 h⁻¹Mpc" question
+For the split equivalent to a 5 h⁻¹Mpc Gaussian (k_s = 0.136, interpolated between the 0.12 and 0.15 runs), PM at
+D = 1 ([figR5](figures/figR5_bao_consequence.png), `results/rg_summary.json`):
+
+| k [h Mpc⁻¹] | Δδ/δ (coherent) | ΔP/P coherent = (1+R)²−1 | stochastic P_ε/P_L | 4LPT coherent ΔP/P |
+|---|---|---|---|---|
+| 0.03 | −0.29 % | −0.58 % | 1.4 × 10⁻⁵ | −2.1 % |
+| 0.05 | −0.74 % | −1.48 % | 1.5 × 10⁻⁴ | −5.4 % |
+| 0.06 | −1.06 % | −2.11 % | 4.8 × 10⁻⁴ | −7.5 % |
+| 0.10 | −2.5 % | −5.0 % | 1.2 × 10⁻² (k close to k_s) | −17 % |
+
+*Modes below a 5 h⁻¹Mpc smoothing scale, absent from an otherwise identical realization, coherently lower the power
+of the k = 0.06 h Mpc⁻¹ modes by 2.1 % (amplitude 1.06 %), while the independent stochastic power they add is 0.05 %
+of P.* This is not "BAO variance generated by small scales": it is a deterministic rescaling of existing long modes.
+
+## 8. Counts in spheres
+
+Every RG member records top-hat sphere contrasts at identical centres (32³ lattice, R = 20–150 h⁻¹Mpc), their
+Laplacian, the spheres of the field low-passed at every split, and the exact linear spheres (`scripts/cis_analysis.jl`,
+[figR6](figures/figR6_counts_in_spheres.png)). Decomposition at k_s = 0.2, PM, D = 1:
+
+| R | Δσ²/σ² total | coherent (k < k_s) | stochastic (k < k_s) | band leakage (k ≥ k_s) |
+|---|---|---|---|---|
+| 20 | −1.30 % | −3.49 % | +0.42 % | +1.77 % |
+| 40 | −0.69 % | −1.29 % | +0.07 % | +0.54 % |
+| 80 | −0.29 % | −0.52 % | +0.03 % | +0.20 % |
+| 150 | −0.18 % | −0.26 % | +0.013 % | +0.07 % |
+
+* The sphere variance **decreases**: the coherent response dominates the stochastic one 8–20×, and the added band's own
+  modes leaking through the top-hat window (a projection effect, not coupling) offset about half of it at R = 20.
+* Per sphere the stochastic scatter of Δδ_R (≈ 6.5 % of σ_R at R = 20) exceeds the coherent shift (≈ 1.8 %), so the
+  Δδ_R–∇²δ_R scatter plots have correlation r ≈ 0.25–0.3; the coherent part dominates σ²_R because it enters at first
+  order (2b) and the stochastic part at second order.
+* **Real-space EFT test**: Δδ_R = C₂,R ∇²δ_R holds with an R-independent slope (1.52–1.63 for R = 20–150 at k_s = 0.2),
+  and the slope equals the Fourier response R(k) weighted by k⁴W²_TH(kR)P to ~1 % at every R (k_s = 0.15, 0.2). It is
+  below the k → 0 coefficient (2.0) because ∇² of a sharp top-hat weights k ≈ k_s, where −R/k² is smaller (k⁴ and
+  band-edge terms). (For k_s = 0.33 the weighted prediction lacks the stored modes 0.25 < k < 0.33.)
+* **Mass-flux decomposition** ([figR7](figures/figR7_flux_decomposition.png), shared modes, R = 20): before crossing
+  (D = 0.2) kinematic diffusion alone (1LPT) gives −0.196 %, gravitational infall brings 40 % back (3LPT/7LPT/PM:
+  −0.118 %). After crossing PM (−3.6 % at D = 1) loses *less* than free diffusion (1LPT −4.5 %), while the single-stream
+  solutions run away (3LPT −8.4 %, 7LPT −42 %): bound multistream structures trap their mass (capping the diffusive
+  flux the single-stream solution keeps growing), and their velocity dispersion acts as a pressure on the long
+  displacement (C₂,ψ > 0) — §9 measures that stress directly.
+
+## 9. Redshift space
+
+With s = x + u_z ẑ (u = dx/d ln a), PM and LPT redshift-space densities and the s-space shell-crossed fraction were
+measured in every RG run (`scripts/rsd_analysis.jl`). k_s = 0.2, realization-level jackknife errors:
+
+| D | inverted (real) | inverted (s-space) | PM − 7LPT, C₂(μ≈0.22 / 0.56 / 0.86) |
+|---|---|---|---|
+| 0.20 | 0 | 0.94 % | +0.0002 / +0.0004 / +0.0003 (± 0.0003) |
+| 0.225 | 0.02 % | 2.0 % | +0.0001 / +0.0004 / −0.0003 (± 0.0004) |
+| 0.25 | 0.08 % | 3.4 % | −0.0002 / −0.0008 / −0.0031 (± 0.0005) |
+| 0.30 | 0.61 % | 7.1 % | −0.005 / −0.020 / −0.041 (± 0.001) |
+
+The redshift-space sheet crosses at D ≈ 0.13, ~0.1 in D before the real-space sheet, and the single-stream series still
+converges onto PM in redshift space through it (PM − 5LPT is 10× larger than PM − 7LPT at D = 0.225): redshift-space
+crossing is a projection the pre-crossed sheet represents exactly. The departure switches on with *real-space* crossing,
+strongest along the line of sight (a μ²k² velocity term). From D ≈ 0.275 the redshift-space LPT series itself stops
+converging at high μ (5LPT and 7LPT differ in sign), earlier than in real space.
+
+<!--RESULTS_STRESS-->
+
 

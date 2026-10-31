@@ -105,7 +105,8 @@ def first_crossing(res, model="pm", thresh=1e-4):
 
 
 def errbar(ax, x, y, s, **kw):
-    ax.errorbar(x, y, yerr=s, capsize=0, elinewidth=0.9, **kw)
+    kw.setdefault("elinewidth", 0.9)
+    ax.errorbar(x, y, yerr=s, capsize=0, **kw)
 
 
 # ── Figure 3 (central): C2(D)/D² for every LPT order and PM, with the shell-crossed fraction ────────

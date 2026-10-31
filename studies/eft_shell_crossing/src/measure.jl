@@ -388,3 +388,61 @@ function stress_modes(ms::ModeSet, Ψ::AbstractArray{T,4}, U::AbstractArray{T,4}
             mean_trace_raw=sum(tr0) / np)
 end
 export inverted_flags, stress_modes
+
+# ── Full-range power spectra (small-scale convergence) ────────────────────────────────────────────
+# Binned on the host from |f̂|² of the full rfft grid (half-space weights 1 on the self-conjugate planes,
+# 2 elsewhere).  Density: CIC deposit on a common Nm³ mesh (window deconvolved), so runs with different
+# particle numbers are binned identically.  Displacement: Σ_c |Ψ̂_c|² on the particle grid.
+
+struct PkPlan
+    L::Float64; Nm::Int; edges::Vector{Float64}
+    bin_m::Array{Int32,3}; w_m::Array{Float32,3}; W2_m::Array{Float32,3}       # deposit mesh (Nm)
+    bins_p::Dict{Int,Tuple{Array{Int32,3},Array{Float32,3}}}                    # particle grids (N)
+end
+
+function _pk_bins(N, L, edges)
+    kf = DJ._kfull(N, Float64(L)); kh = DJ._khalf(N, Float64(L)); Δ = L / N
+    b = zeros(Int32, N, N, N ÷ 2 + 1); w = zeros(Float32, N, N, N ÷ 2 + 1); W2 = similar(w)
+    for l in 1:N÷2+1, j in 1:N, i in 1:N
+        k = sqrt(kf[i]^2 + kf[j]^2 + kh[l]^2)
+        bb = searchsortedlast(edges, k); b[i, j, l] = (k > 0 && 1 <= bb < length(edges)) ? bb : 0
+        w[i, j, l] = (l == 1 || l == N ÷ 2 + 1) ? 1 : 2
+        W2[i, j, l] = prod(sinc(x * Δ / 2π)^2 for x in (kf[i], kf[j], kh[l]))^2
+    end
+    return b, w, W2
+end
+
+function PkPlan(L, Nm; nbins=40, kmax=π * Nm / L)
+    edges = collect(exp.(range(log(2π / L * 0.999), log(kmax), length=nbins + 1)))
+    b, w, W2 = _pk_bins(Nm, L, edges)
+    return PkPlan(Float64(L), Nm, edges, b, w, W2, Dict{Int,Tuple{Array{Int32,3},Array{Float32,3}}}())
+end
+
+function _bin!(acc, cnt, v, b, w)
+    @inbounds for i in eachindex(v)
+        bb = b[i]; bb == 0 && continue
+        acc[bb] += w[i] * v[i]; cnt[bb] += w[i]
+    end
+end
+
+"""(k, P_δ) of the CIC density of X = q + Ψ on the plan's deposit mesh (window deconvolved, no shot-noise
+subtraction), and (k, P_Ψ) of the displacement on the particle grid; P = L³ ⟨|f_k|²⟩."""
+function pk_full(P::PkPlan, Ψ::AbstractArray{T,4}, q) where {T}
+    N = size(Ψ, 1); Nm = P.Nm; L = P.L; nb = length(P.edges) - 1
+    X = similar(Ψ); mesh = similar(Ψ, T, Nm, Nm, Nm)
+    for d in 1:3; X[:, :, :, d] .= view(Ψ, :, :, :, d) .+ q[d]; end
+    fill!(mesh, zero(T)); DJ.pm_scatter!(mesh, reshape(X, N^3, 3), Nm, L, 2)
+    mesh .= mesh .* T(Nm^3 / N^3) .- one(T)
+    v = Array(abs2.(DJ._rfftn(mesh))) ./ P.W2_m
+    acc = zeros(nb); cnt = zeros(nb); _bin!(acc, cnt, v, P.bin_m, P.w_m)
+    Pd = L^3 .* acc ./ cnt ./ Float64(Nm)^6
+    bp, wp = get!(() -> (bb = _pk_bins(N, L, P.edges); (bb[1], bb[2])), P.bins_p, N)
+    acc2 = zeros(nb); cnt2 = zeros(nb)
+    for c in 1:3
+        _bin!(acc2, cnt2, Array(abs2.(DJ._rfftn(copy(view(Ψ, :, :, :, c))))), bp, wp)
+    end
+    Pp = L^3 .* acc2 ./ (cnt2 ./ 3) ./ Float64(N)^6
+    kc = sqrt.(P.edges[1:end-1] .* P.edges[2:end])
+    return kc, Pd, Pp
+end
+export PkPlan, pk_full
