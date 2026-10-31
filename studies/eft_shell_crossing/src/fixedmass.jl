@@ -42,37 +42,43 @@ struct FixedMassPlan{AR}
     kmag::AR                  # |k| on the half grid (window argument)
     Tacc::DataType
     level::Int                # tracer level of the conservative deposit (binomial(level+3,3) per tet)
+    reclaim::Function         # called between stages (return pooled device memory)
 end
 
 function FixedMassPlan(ng::Int, L::Real, R; nbins::Int=256, stride::Int=8, sub=1:length(R),
-                       to_device=identity, T::Type{<:AbstractFloat}=Float32, level::Int=1)
+                       to_device=identity, T::Type{<:AbstractFloat}=Float32, level::Int=1,
+                       reclaim::Function=() -> nothing)
     kf = DJ._kfull(ng, Float64(L)); kh = DJ._khalf(ng, Float64(L))
     kfd = copy(kf); kfd[ng ÷ 2 + 1] = 0; khd = copy(kh); khd[end] = 0     # odd derivatives: drop Nyquist
     km = sqrt.(reshape(kf, :, 1, 1) .^ 2 .+ reshape(kf, 1, :, 1) .^ 2 .+ reshape(kh, 1, 1, :) .^ 2)
     d(x) = to_device(T.(x))
     FixedMassPlan(ng, Float64(L), Float64.(collect(R)), nbins, stride, collect(Int, sub),
-                  d(reshape(kfd, :, 1, 1)), d(reshape(kfd, 1, :, 1)), d(reshape(khd, 1, 1, :)), d(km), T, level)
+                  d(reshape(kfd, :, 1, 1)), d(reshape(kfd, 1, :, 1)), d(reshape(khd, 1, 1, :)), d(km), T, level, reclaim)
 end
 
 _wth_t(x::T) where {T} = x < T(1e-3) ? one(T) - x^2 / 10 : 3 * (sin(x) - x * cos(x)) / x^3
 _sinc_t(x::T) where {T} = x < T(1e-3) ? one(T) - x^2 / 6 : sin(x) / x
 
-# Σ over the cells of each bin of X^pw (pw = 0: count), one work item per x-line; mesh fields are
-# smooth on the scale R, so neighbours mostly share a bin and the atomics flush only on bin changes
+# Σ over the cells of each bin of X^pw (pw = 0: count).  One work item per (i, j) column walking the
+# slowest axis k (a warp reads consecutive i: coalesced); successive k often share a bin, so partial
+# sums are flushed only on bin changes, into one of NCOPY histogram copies chosen by i (narrow log-μ
+# bins change almost every cell, and a single copy serialises ~10⁸ atomics on a few hundred words).
+const NCOPY = 32
 @kernel function _k_binsum!(H, @Const(bin), @Const(X), ng::Int, col::Int, pw::Int)
-    j, k = @index(Global, NTuple)
+    i, j = @index(Global, NTuple)
     @inbounds begin
-        cur = bin[1, j, k]; s = 0.0
-        for i in 1:ng
+        cp = (i - 1) % NCOPY + 1
+        cur = bin[i, j, 1]; s = 0.0
+        for k in 1:ng
             b = bin[i, j, k]
             if b != cur
-                KernelAbstractions.@atomic H[cur, col] += s
+                KernelAbstractions.@atomic H[cur, col, cp] += s
                 cur = b; s = 0.0
             end
             x = Float64(X[i, j, k])
             s += pw == 0 ? 1.0 : (pw == 1 ? x : x * x)
         end
-        KernelAbstractions.@atomic H[cur, col] += s
+        KernelAbstractions.@atomic H[cur, col, cp] += s
     end
 end
 
@@ -104,11 +110,17 @@ lattice.  Returns
   mom    (nR, 4)                ⟨δ_R^p⟩, p = 1..4 (volume weighted over the mesh nodes)
   tmom   (nR, 8, 3)             ⟨X⟩, ⟨X δ_R⟩, ⟨X²⟩ for X in FM_CHANNELS
   sub    (nsub, 8, Nc) Float32  FM_CHANNELS at the sub-lattice nodes (stride) for radii P.sub
-  scal   Dict                   sheet diagnostics (mass, multistream volume/mass fractions, ⟨tr σ⟩)"""
-function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::AbstractArray{T,4}; acc=nothing) where {T}
-    ng = P.ng; L = P.L; TA = P.Tacc
+  scal   Dict                   sheet diagnostics (mass, multistream volume/mass fractions, ⟨tr σ⟩) and
+                                stage timings t_* (s).  `reclaim()` is called between stages (e.g. to
+                                return pooled device memory: `() -> (GC.gc(false); CUDA.reclaim())`)."""
+function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::AbstractArray{T,4}; acc=nothing,
+                            reclaim::Function=P.reclaim) where {T}
+    ng = P.ng; L = P.L; TA = P.Tacc; be = get_backend(Ψ)
+    tim = Dict{String,Float64}(); t0 = Ref(time())
+    tick(name) = (synchronize(be); t = time(); tim["t_" * name] = t - t0[]; t0[] = t)
     m = sheet_moments_mesh_periodic(Ψ, V, L, ng; Tacc=TA)          # pointwise: v̄, σ (intensive)
     ns = m.nstream; vb = m.vbar; σ = m.sigma
+    tick("moments")
     dep(mode; G=nothing, mesh=nothing) =
         sheet_tracer_deposit_periodic(Ψ, V, L, ng, mode; acc=acc, G=G, level=P.level, Tacc=TA, mesh=mesh)
     ρ = dep(:rho)                                                   # conservative mass (PCS tracers)
@@ -123,6 +135,7 @@ function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::Abstrac
         "mean_trsigma_mass" => sum(Float64, ρ .* trσ) / ρsum,
         "max_nstream" => Float64(maximum(ns)))
     trσ = nothing; msk = nothing; ns = nothing; m = nothing
+    tick("diagnostics")
     # ── sources: divergences carried by the deposit kernel (exact budget), then one FFT each ──
     F(x) = DJ._rfftn(x)
     ρh = F(ρ); ρ = nothing
@@ -131,6 +144,7 @@ function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::Abstrac
     stress = F(dep(:stress; mesh=buf))
     bulk = F(dep(:bulk; G=vb, mesh=buf)); vb = nothing
     disp = F(dep(:disp; G=σ, mesh=buf)); σ = nothing
+    tick("deposits"); reclaim()
     # g = −∇φ, ∇²φ = δ  ⇒  ĝ_i = i k_i δ̂/k²; gathered to the tracers, ∇·(ρg) = Σ m g·∇W
     kk = (P.kx, P.ky, P.kz)
     ik2 = map(x -> x > 0 ? inv(x * x) : zero(x), P.kmag)
@@ -142,12 +156,12 @@ function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::Abstrac
     grav = F(dep(:gdiv; G=g, mesh=buf)); g = nothing
     accf = acc === nothing ? nothing : F(dep(:acc; mesh=buf))
     buf = nothing
+    tick("gravity_acc"); reclaim()
     # ── radius sweep ──
     nR = length(P.R); nb = P.nbins; s = P.stride; Nc = length(1:s:ng)^3
     edges = zeros(nR, nb + 1); hist = zeros(nR, nb, length(FM_TERMS))
     mom = zeros(nR, 4); tmom = fill(NaN, nR, length(FM_CHANNELS), 3)
     sub = fill(NaN32, length(P.sub), length(FM_CHANNELS), Nc)
-    be = get_backend(Ψ)
     bin = KernelAbstractions.zeros(be, Int32, ng, ng, ng)
     for (r, R) in enumerate(P.R)
         W = _wth_t.(P.kmag .* T(R)); Sh = _sinc_t.(P.kmag .* T(R))
@@ -156,7 +170,7 @@ function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::Abstrac
         edges[r, :] .= range(lo, hi, length=nb + 1)
         a = T(nb / (hi - lo)); l0 = T(lo)
         bin .= clamp.(floor.(Int32, (log.(max.(μ, T(1e-6))) .- l0) .* a) .+ Int32(1), Int32(1), Int32(nb))
-        H = KernelAbstractions.zeros(be, Float64, nb, length(FM_TERMS))
+        H = KernelAbstractions.zeros(be, Float64, nb, length(FM_TERMS), NCOPY)
         _binsum!(H, bin, μ, 1, 0); _binsum!(H, bin, μ, 2, 1)
         for p in 1:4
             mom[r, p] = sum(x -> (Float64(x) - 1)^p, μ) / N3
@@ -178,10 +192,12 @@ function fixedmass_snapshot(P::FixedMassPlan, Ψ::AbstractArray{T,4}, V::Abstrac
         if accf !== nothing
             X = DJ._irfftn(accf .* W, ng); _binsum!(H, bin, X, 10, 1); chan(8, X)
         end
-        Hh = Array(H)
+        Hh = dropdims(sum(Array(H); dims=3); dims=3)
         for c in 1:9; hist[r, :, c] .= view(Hh, :, c); end
         hist[r, :, 10] .= accf === nothing ? NaN : view(Hh, :, 10)
         X = nothing; μ = nothing
     end
+    tick("radius_sweep"); reclaim()
+    merge!(scal, tim)
     return (R=P.R, edges=edges, hist=hist, mom=mom, tmom=tmom, sub=sub, sub_R=P.R[P.sub], stride=s, scal=scal)
 end

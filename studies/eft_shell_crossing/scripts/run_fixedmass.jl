@@ -6,6 +6,8 @@
 # table; [seeds] there overrides the base seeds.  Output: $EFTSC_SCRATCH/<name>/fm_<model>_<member>_
 # L<seedL>_S<seedS>_s<±1>.h5 with one group per snapshot ("e<epoch index>_o<LPT order | 0 for PM>").
 # Restartable: existing files are skipped.
+# the GPU is shared: cap this process's memory pool (override with JULIA_CUDA_HARD_MEMORY_LIMIT)
+haskey(ENV, "JULIA_CUDA_HARD_MEMORY_LIMIT") || (ENV["JULIA_CUDA_HARD_MEMORY_LIMIT"] = "22GiB")
 include(joinpath(@__DIR__, "..", "src", "EFTShell.jl"))
 using .EFTShell, CUDA, DiscoDJNative, HDF5, TOML, Printf, Dates
 const DJ = DiscoDJNative
@@ -37,7 +39,8 @@ function fm_plan(cfg, dev)
     f = cfg["fixedmass"]
     R = exp.(range(log(f["R_min"]), log(f["R_max"]), length=f["n_R"]))
     FixedMassPlan(f["mesh"], cfg["L"], R; nbins=f["nbins"], stride=f["stride"], sub=Int.(f["sub"]),
-                  to_device=dev, T=f["T_acc"] == "Float64" ? Float64 : Float32, level=f["level"])
+                  to_device=dev, T=f["T_acc"] == "Float64" ? Float64 : Float32, level=f["level"],
+                  reclaim=() -> (GC.gc(false); CUDA.reclaim()))
 end
 
 function write_fm(h, cfg, fmres, epochs)
