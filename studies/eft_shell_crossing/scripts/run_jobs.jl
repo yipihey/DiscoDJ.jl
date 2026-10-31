@@ -35,6 +35,18 @@ function jobs(cfg, model)
 end
 fname(cfg, j) = joinpath(scratch(), cfg["name"], @sprintf("%s_%s_L%d_S%d_s%+d.h5", j[1], j[2], j[3], j[4], j[5]))
 
+# snapshots for the CPU stress pipeline (twoloop/): $EFTSC_SCRATCH/<name>/snap/<model>_<member>_L<sL>_S<sS>_s<±1>_<tag>.h5
+snapname(cfg, j, tag) = (d = joinpath(scratch(), cfg["name"], "snap"); mkpath(d);
+                         joinpath(d, @sprintf("%s_%s_L%d_S%d_s%+d_%s.h5", j[1], j[2], j[3], j[4], j[5], tag)))
+function snap_writer(cfg, j)
+    haskey(cfg, "snap_epochs") || return nothing
+    eps = Float64.(cfg["snap_epochs"])
+    w(D, Ψ, Π) = h5open(snapname(cfg, j, @sprintf("D%.3f", D)), "w") do h
+        h["Psi"] = Ψ; h["Pi"] = Π; attrs(h)["D"] = D; attrs(h)["L"] = cfg["L"]
+    end
+    return (epochs=eps, write=w)
+end
+
 cis_plan(cfg, N, dev) = haskey(cfg, "cis") ?
     CiSPlan(N, cfg["L"], Float64.(cfg["cis"]["R"]); stride=get(cfg["cis"], "stride", 8), to_device=dev,
             kcut=Float64.(get(cfg["cis"], "kcuts", [cfg["k_split"]]))) : nothing
@@ -72,6 +84,14 @@ function run_job(cfg, j, pk, c)
                                  cis_epochs=cis_epochs(cfg), rsd=get(cfg, "rsd", false),
                                  fgrowth=D -> DJ.growth_Dplusda(c, DJ.a_of_Dplus(c, D)) * DJ.a_of_Dplus(c, D) / D,
                                  stress=stress_sets(cfg, CuArray), stress_order=haskey(cfg, "stress") ? cfg["stress"]["lpt_order"] : 0)
+        if get(cfg, "save_shapes", false)          # nLPT shape fields ψ_m (D = 1): Ψ_n(D) = Σ_{m≤n} D^m ψ_m on the CPU later
+            sh = compute_core(f, K; n_order=lc["n_max"], mode=Symbol(get(lc, "mode", "fast")))
+            h5open(snapname(cfg, j, "shapes"), "w") do h
+                for m in 1:lc["n_max"]; h["psi_$m"] = Array(sh["psi_$m"]); end
+                attrs(h)["L"] = L
+            end
+            sh = nothing; GC.gc(true); CUDA.reclaim()
+        end
         h5open(fname(cfg, j), "w") do h
             write_common(h, cfg, ms, j)
             h["psi"] = ComplexF32.(r.psi); h["dens"] = ComplexF32.(r.dens); h["inv"] = r.inv; h["rms"] = r.rms
@@ -107,6 +127,7 @@ function run_job(cfg, j, pk, c)
                    band=band, cis=cp_, cis_epochs=cis_epochs(cfg), rsd=get(cfg, "rsd", false),
                    stress=stress_sets(cfg, dev), a_of_D=a_of_D(cfg, c),
                    exact=haskey(cfg, "k_exact") ? ExactModes(N, L, cfg["k_exact"]; to_device=dev) : nothing,
+                   snapshots=snap_writer(cfg, j),
                    pkplan=haskey(cfg, "pk_full") ? PkPlan(L, cfg["pk_full"]["mesh"]; nbins=cfg["pk_full"]["nbins"]) : nothing, st...)
         h5open(fname(cfg, j), "w") do h
             write_common(h, cfg, ms, j)
@@ -136,8 +157,18 @@ end
 # z_epochs (and [pm] z_ini), converted here to D₊ (normalised at z = 0), the study's time label.
 is_lcdm(cfg) = get(get(cfg, "cosmology", Dict()), "lcdm", false)
 a_of_D(cfg, c) = is_lcdm(cfg) ? (D -> DJ.a_of_Dplus(c, D)) : identity
+# [pk_mod] k_star, n: P(k) = P(k_star) (k/k_star)^n for k > k_star (a bona fide UV-divergent spectrum, cut at k_uv)
+function modify_pk!(pk, cfg)
+    haskey(cfg, "pk_mod") || return pk
+    ks = cfg["pk_mod"]["k_star"]; n = cfg["pk_mod"]["n"]
+    P0 = DJ._jinterp(log(ks), log.(pk["k"]), pk["Pk"])
+    for i in eachindex(pk["k"])
+        pk["k"][i] > ks && (pk["Pk"][i] = P0 * (pk["k"][i] / ks)^n)
+    end
+    return pk
+end
 function cosmo_and_pk(cfg)
-    is_lcdm(cfg) || return planck_pk(), eds_cosmology()
+    is_lcdm(cfg) || return modify_pk!(planck_pk(), cfg), eds_cosmology()
     s8 = get(cfg["cosmology"], "sigma8", 0.8105)
     return lcdm_pk(; sigma8=s8), lcdm_cosmology(; sigma8=s8)
 end

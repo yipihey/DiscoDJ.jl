@@ -1,0 +1,38 @@
+# tl_uv10: as tl_full with ICs cut at |k| < 1.0 (longer 7LPT convergence window)
+# mode |k| < 1.6 h/Mpc, fixed amplitudes and ±L pairs.  PM writes (Ψ, Π) snapshots; the LPT job writes the 7 shape
+# fields; the stress / operator pipeline then runs on the CPU from these, identically for PM and LPT_n.
+name = "tl_uv10"
+L = 500.0
+N_ic = 256
+k_split = 1.0
+k_uv = 1.0
+fixed_amp = true
+k_store = 0.4
+k_exact = 0.3
+save_shapes = true
+epochs = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]        # D = a (EdS)
+snap_epochs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]
+
+[lpt]
+N = 256
+n_max = 7
+mode = "fast"
+
+[pm]
+N = 256
+res_pm = 512
+n_steps = 200
+D_ini = 0.02
+ic_order = 3
+ic_mode = "fast"
+worder = 4
+grad_kernel_order = 0
+deconvolve = true
+antialias = 1
+n_resample = 2
+
+[seeds]
+long = [1, 2, 3, 4]
+short = []
+signs = [1, -1]
+members = ["IR"]

@@ -107,7 +107,7 @@ grid and the wall time.  With `band = (ms_band, epochs_band)` the displacement i
 second (typically larger) mode set at a few epochs (band-growth diagnostics)."""
 function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini::Real, n_steps::Int,
                 res_pm::Int, stepper::Symbol=:bullfrog, band=nothing, cis=nothing, cis_epochs=Float64[], rsd::Bool=false,
-                stress=nothing, pkplan=nothing, a_of_D=identity, exact=nothing, settings...)
+                stress=nothing, pkplan=nothing, a_of_D=identity, exact=nothing, snapshots=nothing, settings...)
     T = eltype(Ψ0); N = size(Ψ0, 1); M = length(ms)
     ep = [D for D in epochs if D > D_ini]
     E = length(epochs)
@@ -138,6 +138,9 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         e === nothing && return
         psi[e, :, :] .= vector_modes(ms, Ψ)
         exact === nothing || (densx[e, :] .= exact_density_modes(exact, Ψ, q, L))
+        if snapshots !== nothing && any(isapprox(epochs[e], x; atol=1e-9) for x in snapshots.epochs)
+            snapshots.write(epochs[e], Array(Ψ), Array(P ./ T(DJ.Fplus(c, a))))   # (Ψ, Π = dΨ/dD) on the host
+        end
         if pkplan !== nothing
             _, pd_, pp_ = pk_full(pkplan, Ψ, q); pkd[e, :] .= pd_; pkp[e, :] .= pp_
         end
