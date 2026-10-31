@@ -19,7 +19,7 @@ export run_lpt, run_pm, pm_ics, d_grid
   rms   (E, n_max)    — rms |Ψ| (Mpc/h)."""
 function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::Int, mode::Symbol=:fast,
                  ms_band=nothing, cis=nothing, cis_orders=Int[], cis_epochs=Float64[], rsd::Bool=false, fgrowth=D -> 1.0,
-                 stress=nothing, stress_order::Int=0)
+                 stress=nothing, stress_order::Int=0, fm=nothing, fm_orders=Int[], fm_epochs=Float64[])
     sh = compute_core(fphi, K; n_order=n_max, mode=mode)
     ψ1 = sh["psi_1"]; T = eltype(ψ1); N = size(ψ1, 1)
     M = length(ms); E = length(epochs)
@@ -35,7 +35,8 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
     co = [n for n in cis_orders if n <= n_max]
     # redshift space (line of sight ẑ): s = x + u_z ẑ, u = dΨ/dln a = f D Π, Π = dΨ/dD = Σ m Dᵐ⁻¹ ψ_m
     dens_s = rsd ? zeros(ComplexF64, E, n_max, M) : nothing; inv_s = rsd ? zeros(E, n_max) : nothing
-    Π = (rsd || stress !== nothing) ? similar(ψ1) : nothing; Ψs = rsd ? similar(ψ1) : nothing
+    Π = (rsd || stress !== nothing || fm !== nothing) ? similar(ψ1) : nothing; Ψs = rsd ? similar(ψ1) : nothing
+    A = fm === nothing ? nothing : similar(ψ1); fmres = []
     st = stress === nothing ? nothing : zeros(ComplexF64, E, length(stress), 4, M, 6)
     stsc = stress === nothing ? nothing : zeros(E, length(stress), 7)
     ce = [e for (e, D) in enumerate(epochs) if any(isapprox(D, x; atol=1e-9) for x in cis_epochs)]
@@ -54,6 +55,10 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
                 end
                 U = nothing
             end
+            if fm !== nothing && n in fm_orders && any(isapprox(D, x; atol=1e-9) for x in fm_epochs)
+                lpt_acc!(A, sh, D, n)
+                push!(fmres, (e=e, D=D, order=n, r=fixedmass_snapshot(fm, Ψ, Π; acc=A)))
+            end
             if rsd
                 Ψs .= Ψ; Ψs[:, :, :, 3] .+= T(fgrowth(D) * D) .* view(Π, :, :, :, 3)
                 dens_s[e, n, :] .= density_modes(ms, Ψs, q; mesh=mesh, X=X)
@@ -71,7 +76,7 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
     end
     sh = nothing
     return (psi=psi, dens=dens, inv=invf, rms=rms, band=band, cis=cisd, cis_orders=co, dens_s=dens_s, inv_s=inv_s,
-            stress=st, stress_scalars=stsc)
+            stress=st, stress_scalars=stsc, fm=fmres)
 end
 
 """Time grid uniform in D from D_ini to D_end with ≈`n_steps` steps, every epoch inserted as a node."""
@@ -106,7 +111,7 @@ grid and the wall time.  With `band = (ms_band, epochs_band)` the displacement i
 second (typically larger) mode set at a few epochs (band-growth diagnostics)."""
 function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini::Real, n_steps::Int,
                 res_pm::Int, stepper::Symbol=:bullfrog, band=nothing, cis=nothing, cis_epochs=Float64[], rsd::Bool=false,
-                stress=nothing, pkplan=nothing, settings...)
+                stress=nothing, pkplan=nothing, fm=nothing, fm_epochs=Float64[], settings...)
     T = eltype(Ψ0); N = size(Ψ0, 1); M = length(ms)
     ep = [D for D in epochs if D > D_ini]
     E = length(epochs)
@@ -124,6 +129,7 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
     mesh = similar(Ψ0, T, N, N, N); Xb = similar(Ψ0); cnt = similar(Ψ0, Int32, N, N, N); Ψ = similar(Ψ0)
     grid = d_grid(D_ini, maximum(epochs), n_steps, vcat(ep, band === nothing ? Float64[] : band[2]))
     snap = Dict(round(D, digits=10) => findfirst(==(D), epochs) for D in ep)
+    fmres = []
     bsnap = band === nothing ? Dict() : Dict(round(D, digits=10) => i for (i, D) in enumerate(band[2]))
     function cb(k, a, X, P)
         e = get(snap, round(a, digits=10), nothing); b = get(bsnap, round(a, digits=10), nothing)
@@ -139,6 +145,9 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         end
         Π = P ./ T(DJ.Fplus(c, a))
         vel[e, :, :] .= vector_modes(ms, Π)
+        if fm !== nothing && any(isapprox(a, x; atol=1e-9) for x in fm_epochs)
+            push!(fmres, (e=e, D=a, order=0, r=fixedmass_snapshot(fm, Ψ, Π)))
+        end
         if stress !== nothing   # u = dx/dln a = f D Π
             fD = T(DJ.growth_Dplusda(c, a) * a)
             U = fD .* Π
@@ -176,5 +185,5 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
                            callback_when=(k, a) -> haskey(snap, round(a, digits=10)) || haskey(bsnap, round(a, digits=10)),
                            settings...)
     return (psi=psi, vel=vel, dens=dens, inv=invf, rms=rms, mom=mom, grid=grid, seconds=t, band=bpsi, cis=cisd, dens_s=dens_s, inv_s=inv_s,
-            stress=st, stress_scalars=stsc, pk_dens=pkd, pk_disp=pkp)
+            stress=st, stress_scalars=stsc, pk_dens=pkd, pk_disp=pkp, fm=fmres)
 end
