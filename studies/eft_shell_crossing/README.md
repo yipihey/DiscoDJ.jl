@@ -3,7 +3,27 @@
 *Study of the "irreducible effective stress" claim of Carrasco, Hertzberg & Senatore (2012,
 [arXiv:1206.2926](https://arxiv.org/abs/1206.2926)) with DiscoDJ.jl (DiscoDJNative, GPU).*
 
-<!--RESULTS_SUMMARY-->
+**Result in one paragraph.** Two 3D universes share their long modes bitwise and differ by a band of short modes
+(0.2–1.2 h Mpc⁻¹); the long-mode displacement response Δψ_L = −C₂k²ψ_L is measured at the field level, with 1–7th-order
+LPT (the pressureless single-stream fluid to increasing accuracy) and with a discreteness-suppressed collisionless PM
+validated to reproduce 7LPT to 10⁻⁴ before shell crossing. **Before crossing** the single-stream series converges onto
+PM (PM − 7LPT ≤ 2×10⁻⁵ against an 8 % 3LPT→7LPT change). **Immediately after first crossing** a coherent, pure-k²,
+pressure-signed residual appears that is common to 3, 5, 7LPT and to the extrapolated series limit, while that series
+is still convergent (0.225 < D < 0.5); it grows with the shell-crossed mass (∝ f^1.5), moves with the crossing time when
+the band amplitude changes, is absent in redshift-space-only crossing, is resolution-converged, and is accounted for —
+in sign and to a factor ≈ 2 in magnitude — by the velocity-dispersion stress measured directly in PM's multistream
+regions. Varying the cutoff, the collisionless response runs like the CHS (2012) one-loop running while 4LPT/7LPT fail
+once the integrated-out modes have crossed; it is carried by modes near the nonlinear scale, deeper modes decouple, and
+it is a coherent effect (at k = 0.06 h Mpc⁻¹, modes below 5 h⁻¹Mpc change P(k) by −2.1 % coherently and add 0.05 %
+stochastic power). **Assessment: strong support (category 1) for the CHS irreducibility statement within the window
+where it can be tested (§12); beyond D ≈ 0.5 the single-stream series diverges and irreducibility is an
+extrapolation.**
+
+Study map: question & falsifiable predictions §0 · PreCrossedSheet PR #4 §1 · design & conventions §2 · methods §3 ·
+convergence §4 · controls §5 · fiducial results (time × order, k⁴, stochastic, velocity) §6 · RG running & CHS
+Fig. 3 §7 · counts in spheres §8 · redshift space §9 · kinetic stress §10 · small-scale P(k) convergence §11 ·
+interpretation §12 · final assessment §13 · reproduction §14.
+
 
 ---
 
@@ -229,6 +249,13 @@ realization-level residual PM − 7LPT, and the shell-crossed (inverted) mass fr
   reaches +1.51 ± 0.02 at D = 1 (net *suppression* of the long displacement), while every LPT order runs away
   negative.
 
+**Universality with the crossed mass** ([fig12](figures/fig12_band_variants.png); variants `amp07`, `kuv06`, 2 long seeds
+each, sharing the fiducial IR members). Reducing the band amplitude to 0.7 delays first crossing to D ≈ 0.3 and the
+departure with it; a narrower band (0.2–0.6) changes the response amplitude. Plotted against the inverted mass fraction of
+the UV member, the fractional departure (C₂^PM − C₂^LPT)/|C₂^3LPT| of all three set-ups collapses onto one curve
+(< 1 % at 10⁻³ crossed mass, ≈ 10 % at 2 %, ≈ 50–80 % at 7–8 %), i.e. the departure is a function of how much mass has
+shell-crossed, not of D or of the band. (The variants' errors are mode-counting estimates from 2 seeds.)
+
 **The departure has the EFT form** ([fig7](figures/fig7_pm_vs_lpt.png), [fig5](figures/fig5_kmax_stability.png)).
 (R_PM − R_7LPT)/k² is flat in k up to 0.19 h Mpc⁻¹ at every post-crossing epoch (prediction P3): a pure
 −ΔC₂k² term, with no k⁴ structure visible. The PM C₂ itself has a genuine k_max plateau (−0.089 ± 0.002 for
@@ -389,6 +416,135 @@ crossing is a projection the pre-crossed sheet represents exactly. The departure
 strongest along the line of sight (a μ²k² velocity term). From D ≈ 0.275 the redshift-space LPT series itself stops
 converging at high μ (5LPT and 7LPT differ in sign), earlier than in real space.
 
-<!--RESULTS_STRESS-->
+## 10. Experiment 2 — is the departure the multistream kinetic stress?
+
+**Measurement** (`config/stress.toml`, `scripts/stress_analysis.jl`; 4 long seeds × ±L, PM and 7LPT). At every
+snapshot each member deposits (NGP) mass, momentum and kinetic moments with u = dx/d ln a on 64³ and 128³ cells
+(7.8 and 3.9 h⁻¹Mpc) and forms the velocity-dispersion stress with the smooth single-stream flow removed per cell
+(least-squares linear velocity field: τ = n[Cov(u) − Cov(u,x)Cov(x)⁻¹Cov(x,u)]; this suppresses the finite-cell
+"dispersion" of a smooth flow 30–125× in tests). Cells containing particles of an inverted Lagrangian tetrahedron
+are flagged as multistream; flagged cells with an unflagged neighbour are "boundary" (the outermost caustic /
+splashback shell at that resolution). The longitudinal long-mode stress response c²_τ(D) = Re⟨k̂k̂:Δτ̂ δ_L*⟩/(ρ̄⟨|δ_L|²⟩)
+drives the long displacement through the EdS Green's function y'' + y'/2 − (3/2)y = c²_τ a (′ = d/d ln a,
+C₂,σ = y/a), giving the response the stress implies.
+
+**Validation.** Before crossing the stress response of PM and 7LPT agrees to 3–4 digits (0.3217 vs 0.3217 at D = 0.2,
+7.8 Mpc/h cells): the residual coarse-graining artifacts are identical and cancel. After crossing 7LPT's coarse-grained
+"stress" explodes (×140 PM's at D = 1) because its crossed streams fly apart ballistically — but LPT's equations of
+motion contain no stress, so this is a diagnostic of unphysical streaming, not a force. The test is therefore whether
+**PM's own multistream stress** accounts for PM's departure from the single-stream series.
+
+**Result** ([fig13](figures/fig13_kinetic_stress.png), `results/stress_stress.h5`):
+
+| D | C₂,σ from PM multistream stress (7.8 / 3.9 Mpc/h cells) | measured PM − 7LPT | inverted mass |
+|---|---|---|---|
+| 0.275 | 0.0055 / 0.0021 | 0.0011 | 0.26 % |
+| 0.30 | 0.0125 / 0.0050 | 0.0040 | 0.61 % |
+| 0.35 | 0.041 / 0.0185 | 0.0225 | 2.0 % |
+| 0.40 | 0.090 / 0.046 | 0.076 | 4.3 % |
+| 0.45 | 0.161 / 0.089 | 0.192 | 7.2 % |
+
+* The kinetic velocity-dispersion stress of PM's multistream regions, propagated through the long-mode Green's function,
+  has the **sign and magnitude** of the measured departure (against 7LPT and against the extrapolated LPT∞) over the
+  range where the single-stream series still converges (0.25 ≲ D ≲ 0.45), within the factor-2 bracket set by the
+  coarse-graining scale; it vanishes identically before crossing.
+* The coarse-graining dependence is physical: on finer cells part of the multistream motion is resolved as bulk flow
+  (Reynolds stress) rather than dispersion. A complete accounting at fixed coarse-graining scale would add the resolved
+  Reynolds and gravitational stresses, which were not measured; the data therefore establish the multistream kinetic
+  stress as a *sufficient* explanation to a factor ~2, not an exact budget.
+* Early after crossing essentially all of the stress lies in **boundary cells** (young multistream regions are thin
+  sheets and filaments, every flagged cell borders single-stream flow); by D = 0.5 the interiors carry 40–50 % on
+  7.8 Mpc/h cells. This answers the "sharp features vs volume" question of §6: the stress is localised at the
+  caustic/splashback layers while those are thin, and becomes volume-filling as the multistream regions thicken — the
+  coefficient is set by the integrated momentum flux, not by the k-space sharpness of the caustics (it is also
+  resolution-converged, §4).
+
+## 11. Small-scale power-spectrum convergence
+
+One realization (UV member) with the production PM (suppressed, 256³ particles / 512³ mesh), the same at 384³ / 768³,
+and plain CIC at 512³ / 1024³ (`config/pkconv_*`, `scripts/pk_convergence.jl`,
+[fig14](figures/fig14_pk_convergence.png)). Density on a common 512³ CIC deposit mesh (window deconvolved, no
+shot-noise subtraction); displacement on each particle grid. Ratios to suppressed 384³:
+
+| | k = 0.22 | 0.38 | 0.65 | 1.14 h Mpc⁻¹ |
+|---|---|---|---|---|
+| density, D = 0.5, suppressed 256³ | 1.000 | 0.999 | 0.996 | 0.991 |
+| density, D = 1, suppressed 256³ | 0.998 | 0.994 | 0.987 | 0.957 |
+| density, D = 1, plain CIC 512³ | 1.001 | 1.000 | 0.993 | 0.964 |
+| displacement, D = 1, suppressed 256³ | 1.006 | 1.016 | 1.036 | 1.085 |
+
+The nonlinear power spectrum is converged to ≲ 1 % for k ≲ 0.5 h Mpc⁻¹ at D = 1 (≲ 0.5 % for all k ≤ 1 at D ≤ 0.5) but
+*not* at k ≈ 1 at late times (4 % in density, 8.5 % in displacement between 256³ and 384³), as expected for halo
+interiors at ~1 h⁻¹Mpc force resolution; beyond the 256³ particle Nyquist frequency (1.6 h Mpc⁻¹) the comparison is not
+meaningful. The long-mode response (C₂, C₄) is nevertheless converged to ~1σ between the same resolutions (§4): the
+EFT decoupling statement — the long-wavelength effect of small scales is insensitive to their unresolved interiors —
+holds numerically.
 
 
+## 12. Interpretation — which explanation each measurement rules in or out
+
+| candidate explanation of the long-mode UV response | what it predicts | what is measured | verdict |
+|---|---|---|---|
+| IC / filter artifact | C₂ ≠ 0 at D → 0, already in 1LPT | sharp split: 1LPT C₂ ≡ 0; Gaussian pairs give −14 (Mpc/h)² at every D (§5) | ruled out for this design; dominant for Gaussian-filter pairs |
+| ordinary pre-crossing mode coupling | k² response ∝ D² (one loop), converging with LPT order | C₂^(3) = −2.05 D², odd series converging, PM = 7LPT to 10⁻⁵ | present, fully captured by single-stream LPT |
+| finite-LPT truncation | PM − LPT_n shrinks with n | before crossing: ~10× per odd order; after: common residual for n = 3, 5, 7 and LPT∞ | explains nothing after crossing within the convergent window |
+| numerical PM error | resolution/discreteness dependence | plain PM *does* miss the D⁴ term (discreteness); suppressed PM converged (256³ ↔ 384³, Richardson limit of plain PM agrees after crossing) | controlled (§4) |
+| stochastic UV → IR leakage | uncorrelated with ψ_L, P_ε,δ ∝ k⁴ | P_ε,δ ∝ k^4.0–4.2, P_ε,ψ ∝ k^2.0; 200× below the coherent part at k ≈ 0.06; ±L design cancels it exactly in R | real but negligible for the coherent response |
+| kinematic (displacement-smearing) projection | density-only, no dynamics, = σ²_ψ/6 | 1LPT density C₂ = 2.67 D² exactly; absent from the displacement response | explains most of the *density* response; not the multistream effect |
+| multistream effective stress | departure starts at crossing, k², pressure sign, ∝ crossed mass, carried by the stress of multistream regions | all of these (§6, §9, §10) | supported |
+
+## 13. Final scientific assessment
+
+**Category 1 — strong support, within a stated window.** A converged, deterministic, pure-k² long-mode response
+remains relative to increasingly accurate single-stream dynamics, and it correlates with — and is quantitatively
+attributable to — multistream evolution:
+1. *Convergence before crossing, not after.* PM − LPT_n falls ~10× per odd order before first crossing and becomes a
+   common, order-independent residual after it, while the single-stream series itself still converges (D < 0.5).
+2. *Tied to real-space shell crossing.* Onset coincides with the first inverted tetrahedra (D ≈ 0.225); the residual
+   scales as (crossed mass)^1.5; reducing the band amplitude delays both crossing and departure, and the fractional
+   departure of all band variants collapses onto one function of the crossed mass; redshift-space crossing
+   (D ≈ 0.13), a pure projection, produces no departure.
+3. *EFT form.* (R_PM − R_7LPT)/k² is flat to k = 0.19 h Mpc⁻¹; C₂ has a k_max plateau; the k⁴ remainder is ~6 % at
+   k = 0.15 and resolution-converged; real-space spheres obey Δδ_R = C₂∇²δ_R with the predicted R-dependence.
+4. *Physical origin.* PM's own multistream velocity-dispersion stress reproduces the departure's sign and magnitude to a
+   factor ≈ 2 (coarse-graining dependent), living first in the caustic/splashback layers and then in the interiors.
+5. *Running.* With the cutoff, PM runs like one-loop/CHS while 4LPT and 7LPT fail; the response is carried by modes
+   near k_NL and deeper modes decouple.
+
+**What the data do not establish.** (i) "Irreducible" is demonstrated relative to the 7th-order single-stream solution
+and its extrapolated limit only for D ≲ 0.5; beyond, the series diverges and the statement is an extrapolation.
+(ii) The stress budget is the kinetic part only, coarse-graining dependent by a factor ~2; resolved Reynolds and
+gravitational stresses were not measured. (iii) Absolute agreement with the CHS coefficient is only established to a
+factor ≈ 3 (EdS vs ΛCDM, band-limited UV member, c² vs response normalisation); the running shape is the robust
+comparison. (iv) One box size (500 h⁻¹Mpc), one spectrum shape, EdS background.
+
+**Unexpected findings worth following up.** The pressureless response is *negative* (short modes enhance the long
+displacement) and the multistream contribution reverses it; in density, multistreaming *reduces* the diffusive mass
+flux (trapping) while adding pressure, so density-based EFT fits see a much smaller effect than the displacement;
+plain PM silently misses the two-loop response through particle discreteness, and C₄ is the most sensitive diagnostic
+of that; LPT converges onto PM in redshift space through redshift-space crossing.
+
+## 14. Reproduction, hardware and runtime
+
+```bash
+cd studies/eft_shell_crossing
+EFTSC_SCRATCH=/path/to/scratch ./run_all.sh     # every configuration, analysis and figure (see the script)
+julia --project=. -t 8 test/runtests.jl         # 53 tests: IC pairing, null pair, ±L parity, tetrahedra, estimators,
+                                                # spheres, redshift-space crossing, stress estimator, power spectra
+python3 chs/chs_fig3.py; python3 chs/band_edge.py   # CHS Fig. 3 reconstruction, band-edge control (needs camb)
+python3 figures.py results figures; python3 figures_rg.py results figures
+```
+Hardware: one NVIDIA RTX A6000 (48 GB), dual AMD EPYC 7763 (128 cores, 2 TB RAM), Julia 1.12.6, CUDA.jl, FFTW
+(do **not** switch the FFTW provider to MKL: it returns wrong strided multi-region transforms, §3). Measured job time:
+109 PM jobs = 11.1 GPU-h (6.1 min mean: suppressed PM 256³ particles / 512³ mesh, 200 steps, all diagnostics), 95 LPT
+jobs (1–7th order + diagnostics) = 0.6 GPU-h. Raw per-job outputs (compact low-k modes, spheres, stress) total 19 GB and
+are not committed; `results/` holds the reduced statistics (HDF5/JSON/CSV) from which every figure is regenerated.
+
+**Files.** `src/` (EFTShell module: `ics.jl` paired ICs, `measure.jl` GPU measurements, `runners.jl`, `estimators.jl`,
+`analysis.jl`), `scripts/` (`run_jobs.jl`, `run_queue.sh`, `analyze.jl`, `residual_response.jl`, `c4_convergence.jl`,
+`controls.jl`, `diagnostics.jl`, `spheres_from_modes.jl`, `cis_analysis.jl`, `rsd_analysis.jl`, `stress_analysis.jl`),
+`config/` (one TOML per experiment; `retired/` holds superseded tests), `chs/` (CHS reconstruction, digitized Fig. 3,
+band-edge control), `test/`, `results/`, `figures/` (PNG + PDF), `figures.py`, `figures_rg.py`, `run_all.sh`.
+
+DiscoDJNative changes made for this study (same branch): Float32 deconvolution fix; memory-lean PM solver
+(`PMSolverLean`, `run_nbody(lean=true, callback_when=…)`) with tests.

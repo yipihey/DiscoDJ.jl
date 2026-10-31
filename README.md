@@ -41,6 +41,16 @@ The report covers the studies, run on identical fixed-amplitude initial conditio
    - The tetrahedra resolve the caustic-dominated dense tail, where N-body carries 4–9× more mass
      than 4LPT and 2LPT.
 
+4. **[UV sensitivity of long modes across shell crossing (EFT effective stress)](studies/eft_shell_crossing/README.md):**
+   paired 3D universes with bitwise-identical long modes and an added short-mode band, evolved with 1–7LPT and a
+   discreteness-suppressed PM; field-level long-mode response Δψ_L = −C₂k²ψ_L, the CHS (2012) cutoff running, counts in
+   spheres, redshift space, and the multistream kinetic stress.
+   - Before shell crossing the single-stream series converges onto PM (to 10⁻⁵ in C₂). Right after first crossing a
+     coherent, pure-k², pressure-signed residual appears that higher LPT orders do not remove, while the series still
+     converges; PM's measured multistream velocity-dispersion stress accounts for it to a factor ≈ 2.
+   - With the cutoff, PM runs like the one-loop/CHS running while 4LPT/7LPT fail; modes near k_NL carry the response.
+     Modes below 5 h⁻¹Mpc change P(k = 0.06) coherently by −2.1 % and add only 0.05 % stochastic power.
+
 All studies include resolution studies for every method. The copula study reports its
 validation tests, noise floors and every deviation from its protocol.
 
@@ -94,6 +104,7 @@ ic = lpt_ics(b, 0.02)                            # ψ, pos, vel as Julia arrays
 | `studies/lpt_pdf/` | the one-point PDF study, the HTML report and the site build script |
 | `studies/lpt_pdf/copula/` | the copula study: pipeline, configuration, results and figures |
 | `studies/lpt_pdf/sheet_pdf/` | the phase-space-sheet estimator study (exact R3D remeshing, tetrahedron mass weighting) |
+| `studies/eft_shell_crossing/` | the EFT / shell-crossing study: paired-IC experiments, analysis, CHS Fig. 3 reconstruction, figures |
 
 ## Roadmap
 

@@ -66,7 +66,7 @@ function green(c2v)
 end
 pred = similar(c2f)
 for m in 1:2, im_ in eachindex(meshes), v in 1:4
-    pred[m, im_, v, :] .= green(replace(c2f[m, im_, v, :], NaN => 0.0))
+    pred[m, im_, v, :] .= green(map(x -> isfinite(x) ? x : 0.0, c2f[m, im_, v, :]))
 end
 # measured displacement C2 of the same pairs (k ≤ 0.08), PM and 7LPT
 edges = collect(0.5:1:(cfg["k_split"] / kf)) .* kf
@@ -81,7 +81,7 @@ h5open(joinpath(@__DIR__, "..", "results", "stress_$name.h5"), "w") do h
 end
 println("$name: stress response c²_τ [(Mpc/h)²] and the implied C2_σ vs measured ΔC2 = C2_PM − C2_7LPT")
 for (im_, Nm) in enumerate(meshes)
-    println(" mesh $Nm³:   D   | c²_τ PM (corr)  7LPT (corr) | C2_σ PM−7LPT: corrected   multistream   boundary   raw | measured ΔC2")
+    println(" mesh $(Nm)³:   D   | c²_τ PM (corr)  7LPT (corr) | C2_σ PM−7LPT: corrected   multistream   boundary   raw | measured ΔC2")
     for e in 2:E
         d(v) = pred[1, im_, v, e] - pred[2, im_, v, e]
         @printf "          %.3f | %+9.4f ± %.4f  %+9.4f | %+9.4f  %+9.4f  %+9.4f  %+9.4f | %+9.4f\n" epochs[e] c2f[1, im_, 2, e] c2s[1, im_, 2, e] c2f[2, im_, 2, e] d(2) d(3) d(4) d(1) (C2meas[2, e] - C2meas[1, e])

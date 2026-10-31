@@ -443,6 +443,67 @@ def fig_variants(names, name="fig12_band_variants", kmax=0.08):
     save(fig, name)
 
 
+def fig_stress(name="fig13_kinetic_stress", fid="fiducial", kmax=0.08):
+    """Experiment 2: the long-mode response implied by PM's own multistream velocity-dispersion stress vs the measured
+    departure from the single-stream series (PM − 7LPT and PM − LPT∞)."""
+    p = os.path.join(RES, "stress_stress.h5")
+    if not os.path.exists(p): return
+    h = h5py.File(p, "r"); D = h["epochs"][:]; P = h["C2_from_stress"][:]; M = h["C2_measured_lpt7_pm"][:]
+    sc = h["scalars"][:]; meshes = h["meshes"][:]
+    r = Result(fid); C = {n: r.C2("disp", f"lpt{n}", kmax)[0] for n in (3, 5, 7)}; Cp = r.C2("disp", "pm", kmax)[0]
+    lim, _ = shanks(C[3], C[5], C[7])
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(10.4, 4.0))
+    sel = (D >= 0.225) & (D <= 0.5)
+    a1.plot(D[sel], (M[sel, 1] - M[sel, 0]), color=INK, lw=2, marker="o", ms=4, label="measured: PM − 7LPT")
+    ok = sel & np.isfinite(lim)
+    a1.plot(r.D[ok], (Cp - lim)[ok], color=INK, lw=1.2, ls="--", label=r"measured: PM − LPT$_\infty$ (Shanks)")
+    for im, (Nm, col) in enumerate(zip(meshes, (PM_COLOR, RED))):
+        dx = 500 / Nm
+        a1.plot(D[sel], P[sel, 2, im, 0], color=col, lw=1.6, marker="s", ms=3.5, label=f"from PM multistream stress, {dx:.1f} Mpc/h cells")
+        a1.plot(D[sel], P[sel, 3, im, 0], color=col, lw=1.0, ls=":", label=f"  … boundary cells only")
+    a1.set_yscale("log"); a1.set_ylim(1e-4, 1.0); a1.set_xlabel("D")
+    a1.set_ylabel(r"$\Delta C_2$ [$(h^{-1}$Mpc$)^2$]")
+    a1.set_title("Post-crossing departure vs kinetic multistream stress", loc="left", fontsize=9)
+    a1.legend(fontsize=6.8)
+    for im, (Nm, col) in enumerate(zip(meshes, (PM_COLOR, RED))):
+        a2.plot(D[sel], sc[sel, 0, im, 0], color=col, lw=1.6, label=f"mass in multistream-flagged cells ({500 / Nm:.1f} Mpc/h)")
+    a2.plot(D[sel], r.inv("pm")[[r.ei(d) for d in D[sel]]], color=INK, lw=1.2, ls="--", label="inverted mass fraction")
+    a2.set_xlabel("D"); a2.set_ylabel("mass fraction"); a2.legend(fontsize=7)
+    a2.set_title("Multistream cells vs inverted (shell-crossed) mass", loc="left", fontsize=9)
+    save(fig, name)
+
+
+def fig_pk_convergence(name="fig14_pk_convergence", epochs=(0.3, 0.5, 1.0)):
+    """Small-scale P(k) convergence of the PM runs (one realization, UV member)."""
+    p = os.path.join(RES, "pk_convergence.h5")
+    if not os.path.exists(p): return
+    h = h5py.File(p, "r"); k = h["k"][:]; D = h["epochs"][:]
+    runs = [("pkconv_pm256bf", "suppressed 256³ / 512³ (production)", PM_COLOR, "-"),
+            ("pkconv_pm512lean", "plain CIC 512³ / 1024³", VIOLET, "--")]
+    ref = "pkconv_pm384bf"
+    fig, axes = plt.subplots(2, len(epochs), figsize=(4.0 * len(epochs), 6.2), sharex=True)
+    for j, Dv in enumerate(epochs):
+        e = int(np.argmin(abs(D - Dv)))
+        for row, (q, lab) in enumerate((("P_dens", "density"), ("P_disp", "displacement"))):
+            ax = axes[row, j]
+            for nm, l, col, ls in runs:
+                if nm not in h: continue
+                g = h[nm]; kn = g.attrs["k_nyq_particles"]; kr = h[ref].attrs["k_nyq_particles"]
+                ok = (k < min(kn, kr)) & np.isfinite(g[q][:, e]) & (h[ref][q][:, e] > 0)
+                ax.plot(k[ok], g[q][ok, e] / h[ref][q][ok, e], color=col, ls=ls, lw=1.6, label=l)
+            ax.axhline(1, color=MUTED, lw=0.8); ax.set_xscale("log")
+            for nm, col in (("pkconv_pm256bf", PM_COLOR), ("pkconv_pm384bf", INK)):
+                if nm in h: ax.axvline(h[nm].attrs["k_nyq_particles"], color=col, ls=":", lw=0.9)
+            ax.set_ylim(0.8, 1.2) if row == 0 else ax.set_ylim(0.8, 1.2)
+            ax.set_title(f"{lab}, D = {D[e]:.2g}", loc="left", fontsize=9)
+            if row == 1: ax.set_xlabel(r"$k$ [$h$/Mpc]")
+            if j == 0: ax.set_ylabel(f"P / P(suppressed 384³)")
+    axes[0, 0].legend(fontsize=7, loc="lower left")
+    fig.text(0.01, -0.01, "dotted: particle Nyquist frequency of the 256³ (orange) and 384³ (black) runs; density on a common 512³ CIC mesh, no shot-noise subtraction",
+             fontsize=7, color=INK2)
+    fig.tight_layout(); save(fig, name)
+
+
 def export_tables(r, kmax=0.08, out="summary"):
     """Compact CSV/JSON of the time × order matrix C2(D, n), PM, LPT∞ and shell-crossed fractions."""
     rows = []; D = r.D
@@ -469,7 +530,7 @@ if __name__ == "__main__":
         fits = fig_stochastic(r)
         print("stochastic low-k slopes:", fits)
     fig_density_vs_disp(r, sigma_psi_band=4.005)
-    fig_pm_convergence(); fig_controls()
+    fig_pm_convergence(); fig_controls(); fig_stress(); fig_pk_convergence()
     fig_variants([("fiducial", "band 0.2–1.2", PM_COLOR), ("amp07", "×0.7 amplitude", VIOLET),
                   ("kuv06", "band 0.2–0.6", BLUE)])
     export_tables(r)

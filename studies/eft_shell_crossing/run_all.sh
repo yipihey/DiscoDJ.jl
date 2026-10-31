@@ -1,7 +1,7 @@
 #!/bin/bash
 # Reproduce the EFT / shell-crossing study end to end.
 #
-#   EFTSC_SCRATCH=/path/to/scratch ./run_all.sh            (≈ 7 GPU-hours on one RTX A6000)
+#   EFTSC_SCRATCH=/path/to/scratch ./run_all.sh            (≈ 12 GPU-hours on one RTX A6000)
 #
 # Raw per-job files (compact low-k modes, ≈ 2–25 MB each) go to $EFTSC_SCRATCH/<config>/; the reduced
 # statistics committed in results/ and the figures in figures/ are regenerated from them.
@@ -25,12 +25,30 @@ julia --project=. scripts/residual_response.jl conv_lpt256 conv_pm256m2 conv_pm3
 julia --project=. scripts/residual_response.jl conv06_lpt256 conv06_pm256m2 conv06_pm384m2
 
 # 2. production ensemble and variants (LPT 1–7 + suppressed PM)
-MODEL=all scripts/run_queue.sh config/fiducial.toml config/null.toml config/amp07.toml config/klo06.toml config/kuv06.toml
-for c in fiducial null amp07 klo06 kuv06; do julia --project=. scripts/analyze.jl $c; done
+MODEL=all scripts/run_queue.sh config/fiducial.toml config/null.toml config/amp07.toml config/kuv06.toml
+for c in fiducial null amp07 kuv06; do julia --project=. scripts/analyze.jl $c; done
 julia --project=. scripts/diagnostics.jl fiducial
+julia --project=. scripts/spheres_from_modes.jl fiducial
+julia --project=. scripts/c4_convergence.jl conv_pm256m2bf conv_pm384m2bf conv_pm512m2lean > results/c4_convergence.txt
 
-# 3. initial-condition controls (CPU)
+# 3. RG running (7 sharp splits sharing one UV member per seed) with counts in spheres and redshift space
+MODEL=all scripts/run_queue.sh config/rg_ks20.toml config/rg_ks12.toml config/rg_ks15.toml config/rg_ks25.toml \
+          config/rg_ks33.toml config/rg_ks50.toml config/rg_ks70.toml
+RG="rg_ks12 rg_ks15 rg_ks20 rg_ks25 rg_ks33 rg_ks50 rg_ks70"
+for c in $RG; do julia --project=. scripts/analyze.jl $c; done
+julia --project=. scripts/cis_analysis.jl $RG
+julia --project=. scripts/rsd_analysis.jl $RG
+
+# 4. experiment 2: kinetic multistream stress; small-scale P(k) convergence
+MODEL=all scripts/run_queue.sh config/stress.toml
+julia --project=. scripts/stress_analysis.jl stress
+MODEL=pm scripts/run_queue.sh config/pkconv_pm256bf.toml config/pkconv_pm384bf.toml config/pkconv_pm512lean.toml
+julia --project=. scripts/pk_convergence.jl pkconv_pm256bf pkconv_pm384bf pkconv_pm512lean
+
+# 5. initial-condition controls (CPU), CHS reconstruction and band-edge control
 CUDA_VISIBLE_DEVICES="" julia --project=. -t 32 scripts/controls.jl
+$PY chs/chs_fig3.py; $PY chs/band_edge.py          # needs camb
 
-# 4. figures and tables
-$PY figures.py results figures
+# 6. figures and tables
+EFTSC_FIG_CONFIG=fiducial $PY figures.py results figures
+$PY figures_rg.py results figures
