@@ -273,7 +273,9 @@ end
 # Float CAS atomics on a shared 512³ mesh (first-touched on one NUMA node) leave most cores stalled;
 # instead each task deposits a Lagrangian k-slab into one of `nbuf` private meshes taken from a pool.
 const _DEPOSIT_BUFFERS = Dict{Tuple{DataType,Int,Int},Vector{Array}}()
-_deposit_nbuf(ng, TA) = clamp(min(Threads.nthreads(),
+# number of private meshes: each deposit streams all of them once (sum + re-zero), so fewer is cheaper;
+# 32 keeps 96 threads busy (k-slabs are short tasks) at 16 GB for 512³ Float32
+_deposit_nbuf(ng, TA) = clamp(min(Threads.nthreads(), parse(Int, get(ENV, "DISCODJ_DEPOSIT_BUFFERS", "32")),
     floor(Int, parse(Float64, get(ENV, "DISCODJ_DEPOSIT_BUFFER_GB", "64")) * 2^30 / (sizeof(TA) * ng^3))), 1, 256)
 
 # function barrier: concrete argument types for the per-tetrahedron loop of one Lagrangian k-slab
@@ -287,9 +289,11 @@ end
 
 function _tracer_deposit_cpu!(mesh::Array{TA,3}, ψ, vel, acc, G, off, bary, nbary, n, dq, ng, invh, mt, mode) where {TA}
     nb = _deposit_nbuf(ng, TA)
-    bufs = get!(() -> Array[], _DEPOSIT_BUFFERS, (TA, ng, nb))
-    while length(bufs) < nb; push!(bufs, Array{TA,3}(undef, ng, ng, ng)); end
-    Threads.@threads :static for b in 1:nb; fill!(bufs[b], zero(TA)); end   # first touch by the worker
+    bufs = get!(_DEPOSIT_BUFFERS, (TA, ng, nb)) do                   # kept zeroed between calls
+        B = Array[Array{TA,3}(undef, ng, ng, ng) for _ in 1:nb]
+        Threads.@threads :static for b in 1:nb; fill!(B[b], zero(TA)); end
+        B
+    end
     pool = Channel{Int}(nb); foreach(b -> put!(pool, b), 1:nb)
     @sync for k in 1:n
         Threads.@spawn begin
@@ -303,7 +307,9 @@ function _tracer_deposit_cpu!(mesh::Array{TA,3}, ψ, vel, acc, G, off, bary, nba
         r = (c - 1) * ch + 1 : min(c * ch, N)
         @inbounds for I in r
             s = zero(TA)
-            for b in 1:nb; s += (bufs[b]::Array{TA,3})[I]; end
+            for b in 1:nb
+                B = bufs[b]::Array{TA,3}; s += B[I]; B[I] = zero(TA)          # sum and re-zero in one pass
+            end
             mesh[I] = s
         end
     end
