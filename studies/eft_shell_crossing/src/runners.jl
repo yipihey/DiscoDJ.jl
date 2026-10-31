@@ -57,7 +57,8 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
             end
             if fm !== nothing && n in fm_orders && any(isapprox(D, x; atol=1e-9) for x in fm_epochs)
                 lpt_acc!(A, sh, D, n)
-                push!(fmres, (e=e, D=D, order=n, r=fixedmass_snapshot(fm, Ψ, Π; acc=A)))
+                tf = @elapsed push!(fmres, (e=e, D=D, order=n, r=fixedmass_snapshot(fm, Ψ, Π; acc=A)))
+                @printf "    fixed-mass LPT%d D=%.3f  %.1f s\n" n D tf; flush(stdout)
             end
             if rsd
                 Ψs .= Ψ; Ψs[:, :, :, 3] .+= T(fgrowth(D) * D) .* view(Π, :, :, :, 3)
@@ -146,7 +147,8 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         Π = P ./ T(DJ.Fplus(c, a))
         vel[e, :, :] .= vector_modes(ms, Π)
         if fm !== nothing && any(isapprox(a, x; atol=1e-9) for x in fm_epochs)
-            push!(fmres, (e=e, D=a, order=0, r=fixedmass_snapshot(fm, Ψ, Π)))
+            tf = @elapsed push!(fmres, (e=e, D=a, order=0, r=fixedmass_snapshot(fm, Ψ, Π)))
+            @printf "    fixed-mass PM D=%.3f  %.1f s\n" a tf; flush(stdout)
         end
         if stress !== nothing   # u = dx/dln a = f D Π
             fD = T(DJ.growth_Dplusda(c, a) * a)

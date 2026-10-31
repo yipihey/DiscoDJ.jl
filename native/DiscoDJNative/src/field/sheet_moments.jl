@@ -161,15 +161,26 @@ const TRACER_MODES = (:rho, :flux, :stress, :acc, :gdiv, :bulk, :disp, :vx, :vy,
 @inline _pcs1(s) = (a = abs(s); a < 1 ? (-12s + 9s * a) / 6 : (a < 2 ? -sign(s) * (2 - a)^2 / 2 : zero(s)))
 @inline _pcs2(s) = (a = abs(s); a < 1 ? -2 + 3a : (a < 2 ? 2 - a : zero(s)))
 
-# PCS gather of component c of the mesh field G at grid coordinates (gx, gy, gz)
-@inline function _pcs_gather(G, c, gx, gy, gz, ng)
-    ix = floor(Int, gx); iy = floor(Int, gy); iz = floor(Int, gz)
-    acc = zero(eltype(G))
-    for oz in -1:2, oy in -1:2, ox in -1:2
-        w = _pcs0(ix + ox - gx) * _pcs0(iy + oy - gy) * _pcs0(iz + oz - gz)
-        acc += eltype(G)(w) * G[mod(ix + ox, ng) + 1, mod(iy + oy, ng) + 1, mod(iz + oz, ng) + 1, c]
+# per-axis PCS weights of the 4 nodes i0−1 … i0+2 around grid coordinate g (i0 = floor(g)), and their
+# (periodic, 1-based) node indices — computed once per tracer and shared by gathers and the deposit
+@inline _pcsw(f, i0, g) = (f(i0 - 1 - g), f(i0 - g), f(i0 + 1 - g), f(i0 + 2 - g))
+@inline _pcsi(i0, ng) = (mod(i0 - 1, ng) + 1, mod(i0, ng) + 1, mod(i0 + 1, ng) + 1, mod(i0 + 2, ng) + 1)
+
+# PCS gather of the first NC components of the mesh field G with precomputed weights / indices
+@inline function _pcs_gather(G, ::Val{NC}, Ix, Iy, Iz, wx, wy, wz) where {NC}
+    TG = eltype(G)
+    s = ntuple(_ -> zero(TG), Val(NC))
+    for oz in 1:4
+        wzz = TG(wz[oz])
+        for oy in 1:4
+            wyz = TG(wy[oy]) * wzz
+            for ox in 1:4
+                w = TG(wx[ox]) * wyz
+                s = ntuple(c -> s[c] + w * G[Ix[ox], Iy[oy], Iz[oz], c], Val(NC))
+            end
+        end
     end
-    return acc
+    return s
 end
 
 @kernel function _tracer_deposit!(mesh, @Const(ψ), @Const(vel), @Const(acc), @Const(G), @Const(off), @Const(bary),
@@ -188,6 +199,9 @@ end
             gx = _interp(l, y1, y2, y3, y4, 1) * invh; gy = _interp(l, y1, y2, y3, y4, 2) * invh
             gz = _interp(l, y1, y2, y3, y4, 3) * invh
             vx = _interp(l, v1, v2, v3, v4, 1); vy = _interp(l, v1, v2, v3, v4, 2); vz = _interp(l, v1, v2, v3, v4, 3)
+            ix = floor(Int, gx); iy = floor(Int, gy); iz = floor(Int, gz)
+            Ix = _pcsi(ix, ng); Iy = _pcsi(iy, ng); Iz = _pcsi(iz, ng)
+            w0x = _pcsw(_pcs0, ix, gx); w0y = _pcsw(_pcs0, iy, gy); w0z = _pcsw(_pcs0, iz, gz)
             # node weight = c W + u·∇W + S:∂∂W
             c = zero(T); ux = zero(T); uy = zero(T); uz = zero(T)
             sxx = zero(T); syy = zero(T); szz = zero(T); sxy = zero(T); sxz = zero(T); syz = zero(T)
@@ -200,37 +214,34 @@ end
             elseif mode == 4
                 ux = _interp(l, a1, a2, a3, a4, 1); uy = _interp(l, a1, a2, a3, a4, 2); uz = _interp(l, a1, a2, a3, a4, 3)
             elseif mode == 5
-                ux = T(_pcs_gather(G, 1, gx, gy, gz, ng)); uy = T(_pcs_gather(G, 2, gx, gy, gz, ng))
-                uz = T(_pcs_gather(G, 3, gx, gy, gz, ng))
+                gg = _pcs_gather(G, Val(3), Ix, Iy, Iz, w0x, w0y, w0z)
+                ux = T(gg[1]); uy = T(gg[2]); uz = T(gg[3])
             elseif mode == 6
-                bx = T(_pcs_gather(G, 1, gx, gy, gz, ng)); by = T(_pcs_gather(G, 2, gx, gy, gz, ng))
-                bz = T(_pcs_gather(G, 3, gx, gy, gz, ng))
+                gg = _pcs_gather(G, Val(3), Ix, Iy, Iz, w0x, w0y, w0z)
+                bx = T(gg[1]); by = T(gg[2]); bz = T(gg[3])
                 sxx = bx * bx; syy = by * by; szz = bz * bz; sxy = bx * by; sxz = bx * bz; syz = by * bz
             elseif mode == 7
-                sxx = T(_pcs_gather(G, 1, gx, gy, gz, ng)); syy = T(_pcs_gather(G, 2, gx, gy, gz, ng))
-                szz = T(_pcs_gather(G, 3, gx, gy, gz, ng)); sxy = T(_pcs_gather(G, 4, gx, gy, gz, ng))
-                sxz = T(_pcs_gather(G, 5, gx, gy, gz, ng)); syz = T(_pcs_gather(G, 6, gx, gy, gz, ng))
+                gg = _pcs_gather(G, Val(6), Ix, Iy, Iz, w0x, w0y, w0z)
+                sxx = T(gg[1]); syy = T(gg[2]); szz = T(gg[3]); sxy = T(gg[4]); sxz = T(gg[5]); syz = T(gg[6])
             else
                 c = mode == 8 ? vx : (mode == 9 ? vy : vz)
             end
             ux *= invh; uy *= invh; uz *= invh
             ih2 = invh * invh
             sxx *= ih2; syy *= ih2; szz *= ih2; sxy *= 2ih2; sxz *= 2ih2; syz *= 2ih2
-            ix = floor(Int, gx); iy = floor(Int, gy); iz = floor(Int, gz)
-            for oz in -1:2
-                sz = iz + oz - gz
-                w0z = _pcs0(sz); w1z = _pcs1(sz); w2z = _pcs2(sz)
-                for oy in -1:2
-                    sy = iy + oy - gy
-                    w0y = _pcs0(sy); w1y = _pcs1(sy); w2y = _pcs2(sy)
-                    for ox in -1:2
-                        sx = ix + ox - gx
-                        w0x = _pcs0(sx); w1x = _pcs1(sx); w2x = _pcs2(sx)
-                        w = c * w0x * w0y * w0z +
-                            ux * w1x * w0y * w0z + uy * w0x * w1y * w0z + uz * w0x * w0y * w1z +
-                            sxx * w2x * w0y * w0z + syy * w0x * w2y * w0z + szz * w0x * w0y * w2z +
-                            sxy * w1x * w1y * w0z + sxz * w1x * w0y * w1z + syz * w0x * w1y * w1z
-                        KernelAbstractions.@atomic mesh[mod(ix + ox, ng) + 1, mod(iy + oy, ng) + 1, mod(iz + oz, ng) + 1] += TA(mt * w)
+            w1x = _pcsw(_pcs1, ix, gx); w1y = _pcsw(_pcs1, iy, gy); w1z = _pcsw(_pcs1, iz, gz)
+            w2x = _pcsw(_pcs2, ix, gx); w2y = _pcsw(_pcs2, iy, gy); w2z = _pcsw(_pcs2, iz, gz)
+            for oz in 1:4
+                for oy in 1:4
+                    # weights factorised per (y, z) line: node weight = Σ_terms wx(term) · A(term)
+                    a0 = w0y[oy] * w0z[oz]; ay1 = w1y[oy] * w0z[oz]; az1 = w0y[oy] * w1z[oz]
+                    ayy = w2y[oy] * w0z[oz]; azz = w0y[oy] * w2z[oz]; ayz = w1y[oy] * w1z[oz]
+                    k0 = c * a0 + uy * ay1 + uz * az1 + syy * ayy + szz * azz + syz * ayz   # × w0x
+                    k1 = ux * a0 + sxy * ay1 + sxz * az1                                    # × w1x
+                    k2 = sxx * a0                                                           # × w2x
+                    for ox in 1:4
+                        w = w0x[ox] * k0 + w1x[ox] * k1 + w2x[ox] * k2
+                        KernelAbstractions.@atomic mesh[Ix[ox], Iy[oy], Iz[oz]] += TA(mt * w)
                     end
                 end
             end
