@@ -19,8 +19,10 @@ export load_config, analyse, linear_psi1_modes
 """Exact linear displacement shape ψ₁ = −i k φ at D = 1 on the integer wave-vectors `nvec` (coefficients
 f_k = rfft/N³), from the IR potential (long modes only) of (seed_L, sign)."""
 function linear_psi1_modes(cfg, seed_L, sign, nvec, pk; cache=Dict())
+    pw = get(cfg, "planewaves", Dict())
     s = PairSpec(N=cfg["N_ic"], N_ic=cfg["N_ic"], L=cfg["L"], k_split=cfg["k_split"], k_uv=cfg["k_uv"],
-                 long_sign=sign, seed_L=seed_L)
+                 long_sign=sign, seed_L=seed_L, pw=[Tuple(Int.(n)) for n in get(pw, "n", [])], pw_amp=get(pw, "amp", 0.0))
+    # (the plane-wave background, if any, is deliberately excluded: x is the linear field of the waves alone)
     φ = make_fphi(s, pk, :IR; T=Float64, cache=cache)
     N = cfg["N_ic"]; L = cfg["L"]
     out = zeros(ComplexF64, size(nvec, 1), 3)

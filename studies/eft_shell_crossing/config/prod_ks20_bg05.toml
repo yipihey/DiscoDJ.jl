@@ -1,0 +1,41 @@
+# Production plane-wave run: long field = ±ε Σ cos(k_j·x) (12 waves, δ amplitude ε at D = 1), band = modes
+# k_split ≤ |k| < k_uv of each realization's own white noise (single_field), fixed random long background (k < k_split) scaled by 0.5; IR members run.
+# PM: discreteness-suppressed BullFrog, 100 steps uniform in D over [0.15, 1] from 7LPT ICs (late start:
+# 7LPT = PM before first crossing at D ≈ 0.225; steps validated against 400 steps, scripts/step_convergence.jl).
+name = "prod_ks20_bg05"
+L = 500.0
+N_ic = 256
+k_split = 0.2
+k_uv = 1.2
+k_store = 0.250
+epochs = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+[lpt]
+N = 256
+n_max = 7
+mode = "fast"
+
+[pm]
+N = 256
+res_pm = 512
+n_steps = 100
+D_ini = 0.15
+ic_order = 7
+ic_mode = "lean"
+worder = 4           # PCS
+grad_kernel_order = 0  # spectral ik
+deconvolve = true
+antialias = 1        # interlacing
+n_resample = 2       # 2³ Fourier sheet resampling
+
+[planewaves]
+n = [[-1, 2, -1], [-1, -2, 0], [2, 1, 2], [2, 2, 1], [-3, 2, 1], [-3, -2, 1], [0, 3, -4], [2, 3, -4], [5, 2, 3], [-4, -5, -2], [-1, 8, 3], [3, -9, 0]]
+amp = 0.01
+background = 0.5
+
+[seeds]
+long = [1, 2, 3, 4]
+single_field = true
+short = []
+signs = [1, -1]
+members = ["IR", "UV"]

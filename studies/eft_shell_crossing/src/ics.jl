@@ -13,7 +13,7 @@
 # amplitude.  The masks depend on |k| only, so they commute with Hermitian conjugation and the
 # spectra stay canonical (required by cuFFT's C2R).
 
-export eds_cosmology, planck_pk, PairSpec, kmag_half, white_noise_hat, make_fphi, make_fphi_gauss, embed_fphi,
+export eds_cosmology, planck_pk, PairSpec, planewave_phi_hat, kmag_half, white_noise_hat, make_fphi, make_fphi_gauss, embed_fphi,
        band_sigmas
 
 """Einstein–de Sitter background (Ω_m = 1, D₊ = a) with Planck18 h, n_s: the nLPT growth
@@ -35,6 +35,12 @@ Base.@kwdef struct PairSpec
     long_sign::Int = 1           # s_L = ±1
     seed_L::Int = 1
     seed_S::Int = 1001
+    pw::Vector{NTuple{3,Int}} = NTuple{3,Int}[]   # if set: long modes replaced by plane waves at these integer
+    pw_amp::Float64 = 0.0                          # wave-vectors, δ = pw_amp · cos(k·x) each at D = 1 (sign s_L)
+    pw_flip::Vector{NTuple{3,Int}} = NTuple{3,Int}[]   # subset of pw whose sign is additionally flipped (group B of
+                                                        # an A/B sign design: isolates the A×B coupling at k_a ± k_b)
+    pw_bg::Float64 = 0.0         # with plane waves: add the seed_L long modes (|k| < k_split) scaled by pw_bg as a fixed
+                                 # background (NOT flipped by s_L; its modes at ±n_j are removed)
 end
 
 """|k| on the rfft half-grid (N,N,N÷2+1), DISCO-DJ k-vector convention."""
@@ -68,14 +74,43 @@ function make_fphi(s::PairSpec, pk, which::Symbol; T=Float32, cache=nothing)
     wL = get!(() -> white_noise_hat(s.seed_L, s.N), (:wn, s.seed_L, s.N))
     out = similar(wL)
     lo = max(s.k_split, s.k_lo)
-    if which === :IR || s.band_amp == 0
+    if isempty(s.pw)
         @. out = ifelse(kk < s.k_split, s.long_sign * wL, zero(eltype(wL))) * sc
     else
+        all(n -> 2π / s.L * sqrt(sum(abs2, n)) < s.k_split, s.pw) || error("plane waves must lie below k_split")
+        issubset(s.pw_flip, s.pw) || error("pw_flip must be a subset of pw")
+        out .= s.long_sign .* get!(() -> planewave_phi_hat(s.pw, s.pw_amp, s.N, s.L), (:pw, s.pw, s.pw_amp, s.N, s.L))
+        isempty(s.pw_flip) || (out .-= (2 * s.long_sign) .* planewave_phi_hat(s.pw_flip, s.pw_amp, s.N, s.L))
+        if s.pw_bg != 0
+            bg = @. ifelse(kk < s.k_split, s.pw_bg * wL, zero(eltype(wL))) * sc
+            for n in s.pw, m in (n, .-n)                 # remove the background's own modes at the plane waves
+                m[3] >= 0 && (bg[mod(m[1], s.N) + 1, mod(m[2], s.N) + 1, m[3] + 1] = 0)
+            end
+            out .+= bg
+        end
+    end
+    if which === :UV && s.band_amp != 0
         wS = get!(() -> white_noise_hat(s.seed_S, s.N), (:wn, s.seed_S, s.N))
-        @. out = (ifelse(kk < s.k_split, s.long_sign * wL, zero(eltype(wL))) +
-                  ifelse((kk >= lo) & (kk < s.k_uv), s.band_amp * wS, zero(eltype(wS)))) * sc
+        @. out += ifelse((kk >= lo) & (kk < s.k_uv), s.band_amp * wS, zero(eltype(wS))) * sc
     end
     return Complex{T}.(out)
+end
+
+"""
+    planewave_phi_hat(ns, amp, N, L) -> (N,N,N÷2+1) ComplexF64
+
+Initial potential (same normalisation as `make_fphi`: unnormalised rfft of the real-space φ with ∇²φ = δ) of
+δ(x) = amp Σ_j cos(2π n_j·x/L) at D = 1.  Built in real space so the half spectrum is exactly Hermitian; the
+cosine phase makes the result independent of the sign convention of k."""
+function planewave_phi_hat(ns, amp, N::Int, L::Real)
+    φ = zeros(Float64, N, N, N)
+    for n in ns
+        k2 = (2π / L)^2 * sum(abs2, n)
+        @inbounds for l in 1:N, j in 1:N, i in 1:N
+            φ[i, j, l] -= amp / k2 * cospi(2 * mod(n[1] * (i - 1) + n[2] * (j - 1) + n[3] * (l - 1), N) / N)
+        end
+    end
+    return rfft(φ, [3, 1, 2])
 end
 
 PairSpec(s::PairSpec; kw...) = PairSpec(; (f => getfield(s, f) for f in fieldnames(PairSpec))..., kw...)

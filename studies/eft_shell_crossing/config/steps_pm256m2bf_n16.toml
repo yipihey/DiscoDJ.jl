@@ -1,0 +1,33 @@
+# Time-step convergence (single realization) — conv_pm256m2bf with n_steps = 16; outputs only at the epochs below
+# Fiducial experiment: EdS background, Planck18 spectral shape (σ8 = 0.8105 at D = 1).
+# Long modes |k| < k_split shared; the UV member adds the band k_split ≤ |k| < k_uv.
+name = "steps_pm256m2bf_n16"
+L = 500.0            # Mpc/h
+N_ic = 256           # white-noise grid defining each realization (embedded into finer grids)
+k_split = 0.2        # h/Mpc
+k_uv = 1.2           # h/Mpc
+k_store = 0.25       # store Fourier modes with |k| ≤ k_store
+epochs = [0.02, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]   # D = a (EdS)
+
+[lpt]
+N = 256
+n_max = 7
+mode = "fast"
+
+[pm]
+N = 256
+res_pm = 512
+n_steps = 16        # uniform in D over [D_ini, 1], epochs inserted as nodes
+D_ini = 0.02
+ic_order = 3
+ic_mode = "lean"
+worder = 4           # PCS
+grad_kernel_order = 0
+deconvolve = true
+antialias = 1
+n_resample = 2
+
+[seeds]
+long = [1]
+short = [1001]
+signs = [1]

@@ -211,4 +211,48 @@ end
     @test maximum(abs.(Pp[ok] ./ (L^3 .* refp[ok] ./ cnt[ok] ./ N^6) .- 1)) < 1e-6
 end
 
+
+@testset "plane-wave long field: δ = amp·cos(k·x), Hermitian, band unchanged, embedding exact" begin
+    ns = [(3, 0, 0), (0, 2, 5)]; amp = 0.03
+    s = PairSpec(N=N, N_ic=N, L=L, k_split=0.25, k_uv=0.45, seed_L=3, seed_S=7, pw=ns, pw_amp=amp)
+    fIR = make_fphi(s, pk, :IR; T=Float64); fUV = make_fphi(s, pk, :UV; T=Float64)
+    kk = kmag_half(N, L)
+    δ = irfft(.-kk .^ 2 .* fIR, N, [3, 1, 2])
+    x = [(i - 1, j - 1, l - 1) for i in 1:N, j in 1:N, l in 1:N]
+    ref = [amp * sum(cospi(2 * (n[1] * a[1] + n[2] * a[2] + n[3] * a[3]) / N) for n in ns) for a in x]
+    @test maximum(abs.(δ .- ref)) < 1e-12
+    @test count(>(1e-9 * maximum(abs, fIR)), abs.(fIR)) == 3   # (±3,0,0) in the kz = 0 plane, (0,2,5)
+    b0 = make_fphi(PairSpec(s; pw=NTuple{3,Int}[], pw_amp=0.0), pk, :UV; T=Float64) .- make_fphi(PairSpec(s; pw=NTuple{3,Int}[], pw_amp=0.0), pk, :IR; T=Float64)
+    @test fUV .- fIR ≈ b0
+    @test make_fphi(PairSpec(s; long_sign=-1), pk, :IR; T=Float64) == .-fIR
+    @test_throws ErrorException make_fphi(PairSpec(s; pw=[(30, 0, 0)]), pk, :IR)
+    f2 = make_fphi(PairSpec(s; N=2N), pk, :UV; T=Float64)
+    @test f2 ≈ embed_fphi(fUV, 2N; T=Float64)
+end
+
+
+@testset "plane waves on a fixed long background: odd part = waves, even part = background without the wave modes" begin
+    ns = [(3, 0, 0), (0, 2, 5)]
+    s = PairSpec(N=N, N_ic=N, L=L, k_split=0.25, k_uv=0.45, seed_L=3, seed_S=7, pw=ns, pw_amp=0.03, pw_bg=0.5)
+    p = make_fphi(s, pk, :IR; T=Float64); m = make_fphi(PairSpec(s; long_sign=-1), pk, :IR; T=Float64)
+    @test (p .- m) ./ 2 ≈ planewave_phi_hat(ns, 0.03, N, L)
+    bg = (p .+ m) ./ 2
+    ref = 0.5 .* make_fphi(PairSpec(s; pw=NTuple{3,Int}[], pw_amp=0.0, pw_bg=0.0), pk, :IR; T=Float64)
+    @test bg[4, 1, 1] == 0 && bg[N - 2, 1, 1] == 0 && bg[1, 3, 6] == 0          # (±3,0,0), (0,2,5) removed
+    keep = trues(size(bg)); keep[4, 1, 1] = keep[N - 2, 1, 1] = keep[1, 3, 6] = false
+    @test bg[keep] ≈ ref[keep]
+    @test make_fphi(PairSpec(s; long_sign=-1), pk, :UV; T=Float64) .- m ≈ make_fphi(s, pk, :UV; T=Float64) .- p
+end
+
+
+@testset "A/B plane-wave sign groups: (+,−) flips only group B" begin
+    ns = [(3, 0, 0), (0, 2, 5), (1, 1, 1)]; B = [(0, 2, 5)]
+    s = PairSpec(N=N, N_ic=N, L=L, k_split=0.25, k_uv=0.45, seed_L=3, seed_S=7, pw=ns, pw_amp=0.03)
+    f = make_fphi(PairSpec(s; pw_flip=B), pk, :UV; T=Float64) .- make_fphi(s, pk, :UV; T=Float64)
+    @test f ≈ -2 .* planewave_phi_hat(B, 0.03, N, L)
+    @test make_fphi(PairSpec(s; pw_flip=B, long_sign=-1), pk, :IR; T=Float64) ≈
+          planewave_phi_hat(B, 0.03, N, L) .- planewave_phi_hat([(3, 0, 0), (1, 1, 1)], 0.03, N, L)
+    @test_throws ErrorException make_fphi(PairSpec(s; pw_flip=[(4, 0, 0)]), pk, :IR)
+end
+
 end

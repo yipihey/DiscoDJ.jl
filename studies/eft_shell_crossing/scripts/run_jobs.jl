@@ -43,9 +43,15 @@ stress_sets(cfg, dev) = haskey(cfg, "stress") ?
     [ModeSet(Nm, cfg["L"], cfg["k_store"]; to_device=dev) for Nm in cfg["stress"]["meshes"]] : nothing
 cis_epochs(cfg) = haskey(cfg, "cis") ? Float64.(get(cfg["cis"], "epochs", cfg["epochs"])) : Float64[]
 
+# sign codes: ±1 = all plane waves ×(±1); ±2 = group A ×(±1), group B (planewaves.group_b, 1-based) ×(∓1)
+_pwn(cfg) = [Tuple(Int.(n)) for n in get(get(cfg, "planewaves", Dict()), "n", [])]
+_pwflip(cfg, sg) = abs(sg) == 2 ? _pwn(cfg)[Int.(cfg["planewaves"]["group_b"])] : NTuple{3,Int}[]
 spec_of(cfg, N, sL, sS, sg) = PairSpec(N=N, N_ic=cfg["N_ic"], L=cfg["L"], k_split=cfg["k_split"], k_uv=cfg["k_uv"],
                                        k_lo=get(cfg, "k_lo", 0.0), band_amp=get(cfg, "band_amp", 1.0),
-                                       long_sign=sg, seed_L=sL, seed_S=sS == 0 ? 1 : sS)
+                                       long_sign=Int(sign(sg)), seed_L=sL, seed_S=sS == 0 ? 1 : sS,
+                                       pw=_pwn(cfg), pw_flip=_pwflip(cfg, sg),
+                                       pw_amp=get(get(cfg, "planewaves", Dict()), "amp", 0.0),
+                                       pw_bg=get(get(cfg, "planewaves", Dict()), "background", 0.0))
 
 function write_common(f, cfg, ms, j)
     f["nvec"] = ms.nvec; f["epochs"] = Float64.(cfg["epochs"])

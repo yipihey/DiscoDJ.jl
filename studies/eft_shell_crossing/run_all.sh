@@ -49,6 +49,19 @@ julia --project=. scripts/pk_convergence.jl pkconv_pm256bf pkconv_pm384bf pkconv
 CUDA_VISIBLE_DEVICES="" julia --project=. -t 32 scripts/controls.jl
 $PY chs/chs_fig3.py; $PY chs/band_edge.py          # needs camb
 
+# 5b. plane-wave (ε → 0) counterterms, §14: time-step ladder, k_split ladder, long-background scan, A/B kernel
+export JULIA_CUDA_HARD_MEMORY_LIMIT=${JULIA_CUDA_HARD_MEMORY_LIMIT:-20GiB}     # leave room for other GPU users
+MODEL=pm scripts/run_queue.sh config/steps_pm256m2bf_n{8,16,32,64,400}.toml config/steps_pm256m2bf_n{16,32,100}_di15o7.toml
+julia --project=. scripts/step_convergence.jl steps_pm256m2bf_n400 steps_pm256m2bf_n8 steps_pm256m2bf_n16 steps_pm256m2bf_n32 \
+      steps_pm256m2bf_n64 conv_pm256m2bf steps_pm256m2bf_n16_di15o7 steps_pm256m2bf_n32_di15o7 steps_pm256m2bf_n100_di15o7
+PW="prod_ks12 prod_ks15 prod_ks20 prod_ks25 prod_ks33 prod_ks50 prod_ks70"
+for c in $PW prod_ks20_bg05 prod_ks20_bg10 prod_ks20_ab; do MODEL=all scripts/run_queue.sh config/$c.toml; done
+MODEL=pm scripts/run_queue.sh config/prod_ks50_ir.toml             # bare-wave PM diagnostic (§14.2)
+julia --project=. scripts/pw_production.jl $PW prod_ks20_bg05 prod_ks20_bg10
+julia --project=. scripts/pw_robustness.jl $PW prod_ks20_bg05 prod_ks20_bg10
+julia --project=. scripts/ab_kernel.jl prod_ks20 prod_ks20_ab
+
 # 6. figures and tables
 EFTSC_FIG_CONFIG=fiducial $PY figures.py results figures
 $PY figures_rg.py results figures
+$PY figures_pw.py results figures

@@ -1,0 +1,38 @@
+# Plane-wave pilot: long field = ±ε Σ cos(k_j·x) (δ amplitude ε at D = 1) instead of random long modes; same band (seed 1001)
+# Fiducial experiment: EdS background, Planck18 spectral shape (σ8 = 0.8105 at D = 1).
+# Long modes |k| < k_split shared; the UV member adds the band k_split ≤ |k| < k_uv.
+name = "pw_multi_e02"
+L = 500.0            # Mpc/h
+N_ic = 256           # white-noise grid defining each realization (embedded into finer grids)
+k_split = 0.2        # h/Mpc
+k_uv = 1.2           # h/Mpc
+k_store = 0.25       # store Fourier modes with |k| ≤ k_store
+epochs = [0.02, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]   # D = a (EdS)
+
+[lpt]
+N = 256
+n_max = 7
+mode = "fast"
+
+[pm]
+N = 256
+res_pm = 512
+n_steps = 200        # uniform in D over [D_ini, 1]
+D_ini = 0.02
+ic_order = 3
+ic_mode = "lean"
+worder = 4           # PCS
+grad_kernel_order = 0
+deconvolve = true
+antialias = 1
+n_resample = 2
+
+[planewaves]
+n = [[3, 0, 0], [0, 5, 0], [0, 0, 8], [4, 4, 0], [2, -3, 6], [-5, 4, 6]]     # integer wave-vectors (k = 2π n / L), all below k_split
+amp = 0.02
+
+[seeds]
+long = [1]           # unused for the long field (plane waves)
+short = [1001]
+signs = [1, -1]
+members = ["UV"]

@@ -50,6 +50,13 @@ CAPTIONS = {
     "figR5_bao_consequence": "Coherent ΔP/P and stochastic P_ε/P_L at BAO wavenumbers vs k_split.",
     "figR6_counts_in_spheres": "Counts in spheres: variance decomposition, real-space EFT slope vs weighted Fourier prediction, Δδ_R vs ∇²δ_R scatter.",
     "figR7_flux_decomposition": "Mass flux across the sphere boundary: diffusion (1LPT), + infall (3LPT/7LPT), + multistream (PM).",
+    "figP1_cs_vs_time": "Plane-wave (ε → 0) coefficient vs D at k_split = 0.2: LPT orders, LPT∞, PM, PM on a long background (a = 0.5, 1) and the random-long-field ensemble of §6; (b) departure PM − 7LPT and the crossed mass.",
+    "figP2_cs_running": "ε → 0 coefficient vs the cutoff k_split (PM solid, one loop dashed) and the departure from the pressureless series, at D = 0.3–1.",
+    "figP3_loop_ladder": "Every contribution to the k² response at k_split = 0.2, isolated by construction: one loop, two-loop and higher short×short, long×short (perturbative and beyond PT), and the beyond-PT counterterm.",
+    "figP4_background_scan": "Response vs long-background power a²: one loop is independent of the long modes; PM departs from the two-loop a² scaling after D ≈ 0.6 and reaches the random-ensemble value at a = 1.",
+    "figP5_second_order_kernel": "Second-order (A×B) plane-wave kernel relative to the 2LPT tree: pressureless enhancement vs PM's suppressive counterterm, mean over 70 pairs and per pair.",
+    "figP6_per_wave_fits": "Per-wave −R/k² with the two- and three-term fits (k_split = 0.2, 0.5): fit adequacy, and the low-k PM floor R₀ at k_split = 0.5 (§14.2).",
+    "figP7_step_convergence": "BullFrog time-step convergence of C₂ against 400 steps, for the early (D = 0.02, 3LPT) and late (D = 0.15, 7LPT) starts.",
 }
 
 
@@ -70,7 +77,7 @@ def main(out):
     body = markdown.markdown(md, extensions=["tables", "fenced_code", "toc", "sane_lists"])
     body = relink(body)
     figs = sorted(glob.glob(os.path.join(HERE, "figures", "*.png")),
-                  key=lambda p: (os.path.basename(p).startswith("figR"),
+                  key=lambda p: ({"fig": 0, "figR": 1, "figP": 2}[re.match(r"fig[RP]?", os.path.basename(p)).group(0)],
                                  int(re.sub(r"\D", "", os.path.basename(p).split("_")[0]) or 0)))
     gallery = ['<h2 id="figures">Figures</h2><div class="gallery">']
     for p in figs:
