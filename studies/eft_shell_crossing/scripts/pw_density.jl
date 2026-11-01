@@ -8,6 +8,9 @@
 # 1LPT is purely kinematic and known exactly: R_ZA(k) = exp(−½D² k·Σ·k) − 1, Σ = ⟨ψψ⟩ of the realization's own band
 # (→ C₂^δ = σ²_ψ D²/6).  The CIC deposit has a coherent bias on near-lattice loads (≈ −0.18k²), so the measured 1LPT
 # differs from this at early times.  "clean" response: R_m − R_1LPT + R_ZA (same deposit, same particles ⇒ bias cancels).
+# results/pw_density_perseed.json keeps per-realization arrays for matched differences (model, epoch, wave, seed):
+#   R    relative to the bare wave x (the fits above)      Rref  relative to the band-free member (= R when that member is x)
+#   Rv   Lagrangian velocity response, same reference      RZA   kinematic R_ZA of the realization's band
 include(joinpath(@__DIR__, "..", "src", "EFTShell.jl"))
 using .EFTShell, Printf, Statistics, JSON3
 scratch() = get(ENV, "EFTSC_SCRATCH", "/zpool/nvme/data/tabel_scratch/eft_shell_crossing")
@@ -31,7 +34,8 @@ jk(f, X) = begin   # X: (wave, seed)
     parts = [f(vec(mean(X[:, setdiff(1:n, i)]; dims=2))) for i in 1:n]; m = sum(parts) ./ n
     full, sqrt.((n - 1) / n .* sum(p -> (p .- m) .^ 2, parts))
 end
-out = Dict{String,Any}()
+nest3(A) = [[[isfinite(A[e, j, i]) ? A[e, j, i] : nothing for i in axes(A, 3)] for j in axes(A, 2)] for e in axes(A, 1)]   # JSON has no NaN (PM before D_ini)
+out = Dict{String,Any}(); perseed = Dict{String,Any}()
 for name in ARGS
     cfg, runs = load_config(joinpath(scratch(), name)); pk = planck_pk()
     kf = 2π / cfg["L"]; E = Float64.(cfg["epochs"]); Dini = cfg["pm"]["D_ini"]
@@ -43,6 +47,7 @@ for name in ARGS
     ψ1 = linear_psi1_modes(cfg, 1, 1, nvec, pk)[idx, :]
     res = Dict{String,Any}("k" => k, "epochs" => Float64[], "k_split" => cfg["k_split"], "models" => Dict{String,Any}())
     R = Dict(m => fill(NaN, length(E), length(k), length(seeds)) for m in MODELS)
+    Rref = Dict(m => fill(NaN, length(E), length(k), length(seeds)) for m in MODELS); Rv = deepcopy(Rref)
     kvs = kv[o, :]; RZA = fill(NaN, length(E), length(k), length(seeds)); cache = Dict(); sig2 = Float64[]
     for (is, s) in enumerate(seeds)
         Σ = band_tensor(cfg, s, pk, cache); push!(sig2, Σ[1, 1] + Σ[2, 2] + Σ[3, 3])
@@ -61,6 +66,12 @@ for name in ARGS
         ref = (ip === nothing || imn === nothing) ? x : (dens(ip) .- dens(imn)) ./ 2
         Δ = (dens(up) .- dens(um)) ./ 2 .- ref
         R[m][e, :, is] .= (real.(Δ .* conj.(x)) ./ abs2.(x))[o]
+        Rref[m][e, :, is] .= (real.(Δ .* conj.(ref)) ./ abs2.(ref))[o]
+        vel(r) = EFTShell._fields(r, m, e, D)[2][idx, :]
+        xv = longitudinal(ψ1, kv)
+        vref = (ip === nothing || imn === nothing) ? xv : longitudinal((vel(ip) .- vel(imn)) ./ 2, kv)
+        Δv = longitudinal((vel(up) .- vel(um)) ./ 2, kv) .- vref
+        Rv[m][e, :, is] .= (real.(Δv .* conj.(xv)) ./ abs2.(xv))[o]
     end
     A2 = hcat(-k .^ 2, k .^ 4); A0 = hcat(ones(length(k)), -k .^ 2, k .^ 4); lo = k .<= 0.1; A1 = reshape(-k[lo] .^ 2, :, 1)
     for m in MODELS
@@ -78,6 +89,9 @@ for name in ARGS
         res["models"][m] = rows
     end
     out[name] = res
+    perseed[name] = Dict("k" => k, "epochs" => E, "seeds" => seeds, "RZA" => nest3(RZA),
+                         "R" => Dict(m => nest3(R[m]) for m in MODELS), "Rref" => Dict(m => nest3(Rref[m]) for m in MODELS),
+                         "Rv" => Dict(m => nest3(Rv[m]) for m in MODELS))
     kin = sum(sig2) / length(sig2) / 6
     @printf "\n%s  k_split = %.2f, a = %.1f   σ²_ψ,band/6 = %.3f (realized)\n" name cfg["k_split"] get(cfg["planewaves"], "background", 0.0) kin
     println("   D  | deposit bias: C₂(1LPT, k²-only) − σ²D²/6 | clean C₂δ/D², 2-term: 3LPT   7LPT   PM ± σ    | PM k²-only ± σ | PM/kinematic | ΔP/P at k=0.05")
@@ -87,3 +101,4 @@ for name in ARGS
     end
 end
 open(io -> JSON3.write(io, out), joinpath(@__DIR__, "..", "results", "pw_density.json"), "w")
+open(io -> JSON3.write(io, perseed), joinpath(@__DIR__, "..", "results", "pw_density_perseed.json"), "w")
