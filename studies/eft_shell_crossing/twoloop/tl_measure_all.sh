@@ -1,20 +1,23 @@
 #!/bin/bash
 # Experiment 3 CPU measurements: every (config, model, seed, sign) whose inputs exist and whose output does not.
-#   ./tl_measure_all.sh [njobs=20]        (re-run as snapshots appear; FFTW single-threaded, 4 Julia threads each)
+#   ./tl_measure_all.sh [njobs=12] [configs...]   (re-run as snapshots appear; FFTW single-threaded, 4 Julia threads each)
+#   Campaign safety limit: at most 12 jobs. A PM or LPT member counts as ready only when its final member file exists:
+#   snapshots are not written atomically, so a crash during the last snapshot must not pass as a complete member.
 cd "$(dirname "$0")"
 export EFTSC_SCRATCH=${EFTSC_SCRATCH:-/zpool/nvme/data/tabel_scratch/eft_shell_crossing}
 export CUDA_VISIBLE_DEVICES="" TL_FILTER=${TL_FILTER:-sharp}
-NJ=${1:-20}
+NJ=${1:-12}; [ "$NJ" -gt 12 ] && { echo "refusing more than 12 jobs (campaign safety rule)"; exit 2; }
+shift; CONFIGS=("$@"); [ ${#CONFIGS[@]} -eq 0 ] && CONFIGS=(tl_full tl_uv06 tl_uv10 tl_div tl_div10 tl_ir010 tl_ir015 tl_ir020 tl_ir030)
 jobs=()
-for cfg in tl_full tl_uv06 tl_uv10 tl_div tl_div10 tl_ir010 tl_ir015 tl_ir020 tl_ir030; do
+for cfg in "${CONFIGS[@]}"; do
   d=$EFTSC_SCRATCH/$cfg/snap; [ -d $d ] || continue
   case $cfg in tl_ir*) lam=$(python3 -c "print(int('${cfg:5}')/100)");; *) lam="0.1,0.15,0.2,0.3";; esac
   for s in 1 2 3 4; do for sg in +1 -1; do
     for m in pm lpt3 lpt5 lpt7; do
       out=$EFTSC_SCRATCH/$cfg/tl/stress_${TL_FILTER}_${m}_L${s}_s${sg}.h5
       [ -f $out ] && continue
-      if [ $m = pm ]; then [ -f $d/pm_IR_L${s}_S0_s${sg}_D1.000.h5 ] || continue
-      else [ -f $d/lpt_IR_L${s}_S0_s${sg}_shapes.h5 ] || continue; fi
+      if [ $m = pm ]; then [ -f $EFTSC_SCRATCH/$cfg/pm_IR_L${s}_S0_s${sg}.h5 ] && [ -f $d/pm_IR_L${s}_S0_s${sg}_D1.000.h5 ] || continue
+      else [ -f $EFTSC_SCRATCH/$cfg/lpt_IR_L${s}_S0_s${sg}.h5 ] && [ -f $d/lpt_IR_L${s}_S0_s${sg}_shapes.h5 ] || continue; fi
       jobs+=("$cfg $m $s ${sg#+} $lam")
     done
   done; done
