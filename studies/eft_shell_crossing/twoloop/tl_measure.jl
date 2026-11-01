@@ -40,7 +40,8 @@ end
 
 function do_stress(cfgname, model, seed, sign)
     cfg = TOML.parsefile(joinpath(scratch(), cfgname, "config.toml")); L = cfg["L"]
-    out = joinpath(scratch(), cfgname, "tl", @sprintf("stress_%s_%s_L%d_s%+d.h5", FILTER, model, seed, sign)); mkpath(dirname(out))
+    final = joinpath(scratch(), cfgname, "tl", @sprintf("stress_%s_%s_L%d_s%+d.h5", FILTER, model, seed, sign)); mkpath(dirname(final))
+    out = final * ".tmp"                                   # atomic: the output exists only when complete
     md = TLModes(L, KSTORE)
     h5open(out, "w") do h
         h["nvec"] = md.nvec; h["lambdas"] = LAMBDAS; h["epochs"] = Float64.(cfg["snap_epochs"])
@@ -58,6 +59,7 @@ function do_stress(cfgname, model, seed, sign)
             @printf "%s %s L%d s%+d D=%.2f  %.1f s\n" Dates.format(now(), "HH:MM:SS") model seed sign D time() - t0; flush(stdout)
         end
     end
+    mv(out, final; force=true)
 end
 
 function do_ops(cfgname, seed)
@@ -69,7 +71,8 @@ function do_ops(cfgname, seed)
     kk = kmag_half(N, L)
     δL = irfft(-(kk .^ 2) .* φh, N, [3, 1, 2])                   # real-space linear δ at D = 1
     md = TLModes(L, KSTORE)
-    out = joinpath(scratch(), cfgname, "tl", @sprintf("ops_%s_L%d.h5", FILTER, seed)); mkpath(dirname(out))
+    final = joinpath(scratch(), cfgname, "tl", @sprintf("ops_%s_L%d.h5", FILTER, seed)); mkpath(dirname(final))
+    out = final * ".tmp"
     h5open(out, "w") do h
         h["nvec"] = md.nvec; h["lambdas"] = LAMBDAS
         h["dL"] = StressTL.extract(rfft(δL), md, N)
@@ -84,6 +87,7 @@ function do_ops(cfgname, seed)
             @printf "ops L%d Λ=%.2f  %.1f s\n" seed Λ time() - t0; flush(stdout)
         end
     end
+    mv(out, final; force=true)
 end
 
 # the same P(k) the runs used (EdS shape or ΛCDM; [pk_mod] UV tilt)

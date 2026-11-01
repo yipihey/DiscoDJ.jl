@@ -64,6 +64,8 @@ function spt_fields(g::Grid, δ1h; nmax::Int=3)
     return δ, θ
 end
 
+oversamp(filter) = parse(Float64, get(ENV, "TL_OPS_KNY", filter === :sharp ? "3" : "7"))
+
 """
     build_operators(δLh, gN, L, Λ, md) -> Dict(name => (M,6) modes)
 
@@ -71,7 +73,9 @@ end
 all C-functions on a grid whose Nyquist is ≥ 7Λ (alias-free cubic products), and extracts them on `md`."""
 function build_operators(δL::Array{Float64,3}, L::Real, Λ::Real, md::TLModes; filter::Symbol=:sharp, responses::Bool=true)
     Nf = size(δL, 1)
-    No = min(Nf, max(64, 2 * ceil(Int, 7Λ * L / (2π) + 1)))
+    # alias-free for the fitted modes (k < Λ): all fields are at most cubic in δ₁, so with sharp input (≤ Λ) a Nyquist of 3Λ
+    # suffices (2k_Ny − 3Λ > Λ, and second-order content ≤ 2Λ is represented exactly); Gaussian tails need 7Λ.
+    No = min(Nf, max(64, 2 * ceil(Int, oversamp(filter) * Λ * L / (2π) + 1)))
     gf = Grid(Nf, L); g = Grid(No, L)
     Fh = rfft(δL)
     kkeep = filter === :sharp ? Λ : 3.5Λ
