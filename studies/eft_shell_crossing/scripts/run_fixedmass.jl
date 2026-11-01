@@ -5,7 +5,8 @@
 # The config names a `base` configuration (ICs, cosmology, solvers, epochs) and adds a [fixedmass]
 # table; [seeds] there overrides the base seeds.  Output: $EFTSC_SCRATCH/<name>/fm_<model>_<member>_
 # L<seedL>_S<seedS>_s<±1>.h5 with one group per snapshot ("e<epoch index>_o<LPT order | 0 for PM>").
-# Restartable: existing files are skipped.  FM_DEVICE=cpu (or [fixedmass] device = "cpu") runs everything on the
+# Restartable: finished files are skipped; every snapshot is written at once to <file>.partial (renamed when
+# the job ends), and a relaunch skips the snapshots already there.  FM_DEVICE=cpu (or [fixedmass] device = "cpu") runs everything on the
 # host (KernelAbstractions CPU backend, threaded FFTW; start julia with -t <threads>).
 # the GPU is shared: cap this process's memory pool (override with JULIA_CUDA_HARD_MEMORY_LIMIT)
 haskey(ENV, "JULIA_CUDA_HARD_MEMORY_LIMIT") || (ENV["JULIA_CUDA_HARD_MEMORY_LIMIT"] = "22GiB")
@@ -49,18 +50,29 @@ function fm_plan(cfg, dev)
                   reclaim=cpu ? (() -> GC.gc(false)) : (() -> (GC.gc(false); CUDA.reclaim())))
 end
 
-function write_fm(h, cfg, fmres, epochs)
+function write_header(h, cfg, epochs)
     h["epochs"] = epochs
     attrs(h)["config"] = sprint(TOML.print, delete!(copy(cfg), "config_fm")); attrs(h)["config_fm"] = cfg["config_fm"]
     attrs(h)["terms"] = collect(FM_TERMS); attrs(h)["channels"] = collect(FM_CHANNELS)
-    for x in fmres
-        g = create_group(h, "e$(x.e)_o$(x.order)")
+end
+
+# one snapshot, flushed to disk before returning: a crash loses at most the snapshot in progress
+function write_snapshot(path, x)
+    h5open(path, "r+") do h
+        name = "e$(x.e)_o$(x.order)"
+        haskey(h, name) && delete_object(h, name)        # a group interrupted while being written
+        g = create_group(h, name)
         r = x.r
         g["R"] = r.R; g["edges"] = r.edges; g["hist"] = r.hist; g["mom"] = r.mom; g["tmom"] = r.tmom
         g["sub"] = r.sub; g["sub_R"] = r.sub_R
-        attrs(g)["D"] = x.D; attrs(g)["order"] = x.order; attrs(g)["stride"] = r.stride
         for (k, v) in r.scal; attrs(g)[k] = v; end
+        attrs(g)["stride"] = r.stride; attrs(g)["order"] = x.order
+        attrs(g)["D"] = x.D                               # written last: marks the group complete
     end
+end
+snapshot_done(path, e, o) = h5open(path, "r") do h
+    name = "e$(e)_o$(o)"
+    haskey(h, name) && haskey(attrs(h[name]), "D")
 end
 
 function run_job(cfg, j, pk, c)
@@ -69,6 +81,10 @@ function run_job(cfg, j, pk, c)
     all(any(isapprox(D, x; atol=1e-9) for x in epochs) for D in fe) || error("fixedmass epochs must be base epochs")
     cpu = use_cpu(cfg); dev = cpu ? identity : CuArray
     P = fm_plan(cfg, dev)
+    part = fname(cfg, j) * ".partial"
+    isfile(part) || h5open(h -> write_header(h, cfg, epochs), part, "w")
+    sink(x) = write_snapshot(part, x)
+    done(e, o) = snapshot_done(part, e, o)
     kern(N) = cpu ? nlpt_kernels(N, L; T=Float32) : to_gpu(nlpt_kernels(N, L; T=Float32))
     if model == "lpt"
         lc = cfg["lpt"]; N = lc["N"]
@@ -76,7 +92,10 @@ function run_job(cfg, j, pk, c)
         K = kern(N)
         f = dev(make_fphi(spec_of(cfg, N, sL, sS, sg), pk, member))
         t = @elapsed r = run_lpt(f, K, ms, L, epochs; n_max=lc["n_max"], mode=Symbol(get(lc, "mode", "fast")),
-                                 fm=P, fm_orders=Int.(cfg["fixedmass"]["lpt_orders"]), fm_epochs=fe)
+                                 fm=P, fm_orders=Int.(cfg["fixedmass"]["lpt_orders"]), fm_epochs=fe,
+                                 fm_maxD=Dict{Int,Float64}(parse(Int, k) => Float64(v)
+                                                           for (k, v) in get(cfg["fixedmass"], "lpt_max_D", Dict())),
+                                 fm_sink=sink, fm_done=done)
     else
         pc = cfg["pm"]; N = pc["N"]
         ms = ModeSet(N, L, cfg["k_store"]; to_device=dev)
@@ -88,14 +107,14 @@ function run_job(cfg, j, pk, c)
               deconvolve=get(pc, "deconvolve", false), antialias=get(pc, "antialias", 0),
               n_resample=get(pc, "n_resample", 1), lean=get(pc, "lean", false))
         t = @elapsed r = run_pm(c, Ψ0, Π0, ms, L, epochs; D_ini=pc["D_ini"], n_steps=pc["n_steps"], res_pm=pc["res_pm"],
-                                fm=P, fm_epochs=fe, st...)
+                                fm=P, fm_epochs=fe, fm_sink=sink, fm_done=done, st...)
     end
-    h5open(fname(cfg, j), "w") do h
-        write_fm(h, cfg, r.fm, epochs)
+    h5open(part, "r+") do h
         attrs(h)["model"] = model; attrs(h)["member"] = String(member)
         attrs(h)["seed_L"] = sL; attrs(h)["seed_S"] = sS; attrs(h)["sign"] = sg
         attrs(h)["seconds"] = t; attrs(h)["date"] = string(now()); attrs(h)["device"] = cpu ? "cpu ($(Threads.nthreads()) threads)" : CUDA.name(CUDA.device())
     end
+    mv(part, fname(cfg, j))
 end
 
 function main(args)

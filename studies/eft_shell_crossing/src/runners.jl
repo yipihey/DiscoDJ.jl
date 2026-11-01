@@ -19,7 +19,8 @@ export run_lpt, run_pm, pm_ics, d_grid
   rms   (E, n_max)    — rms |Ψ| (Mpc/h)."""
 function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::Int, mode::Symbol=:fast,
                  ms_band=nothing, cis=nothing, cis_orders=Int[], cis_epochs=Float64[], rsd::Bool=false, fgrowth=D -> 1.0,
-                 stress=nothing, stress_order::Int=0, fm=nothing, fm_orders=Int[], fm_epochs=Float64[])
+                 stress=nothing, stress_order::Int=0, fm=nothing, fm_orders=Int[], fm_epochs=Float64[],
+                 fm_maxD=Dict{Int,Float64}(), fm_sink=nothing, fm_done=(e, o) -> false)
     sh = compute_core(fphi, K; n_order=n_max, mode=mode)
     ψ1 = sh["psi_1"]; T = eltype(ψ1); N = size(ψ1, 1)
     M = length(ms); E = length(epochs)
@@ -55,9 +56,13 @@ function run_lpt(fphi, K, ms::ModeSet, L::Real, epochs::AbstractVector; n_max::I
                 end
                 U = nothing
             end
-            if fm !== nothing && n in fm_orders && any(isapprox(D, x; atol=1e-9) for x in fm_epochs)
+            if fm !== nothing && n in fm_orders && any(isapprox(D, x; atol=1e-9) for x in fm_epochs) &&
+               D <= get(fm_maxD, n, Inf) + 1e-9 && !fm_done(e, n)
                 lpt_acc!(A, sh, D, n)
-                tf = @elapsed push!(fmres, (e=e, D=D, order=n, r=fixedmass_snapshot(fm, Ψ, Π; acc=A)))
+                tf = @elapsed begin
+                    x = (e=e, D=D, order=n, r=fixedmass_snapshot(fm, Ψ, Π; acc=A))
+                    fm_sink === nothing ? push!(fmres, x) : fm_sink(x)
+                end
                 @printf "    fixed-mass LPT%d D=%.3f  %.1f s\n" n D tf; flush(stdout)
             end
             if rsd
@@ -112,7 +117,7 @@ grid and the wall time.  With `band = (ms_band, epochs_band)` the displacement i
 second (typically larger) mode set at a few epochs (band-growth diagnostics)."""
 function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini::Real, n_steps::Int,
                 res_pm::Int, stepper::Symbol=:bullfrog, band=nothing, cis=nothing, cis_epochs=Float64[], rsd::Bool=false,
-                stress=nothing, pkplan=nothing, fm=nothing, fm_epochs=Float64[], settings...)
+                stress=nothing, pkplan=nothing, fm=nothing, fm_epochs=Float64[], fm_sink=nothing, fm_done=(e, o) -> false, settings...)
     T = eltype(Ψ0); N = size(Ψ0, 1); M = length(ms)
     ep = [D for D in epochs if D > D_ini]
     E = length(epochs)
@@ -146,8 +151,11 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         end
         Π = P ./ T(DJ.Fplus(c, a))
         vel[e, :, :] .= vector_modes(ms, Π)
-        if fm !== nothing && any(isapprox(a, x; atol=1e-9) for x in fm_epochs)
-            tf = @elapsed push!(fmres, (e=e, D=a, order=0, r=fixedmass_snapshot(fm, Ψ, Π)))
+        if fm !== nothing && any(isapprox(a, x; atol=1e-9) for x in fm_epochs) && !fm_done(e, 0)
+            tf = @elapsed begin
+                x = (e=e, D=a, order=0, r=fixedmass_snapshot(fm, Ψ, Π))
+                fm_sink === nothing ? push!(fmres, x) : fm_sink(x)
+            end
             @printf "    fixed-mass PM D=%.3f  %.1f s\n" a tf; flush(stdout)
         end
         if stress !== nothing   # u = dx/dln a = f D Π

@@ -15,6 +15,9 @@ stride = 8                        # per-point values on the 64³ sub-lattice ...
 sub = [1, 5, 9, 13, 17, 20, 23, 26, 29, 32, 36, 40]   # ... for these radius indices
 level = 1                         # tracers per tetrahedron: binomial(level+3, 3) = 4
 lpt_orders = [3, 7]
+# per-order last epoch: 7LPT diverges beyond D ≈ 0.5 (study §12); at D = 1 its stretched UV sheet makes the
+# point-sampled moments kernel visit ~all nodes per tetrahedron (did not finish in > 30 min on 96 CPU threads)
+lpt_max_D = {7 = 0.7}
 T_acc = "Float32"
 
 [seeds]
