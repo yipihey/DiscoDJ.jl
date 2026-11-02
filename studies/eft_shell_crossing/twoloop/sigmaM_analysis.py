@@ -151,9 +151,10 @@ if figdir:
     import matplotlib.pyplot as plt
     # default validated categorical order (dataviz references/palette.md), fixed per entity across every panel
     COL = {"lin": "#52514e", "R": "#2a78d6", "mass": "#eb6834", "rand": "#1baf7a", "lag": "#eda100"}
-    LAB = {"lin": r"linear, $D\,\sigma_{\rm lin}(R_0)$", "R": r"random spheres, fixed radius: $\sigma(\delta_{R_0})$", "mass": r"mass-drawn centres, fixed $M$: $\sigma(\ln V)$",
+    LAB = {"lin": r"linear, $D\,\sigma_{\rm lin}(M)$", "R": r"random spheres, fixed radius $R(M)$: $\sigma(\delta_R)$", "mass": r"mass-drawn centres, fixed $M$: $\sigma(\ln V)$",
            "rand": r"random centres, fixed $M$: $\sigma(\ln V)$", "lag": r"Lagrangian patch, fixed $M$: $\sigma(\ln V)$"}
     show = [D for D in (0.3, 0.5, 0.8, 1.0) if D in Ds]
+    MASS = 4 * np.pi / 3 * RL ** 3 * 2.775e11       # h⁻¹ M☉, EdS (Ω_m = 1): M = ρ̄ V(R0)
     fig, axs = plt.subplots(2, len(show), figsize=(3.4 * len(show), 6.2), sharex=True, sharey="row", gridspec_kw=dict(height_ratios=[3, 2], hspace=0.06, wspace=0.05), facecolor="white")
     for c, D in enumerate(show):
         e = res["epochs"][f"{D:.3f}"]
@@ -162,13 +163,13 @@ if figdir:
         sR = np.interp(np.log(RL), np.log(RE), S("s_R"))
         cur = {"lin": lin, "R": sR, "mass": np.where(S("t_mass") > .02, np.nan, S("s_mass")), "rand": np.where(S("t_rand") > .02, np.nan, S("s_rand")), "lag": S("s_lag")}
         for k, y in cur.items():
-            axs[0, c].plot(RL, y, color=COL[k], lw=2, ls="--" if k == "lin" else "-", label=LAB[k], zorder=3 if k == "mass" else 2)
+            axs[0, c].plot(MASS, y, color=COL[k], lw=2, ls="--" if k == "lin" else "-", label=LAB[k], zorder=3 if k == "mass" else 2)
             if k != "lin":
-                axs[1, c].plot(RL, y / lin, color=COL[k], lw=2)
+                axs[1, c].plot(MASS, y / lin, color=COL[k], lw=2)
         axs[0, c].set_xscale("log"); axs[0, c].set_yscale("log"); axs[1, c].set_xscale("log")
         axs[1, c].axhline(1, color=COL["lin"], lw=1.2, ls="--")
         axs[0, c].set_title(f"D = {D:g}", fontsize=11, loc="left", color="#1b1b1a")
-        axs[1, c].set_xlabel(r"$R_0$ [$h^{-1}$Mpc], radius holding $M$ at mean density", fontsize=8.5)
+        axs[1, c].set_xlabel(r"$M$ [$h^{-1}M_\\odot$]", fontsize=10)
         for a in axs[:, c]:
             a.grid(True, which="major", color="#e4e3df", lw=0.7); a.set_axisbelow(True)
             for sp in ("top", "right"):
@@ -180,6 +181,7 @@ if figdir:
     fig.legend(h, l, loc="upper center", ncol=3, frameon=False, fontsize=9, bbox_to_anchor=(0.5, 1.0))
     fig.suptitle(" ", fontsize=20)
     os.makedirs(figdir, exist_ok=True)
+    axs[0, 0].set_ylim(bottom=max(1e-3, np.nanmin(show[0] * slinL) * 0.8))
     for ext in ("png", "pdf"):
         fig.savefig(os.path.join(figdir, f"figM1_sigma_fixed_mass_{cfg}.{ext}"), dpi=170, bbox_inches="tight")
     print("wrote figure")
