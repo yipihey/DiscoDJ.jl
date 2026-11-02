@@ -104,7 +104,7 @@ function lagrangian(Ψ, L)
     FS = rfft(S); FU = rfft(U); out = zeros(length(RL), 6)
     for (j, R) in enumerate(RL)
         vs = filt(FS, N, L, R); vu = filt(FU, N, L, R)
-        ok = count(>(0f0), vs) / length(vs); ls = log.(max.(vs, 1f-3)); lu = log.(vu)
+        ok = count(>(0f0), vs) / length(vs); ls = log.(max.(vs, 1f-3)); lu = log.(max.(vu, 1f-3))     # Fourier top-hat ringing can take the filtered unsigned volume slightly below zero
         out[j, :] .= (mean(ls), std(ls), mean(lu), std(lu), ok, mean(Float64.(vs)))
     end
     return out, mean(Float64.(S)), mean(Float64.(U))
