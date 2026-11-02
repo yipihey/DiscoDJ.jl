@@ -1,7 +1,7 @@
 #!/bin/bash
 # Experiment 3 CPU measurements: every (config, model, seed, sign) whose inputs exist and whose output does not.
 #   ./tl_measure_all.sh [njobs=12] [configs...]   (re-run as snapshots appear; FFTW single-threaded, 4 Julia threads each)
-#   Campaign safety limit: at most 12 jobs. A PM or LPT member counts as ready only when its final member file exists:
+#   TL_SEEDS="1 2 3" restricts the seeds.  Campaign safety limit: at most 12 jobs. A PM or LPT member counts as ready only when its final member file exists:
 #   snapshots are not written atomically, so a crash during the last snapshot must not pass as a complete member.
 cd "$(dirname "$0")"
 export EFTSC_SCRATCH=${EFTSC_SCRATCH:-/zpool/nvme/data/tabel_scratch/eft_shell_crossing}
@@ -12,7 +12,7 @@ jobs=()
 for cfg in "${CONFIGS[@]}"; do
   d=$EFTSC_SCRATCH/$cfg/snap; [ -d $d ] || continue
   case $cfg in tl_ir*) lam=$(python3 -c "print(int('${cfg:5}')/100)");; *) lam="0.1,0.15,0.2,0.3";; esac
-  for s in 1 2 3 4; do for sg in +1 -1; do
+  for s in ${TL_SEEDS:-1 2 3 4}; do for sg in +1 -1; do
     for m in pm lpt3 lpt5 lpt7; do
       out=$EFTSC_SCRATCH/$cfg/tl/stress_${TL_FILTER}_${m}_L${s}_s${sg}.h5
       [ -f $out ] && continue
