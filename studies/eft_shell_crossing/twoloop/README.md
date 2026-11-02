@@ -128,7 +128,17 @@ the EdS approximation (D^n factorization exact), so kernels, counterterm time de
 
 PM: discreteness-suppressed BullFrog (as before), snapshots (Ψ, Π, Float32) at D = 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8,
 1.0. Measurements run on the CPU from snapshots (the GPU is shared), identically for PM and LPT_n (n = 3, 5, 7):
-2³ Fourier sheet resampling of (Ψ, Π), CIC deposit of n, nΠ_i, nΠ_iΠ_j on a 512³ mesh, ϕ from δ, Gaussian
-coarse-graining at Λ ∈ {0.1, 0.15, 0.2, 0.3, 0.4, 0.6}, low-k modes of the six τ̂ components, δ_Λ, π_Λ, curl v_Λ.
+2³ Fourier sheet resampling of (Ψ, Π), CIC deposit of n, nΠ_i, nΠ_iΠ_j on a 384³ mesh, ϕ from δ, sharp
+coarse-graining (primary, `TL_FILTER=sharp`) at Λ ∈ {0.1, 0.15, 0.2, 0.3}, low-k modes of the six τ̂ components, δ_Λ, π_Λ, curl v_Λ.
 Operators: field-level SPT (δ̃^(1..3), θ̃^(2)) of W_Λδ_L from the same fixed-amplitude ICs, then the 18 C-functions
 (A.20). ±L pairs split odd orders (1, 3) from even (2) exactly.
+
+**Deposit check** (`tl_deposit_check.jl`, `results/tl_deposit_check.json`). Keep `TL_NMESH=384`: 2³-resampled particles lie on a 512³
+Lagrangian lattice, which on a 512³ mesh would sit on nodes, the near-lattice case that biases the plane-wave density (main README
+§14.11). Direct particle sums against the deposit, tl_full and tl_ir020, seed 1, s = +1, 40 modes k ≤ 0.12, D = 0.1, 0.3, 0.5, 1:
+every moment (n, nΠ_i, nΠ_iΠ_j) agrees to ≤ 6.4 × 10⁻⁵, with density bias |b| ≤ 0.0016. The full − IR difference is good to ≤ 1.5 × 10⁻³ in every
+moment except the density at D = 0.1 (3.7 %) and 0.3 (0.9 %). So treat the D = 0.1 density as unreliable. Not tested: tl_ir010 and tl_ir015
+(run this check once they exist), Λ-filtered composite stress, gravitational stress.
+
+**Fit** (`tl_fit3.py`, tested by `test_tl_fit3.py`). The stress is dropped where n_Λ falls below its floor (`stress_epochs` in the output); density
+and momentum keep every epoch. In density the linear fit is the sum c_r1 + c_d1 only, and at late D the third-order δ³ columns make it approximate.
