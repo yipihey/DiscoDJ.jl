@@ -12,7 +12,7 @@ include(joinpath(@__DIR__, "..", "src", "EFTShell.jl"))
 using .EFTShell, HDF5, FFTW, Printf, Statistics, TOML
 FFTW.set_num_threads(min(Threads.nthreads(), 16))
 scratch() = get(ENV, "EFTSC_SCRATCH", "/zpool/nvme/data/tabel_scratch/eft_shell_crossing")
-const NM = 384; const NB = 520; const LMIN = -6.0; const LMAX = 7.0
+const NM = 384; const NB = 2080; const LMIN = -6.0; const LMAX = 7.0
 const RE = exp.(range(log(4.0), log(120.0), length=64)); const RL = exp.(range(log(6.0), log(80.0), length=24))
 tophat(x) = x < 1e-3 ? 1 - x^2 / 10 : 3 * (sin(x) - x * cos(x)) / x^3
 
