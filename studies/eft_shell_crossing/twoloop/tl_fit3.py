@@ -53,11 +53,12 @@ def columns(O, D):
 class NE:
     """Normal-equation blocks keyed (seed, D, observable)."""
     def __init__(self):
-        self.A = {}; self.b = {}; self.y2 = {}
+        self.A = {}; self.b = {}; self.y2 = {}; self.ndof = {}; self.truncated = 0
 
     def add(self, key, y, X):
         Xr = np.concatenate([X.real, X.imag]); yr = np.concatenate([y.real, y.imag])
         self.A[key] = Xr.T @ Xr; self.b[key] = Xr.T @ yr; self.y2[key] = float(yr @ yr)
+        self.ndof[key] = max(yr.size - Xr.shape[1], 1)
 
     def solve(self, sel, labels, weight):
         idx = [LABELS.index(l) for l in labels]
@@ -66,10 +67,14 @@ class NE:
             if sel(k):
                 w = weight(k)
                 A = A + w * self.A[k][np.ix_(idx, idx)]; b = b + w * self.b[k][idx]
+        if np.ndim(A) == 0:                                                # no block selected (e.g. every seed dropped at this epoch)
+            return np.full(len(idx), np.nan), float("nan")
         s = np.sqrt(np.maximum(np.diag(A), 1e-300))                        # precondition (columns differ by orders of magnitude)
         Ah = A / np.outer(s, s); bh = b / s
-        p = np.linalg.lstsq(Ah, bh, rcond=1e-10)[0] / s
-        return p, float(np.linalg.cond(Ah))
+        sol, _, rank, _ = np.linalg.lstsq(Ah, bh, rcond=1e-10)
+        if rank < len(idx):
+            self.truncated += 1                                            # degenerate directions set to zero: report, never silent
+        return sol / s, float(np.linalg.cond(Ah))
 
     def chi2(self, key, p, labels):
         idx = [LABELS.index(l) for l in labels]
@@ -80,7 +85,7 @@ def build(A, B, model, Lam, OP, K, kfit, nmin_floor=0.02):
     """Accumulate normal equations and per-k-bin residual inputs for A − B."""
     kmask = (K > 0) & (K <= min(kfit, 0.6 * Lam))
     cB = IRCFG[Lam] if B == "IR" else B
-    ne = NE(); raw = {}; Ds = set()
+    ne = NE(); raw = {}; Ds = set(); DsT = set()
     for s in SEEDS:
         if s not in OP or Lam not in OP[s]:
             continue
@@ -97,21 +102,24 @@ def build(A, B, model, Lam, OP, K, kfit, nmin_floor=0.02):
             if l != Lam or key not in mem[1][1]:
                 continue
             nm = min(mem[sg][i][key]["nmin"] for sg in (1, -1) for i in (0, 1))
-            if not nm > nmin_floor:                                        # 1/n_Λ of the sharp field is singular
-                continue
+            stress_ok = nm > nmin_floor                                    # 1/n_Λ of the sharp field is singular: stress only
             Ds.add(D)
+            if stress_ok:
+                DsT.add(D)
             dlt = {sg: {f: mem[sg][0][key][f] - mem[sg][1][key][f] for f in ("tau", "delta", "P")} for sg in (1, -1)}
             odd = {f: (dlt[1][f] - dlt[-1][f]) / 2 for f in dlt[1]}; even = {f: (dlt[1][f] + dlt[-1][f]) / 2 for f in dlt[1]}
             c = columns(OP[s][Lam], D)
             def stack(cn, m, w=None):
                 return np.stack([((c[l][cn][m] * W6) if c[l][cn].ndim == 2 and c[l][cn].shape[1] == 6 else c[l][cn][m]).ravel() for l in LABELS], 1)
-            ne.add((s, D, "tau_odd"), (odd["tau"][kmask] * W6).ravel(), stack("tau_odd", kmask))
-            ne.add((s, D, "tau_even"), (even["tau"][kmask] * W6).ravel(), stack("tau_even", kmask))
+            if stress_ok:                                                  # density and momentum contain no 1/n_Λ
+                ne.add((s, D, "tau_odd"), (odd["tau"][kmask] * W6).ravel(), stack("tau_odd", kmask))
+                ne.add((s, D, "tau_even"), (even["tau"][kmask] * W6).ravel(), stack("tau_even", kmask))
             ne.add((s, D, "dens_odd"), odd["delta"][kmask].ravel(), stack("dens_odd", kmask))
             ne.add((s, D, "dens_even"), even["delta"][kmask].ravel(), stack("dens_even", kmask))
             ne.add((s, D, "mom_odd"), odd["P"][kmask].ravel(), stack("mom_odd", kmask))
             ne.add((s, D, "mom_even"), even["P"][kmask].ravel(), stack("mom_even", kmask))
             raw[(s, D)] = dict(odd=odd, even=even, cols=c)
+    ne.stress_epochs = sorted(DsT)
     return ne, raw, sorted(Ds), kmask
 
 
@@ -121,7 +129,7 @@ def weights(ne, obs):
     for k in ne.A:
         if k[2] in obs:
             p, _ = ne.solve(lambda q: q == k, LABELS, lambda q: 1.0)
-            w[k] = 1.0 / max(ne.chi2(k, p, LABELS), 1e-300)
+            w[k] = ne.ndof[k] / max(ne.chi2(k, p, LABELS), 1e-300)
     return w
 
 
@@ -132,7 +140,8 @@ def fit_set(ne, Ds, obs, labels, seeds):
     p, cond = ne.solve(sel(seeds), labels, lambda k: w[k])
     if len(seeds) > 1:
         jk = [ne.solve(sel([s for s in seeds if s != s0]), labels, lambda k: w[k])[0] for s0 in seeds]
-        n = len(jk); err = np.sqrt((n - 1) / n * ((np.array(jk) - p) ** 2).sum(0))
+        n = len(jk); J = np.array(jk)
+        err = np.full_like(p, np.nan) if np.isnan(J).all() else np.sqrt((n - 1) / n * ((J - np.nanmean(J, axis=0)) ** 2).sum(0))
     else:
         jk = []; err = np.full_like(p, np.nan)
     return p, err, cond, jk
@@ -149,9 +158,21 @@ def eff_with_err(p, jk, labels):
     return {g: [float(e[g]), float(err[i])] for i, g in enumerate(keys)}
 
 
-def residual_spectra(raw, ne, labels, p, K, kmask):
-    """Stochastic spectra after projection: trace and longitudinal stress, odd and even, per k bin (L³ normalised)."""
-    return None
+def residual_spectra(raw, labels, p, K, kmask, D):
+    """Stochastic spectra after projection at epoch D: stress trace, odd and even, per k bin (L³ normalised), mean over seeds."""
+    edges = np.array([0.0, 0.02, 0.03, 0.045, 0.065, 0.09, 0.13, 0.2]); kk = K[kmask]; out = {}
+    for par, cn in (("odd", "tau_odd"), ("even", "tau_even")):
+        P = []
+        for (s, Dk), rw in raw.items():
+            if Dk != D:
+                continue
+            y = rw[par]["tau"][kmask] - sum(p[i] * rw["cols"][l][cn][kmask] for i, l in enumerate(labels))
+            tr = y[:, 0] + y[:, 1] + y[:, 2]
+            P.append([np.mean(np.abs(tr[(kk >= a) & (kk < b)]) ** 2) * L ** 3 if ((kk >= a) & (kk < b)).any() else np.nan for a, b in zip(edges[:-1], edges[1:])])
+        if P:
+            out[par] = np.mean(P, axis=0).tolist()
+    out["k_edges"] = edges.tolist()
+    return out
 
 
 def I_band(pk, kmin, kmax, N=256, mod=None):
@@ -185,22 +206,33 @@ def run(A, B, models, kfit):
                 continue
             seeds = sorted({k[0] for k in ne.A})
             Ival = I_band(pk, Lam if B == "IR" else KUV[B], KUV[A], mod=mod)
-            rec = dict(I=Ival, seeds=seeds, Ds=Ds, nmodes=int(kmask.sum()), per_epoch={}, window={})
+            rec = dict(I=Ival, seeds=seeds, Ds=Ds, stress_epochs=ne.stress_epochs, nmodes=int(kmask.sum()), per_epoch={}, window={})
             for D in Ds:
                 r = {}
                 # the leading coefficient, three ways (closure of stress, density, momentum)
                 for tag, obs in (("stress", ("tau_odd",)), ("dens", ("dens_odd",)), ("mom", ("mom_odd",))):
                     p, e, cond, jk = fit_set(ne, [D], obs, LIN, seeds)
                     # at linear order only c_r1 + c_d1 enters the density/longitudinal momentum
-                    pl = fit_lin_sum(ne, [D], obs, seeds)
+                    if tag == "stress":
+                        # r1 and d1 columns differ in the stress, so c_r1 + c_d1 must come from the free fit there;
+                        # in density and momentum only the sum enters, so fit_lin_sum is exact (test_tl_fit3.py)
+                        lin = lambda q: q[0] + q[1]
+                        pv = lin(p); n = len(jk)
+                        ev = float(np.sqrt((n - 1) / n * ((np.array([lin(q) for q in jk]) - np.mean([lin(q) for q in jk])) ** 2).sum())) if jk else float("nan")
+                        pl = [float(pv), ev]
+                    else:
+                        pl = fit_lin_sum(ne, [D], obs, seeds)
                     r[tag] = dict(r1=[p[0], e[0]], d1=[p[1], e[1]], sum=pl)
                 res_frac = {}
                 for ob in ("tau_odd", "tau_even", "dens_odd", "dens_even", "mom_even"):
                     p, *_ = ne.solve(lambda k: k[1] == D and k[2] == ob, LABELS, lambda k: 1.0)
                     tot = sum(ne.y2[k] for k in ne.A if k[1] == D and k[2] == ob)
                     chi = sum(ne.chi2(k, p, LABELS) for k in ne.A if k[1] == D and k[2] == ob)
-                    res_frac[ob] = chi / max(tot, 1e-300)
+                    res_frac[ob] = chi / tot if tot > 0 else float("nan")
                 r["resid_frac"] = res_frac
+                if D in ne.stress_epochs:
+                    pall, *_ = ne.solve(lambda k: k[1] == D and k[2] in ("tau_odd", "tau_even"), LABELS, lambda k: 1.0)
+                    r["stochastic_trace"] = residual_spectra(raw, LABELS, pall, K, kmask, D)
                 rec["per_epoch"][f"{D:.3f}"] = r
             # windows of epochs with constant c̄: stress, density, joint; all 18 coefficients and the effective 7 + 1
             for wname, dmax in (("D<=0.3", 0.3), ("D<=0.5", 0.5), ("D<=0.8", 0.8), ("all", 9.0)):
@@ -214,6 +246,7 @@ def run(A, B, models, kfit):
                     rw[tag] = dict(c={l: [float(p[i]), float(e[i])] for i, l in enumerate(LABELS)}, cond=cond,
                                    eff=eff_with_err(p, jk, LABELS))
                 rec["window"][wname] = rw
+            rec["truncated_solves"] = ne.truncated                         # > 0: some fits dropped degenerate directions
             res[f"{model}|L{Lam:.3f}"] = rec
             report(model, Lam, rec)
     return res
