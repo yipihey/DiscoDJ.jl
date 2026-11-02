@@ -75,5 +75,5 @@ for D in Ds
         push!(res, Dict("pair" => cfgs, "D" => D, "rms" => pf))
     end
 end
-open(io -> JSON3.write(io, Dict("modes" => ms, "k" => kk, "seed" => seed, "sign" => sg, "rows" => res)), joinpath(@__DIR__, "..", "results", "tl_deposit_check.json"), "w")
+open(io -> JSON3.write(io, Dict("modes" => ms, "k" => kk, "seed" => seed, "sign" => sg, "rows" => res)), joinpath(@__DIR__, "..", "results", get(ENV, "TL_DEPCHECK_OUT", "tl_deposit_check.json")), "w")
 println("CHECK DONE")
