@@ -6,8 +6,9 @@
 # ref_j = the band-free member's odd density where it was run (long background), else the linear x_j.  Fits over the
 # waves, jackknife over realizations: R = −C₂k² + C₄k⁴ (default), R = −C₂k² on k ≤ 0.1, and R = R₀ − C₂k² + C₄k⁴.
 # 1LPT is purely kinematic and known exactly: R_ZA(k) = exp(−½D² k·Σ·k) − 1, Σ = ⟨ψψ⟩ of the realization's own band
-# (→ C₂^δ = σ²_ψ D²/6).  The CIC deposit has a coherent bias on near-lattice loads (≈ −0.18k²), so the measured 1LPT
-# differs from this at early times.  "clean" response: R_m − R_1LPT + R_ZA (same deposit, same particles ⇒ bias cancels).
+# (→ C₂^δ = σ²_ψ D²/6).  The CIC deposit is biased on near-lattice particles and the waves smear one another at finite ε, so
+# the measured 1LPT differs from this.  "clean" response: R_m − R_1LPT + R_ZA (bias partly cancels: b₁ ≠ b₇ at early times).
+# These are raw numbers, including the printed "deposit bias" column.  The corrected analysis is scripts/pw_density_analysis.py.
 # results/pw_density_perseed.json keeps per-realization arrays for matched differences (model, epoch, wave, seed):
 #   R    relative to the bare wave x (the fits above)      Rref  relative to the band-free member (= R when that member is x)
 #   Rv   Lagrangian velocity response, same reference      RZA   kinematic R_ZA of the realization's band

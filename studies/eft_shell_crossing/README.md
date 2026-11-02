@@ -15,19 +15,21 @@ is still convergent (0.225 < D < 0.5); it grows with the shell-crossed mass (∝
 the band amplitude changes, is absent in redshift-space-only crossing, is resolution-converged, and is accounted for —
 in sign and to a factor ≈ 2 in magnitude — by the velocity-dispersion stress measured directly in PM's multistream
 regions. Varying the cutoff, the collisionless response runs like the CHS (2012) one-loop running while 4LPT/7LPT fail
-once the integrated-out modes have crossed; it is carried by modes near the nonlinear scale, deeper modes decouple, and
+once the integrated-out modes have crossed; it is carried by modes near the nonlinear scale, deeper modes decouple (for the random long field; not at ε → 0, §14.11), and
 it is a coherent effect (at k = 0.06 h Mpc⁻¹, modes below 5 h⁻¹Mpc change P(k) by −2.1 % coherently and add 0.05 %
 stochastic power). **Assessment: strong support (category 1) for the CHS irreducibility statement within the window
 where it can be tested (§12); beyond D ≈ 0.5 the single-stream series diverges and irreducibility is an
 extrapolation.**
 
 **Precision follow-up with plane-wave long modes (§14).** Replacing the random long field by ±ε plane waves isolates
-the coefficient of the *linear* long field, CHS's c_s (ε = 0.01 is already the ε → 0 limit). It is now measured to
-0.4–5 % at 7 cutoffs (k_split = 0.12–0.7) and 12 epochs from 8 PM runs per cutoff. Findings:
+the coefficient of the *linear* long field. In the displacement, where ε = 0.01 is already the ε → 0 limit, it is
+measured to 0.4–5 % at 7 cutoffs (k_split = 0.12–0.7) and 12 epochs from 8 PM runs per cutoff. Findings:
 * the departure from the *converged* pressureless series is significant from first crossing at every cutoff;
 * at D = 1 the *displacement* coefficient is small and negative (−0.40 at k_split = 0.2), carried by modes near k_NL. The
-  Eulerian density, which is what P(k) sees, is instead *suppressed*: C₂,δ = +1.97 ± 0.02, ΔP/P = −0.98 % at k = 0.05
-  (§14.11; an earlier version of this page wrongly quoted +0.2 % in P); modes beyond ≈ 0.35 h Mpc⁻¹ have decoupled, and the shells' effects do not add;
+  Eulerian density, which is what P(k) sees, is instead *suppressed*: C₂,δ = +1.94 ± 0.02,
+  ΔP/P = −0.97 % at k = 0.05, and it matches one-loop PT to ≤ 1.2 % before crossing (§14.11; an earlier version of this page
+  wrongly quoted +0.2 % in P). In the displacement, modes beyond ≈ 0.35 h Mpc⁻¹ have decoupled and the shells' effects do
+  not add; in the density, modes above 0.33 still carry a third of the response at D = 1;
 * about half of the §6 coefficient (+1.51) is long × short loops (+2.06; not ∝ a² after D ≈ 0.6);
 * at D ≳ 0.5, "PM − 7LPT" mostly measures the divergence of the LPT series; the counterterm at fixed loop order
   changes sign in time;
@@ -143,7 +145,7 @@ the common short×short noise; the single-stream limit LPT_∞ is estimated from
 
 **Dimensional dictionary.** C₂ is a comoving length². A stress term −c_s²(k/a)²δ in the EdS growth
 equation, δ'' + (3/2a)δ' − (3/2a²)δ = −k² ℓ²(a) δ/a² with ℓ² ≡ c_s²/(aH)², has for ℓ² ∝ a^m the
-particular solution Δψ/ψ_L = −k² ℓ²/[m(m+5/2)]. Hence
+particular solution Δδ/δ_L = −k² ℓ²/[m(m+5/2)]. Hence
 
   ℓ²(a) = m(m + 5/2) C₂(a),  c_s²(a) = (aH)² ℓ²(a),  m = d ln C₂/d ln D,
 
@@ -362,7 +364,8 @@ the suppressed PM. **Table 2** — density response C₂,δ at D = 1 [(h⁻¹Mpc
   PT-like in its running, while the single-stream solution fails once those modes have crossed.
 * **Which modes carry it** ([figR4](figures/figR4_band_contribution.png)): per shell, PM exceeds one-loop PT by up to
   ≈ 1.65× for modes just below the nonlinear scale (k ≈ 0.7 k_NL), and falls below it (0.85×) at k ≈ 1.8 k_NL — the
-  response is dominated by modes near k_NL and the deeper UV **decouples**, as EFT power counting expects.
+  response is dominated by modes near k_NL and the deeper UV **decouples**, as EFT power counting expects. This is for the
+  random long field: at ε → 0 every density shell stays above one loop (§14.11).
 * **PM − PT is not k_s-independent** (0.9 → 0.05 from k_s = 0.12 to 0.33): the IR member also contains nonlinear modes
   below k_s and needs its own counterterm, so the measurement is the difference of two universes' counterterms. Only
   for k_s → 0 does PM − PT approach a CHS-style "c²(∞)" of the UV universe: ≈ 0.9–1.0 (h⁻¹Mpc)², i.e. ≈ 1.0 × 10⁻⁶ c² in
@@ -528,7 +531,7 @@ attributable to — multistream evolution:
 4. *Physical origin.* PM's own multistream velocity-dispersion stress reproduces the departure's sign and magnitude to a
    factor ≈ 2 (coarse-graining dependent), living first in the caustic/splashback layers and then in the interiors.
 5. *Running.* With the cutoff, PM runs like one-loop/CHS while 4LPT and 7LPT fail; the response is carried by modes
-   near k_NL and deeper modes decouple.
+   near k_NL and deeper modes decouple (random long field; not at ε → 0, §14.11).
 
 **What the data do not establish.** (i) "Irreducible" is demonstrated relative to the 7th-order single-stream solution
 and its extrapolated limit only for D ≲ 0.5; beyond, the series diverges and the statement is an extrapolation.
@@ -540,8 +543,8 @@ comparison. (iv) One box size (500 h⁻¹Mpc), one spectrum shape, EdS backgroun
 **Revision after the plane-wave follow-up (§14).** Points 1–2 hold and are sharpened: against the *converged* series
 limit the departure is significant from D = 0.3 at all seven cutoffs. Point 4 and the D = 1 numbers of §6/§7
 describe the random long field, which includes long × short loops (about half of the departure, and the sign of the
-D = 1 coefficient). The linear-long-field coefficient c_s is −0.40 ± 0.01 at k_split = 0.2, D = 1, with its own
-running (Table 3). At D ≳ 0.5 the irreducibility statement is about PM versus a *divergent* pressureless series, and
+D = 1 coefficient). The linear-long-field coefficient at k_split = 0.2, D = 1 is −0.40 ± 0.01 in the displacement
+(Table 3) and +1.94 ± 0.02 in the density (Table 6), each with its own running. At D ≳ 0.5 the irreducibility statement is about PM versus a *divergent* pressureless series, and
 the fixed-loop-order counterterm changes sign in time (Table 4).
 
 **Unexpected findings worth following up.** The pressureless response is *negative* (short modes enhance the long
@@ -570,7 +573,8 @@ waves.
   wave is exactly Zel'dovich: no self-coupling and no crossing at ε = 0.01. Then R_j = Re(Δ_j x_j*)/|x_j|² and
   R(k) = −C₂k² + C₄k⁴. Every term even in ε cancels exactly, including the band's own field.
 * **Pilot** (`config/pw_*.toml`, `scripts/pw_response.jl`):
-  * ε = 0.01 and 0.02 give the same departure to ≤ 0.5 %, so ε = 0.01 is already the ε → 0 limit.
+  * ε = 0.01 and 0.02 give the same displacement departure to ≤ 0.5 %, so ε = 0.01 is already the ε → 0 limit there. The
+    density is different: at finite ε the waves smear one another, which is removed in §14.11.
   * The noise is independent of ε, so PM chaos sets no floor.
   * 6 waves in one run reproduce a single-wave run to 2 % at D = 1 and better earlier.
 * **Long background** (`prod_ks20_bg05/10`, `PairSpec(pw_bg=a)`): the same waves on a fixed random long field
@@ -655,7 +659,7 @@ Crossed mass is the inverted fraction of the PM UV member. LPT errors are of the
 (± 0.000 means an error below 5 × 10⁻⁴.) [figP1](figures/figP1_cs_vs_time.png),
 [figP2](figures/figP2_cs_running.png).
 
-* **c_s is measured to 0.4–5 % at every split and epoch (≤ 1.3 % at D ≤ 0.5) from 8 PM runs per split.** That is better than the 40-run random
+* **The displacement coefficient is measured to 0.4–5 % at every split and epoch (≤ 1.3 % at D ≤ 0.5) from 8 PM runs per split.** That is better than the 40-run random
   ensemble of §6, for a cleaner quantity. The model systematic is ≤ 5 % (two- vs three-term fit, nuisance R₀).
 * **Before crossing PM equals the pressureless series**: |PM − 7LPT| ≤ 3 × 10⁻⁴ at D ≤ 0.25 at every split.
 * **Separating the departure from the series' own divergence.** "PM − 7LPT" at D ≳ 0.5 mostly measures 7LPT running
@@ -693,7 +697,7 @@ would absorb. LPT∞ is the Shanks limit of the odd partial sums, used only wher
   k_split = 0.2, against a pre-crossing level ≤ 3 × 10⁻⁴. It grows ~20× by D = 0.4 and decreases monotonically as
   more of the UV is kept explicit (larger k_split).
 * **At fixed loop order the counterterm has no single time dependence.** The one-loop counterterm PM − 3LPT is
-  *negative* until D ≈ 0.55: there PM enhances the long mode *more* than one loop, because the two-loop and higher
+  *negative* until D ≈ 0.55: there PM enhances the long mode's displacement *more* than one loop, because the two-loop and higher
   pressureless terms are negative. It changes sign at D ≈ 0.55–0.6 and reaches +1.6 at D = 1 (k_split = 0.2). The
   two-loop counterterm PM − 5LPT is positive from D ≈ 0.35 and twice as large at D = 1. An EFT fit of a fixed D-power
   counterterm at one loop is therefore an effective description over a limited time range only. The required
@@ -720,10 +724,11 @@ is given in §14.11.
 
 * **The net effect on a linear long mode's displacement is a small enhancement.** At D = 1 all modes above 0.12 h Mpc⁻¹
   raise its displacement power by 0.7 % at k = 0.05 (2.7 % at k = 0.1). 3LPT gives 1.8 %. It is coherent; §6 found the
-  stochastic part 200× smaller. The density P(k) at the same k *falls* by 1.6 % (§14.11).
+  stochastic part 200× smaller. The density P(k) at the same k *falls* by 1.65 % (§14.11).
 * **Until D ≈ 0.5, one loop is essentially the whole answer, shell by shell** (PM/3LPT = 1.00–1.15).
-* **By D = 1 the modes beyond ~0.35 h Mpc⁻¹ have decoupled.** Their structures are bound and no longer move
-  coherently with the long mode. ~70 % of the total comes from 0.12–0.20 h Mpc⁻¹, near k_NL.
+* **By D = 1 the modes beyond ~0.35 h Mpc⁻¹ have decoupled from the displacement.** Their structures are bound and no longer
+  move coherently with the long mode. ~70 % of the displacement total comes from 0.12–0.20 h Mpc⁻¹, near k_NL. The density does
+  not decouple (§14.11).
 * **Adding 0.5–0.7 *reduces* the enhancement** (+0.035 ± 0.004). It merges the smaller structures into bigger bound
   objects and lowers the effect of the 0.7–1.2 band. The trapping of §8, resolved by band.
 * **The shells do not add.** The 0.7–1.2 band acts more strongly alone than inside the full stack. A
@@ -752,8 +757,8 @@ is given in §14.11.
 * **The one-loop response does not depend on the long modes** (3LPT is −2.02 for every a), as it must not.
 * **The plane-wave and random-ensemble methods agree.** With the full long field (a = 1) the waves' C₂ is
   +1.66 ± 0.11, against +1.51 ± 0.02 from the random-long-mode ensemble of §6 (1.3σ). So the §6 coefficient is the
-  ε → 0 coefficient (−0.40) *plus* long × short terms worth +2.06. By D = 1 these turn the enhancement into
-  suppression.
+  ε → 0 coefficient (−0.40) *plus* long × short terms worth +2.06. By D = 1 these turn the displacement's enhancement
+  into suppression. The density behaves differently (§14.11).
 * **The a-dependence is not two-loop at late times.** At two loops the shift is ∝ a². The ratio
   [C₂(1) − C₂(0)]/[C₂(0.5) − C₂(0)] is 6.8 at D = 1 and 7.6 at D = 0.7, against 4. At D ≤ 0.5 the shifts are ≤ 0.01
   and consistent with a² within errors. The long modes up to 0.2 h Mpc⁻¹ are themselves nonlinear after D ≈ 0.6.
@@ -843,8 +848,8 @@ counterterms, including non-locality in time and generated vorticity:
 
 | their term | what it multiplies | where it is in this study |
 |---|---|---|
-| c_δ,1^[1] = −(61/70) k_NL² ∫P/q² | k²P, one loop | the 61/105 UV limit of §6 (same number after conventions); the D² part of the ε → 0 C₂ |
-| c_δ,1^[2] (their eq. 4.80) | k²P, two loop | the D⁴ part and its running with k_split (Tables 3–4, figP2) |
+| c_δ,1^[1] = −(61/70) k_NL² ∫P/q² | k²P, one loop | the 61/105 UV limit of §6 (same number after conventions); C₂,δ/D² as D → 0, verified to ≤ 1.2 % at all 7 cutoffs (§14.11) |
+| c_δ,1^[2] (their eq. 4.80) | k²P, two loop | the D⁴ part and its running with k_split; displacement in Tables 3–4 and figP2, density in Table 6 |
 | c_δ,1^fin | k²P, finite | PM − LPT at fixed loop order (Table 4): sign change near D ≈ 0.55 at one loop |
 | c_∂²δ,1 | k⁴P | ΔC₄ (§14.7): positive, detected at k_split ≥ 0.5 |
 | quadratic and cubic coefficients, through ∫F_ct,3(k, q, −q) P(q) | k²P × ∫P_long (combination of their eq. 4.76) and k⁴P × ∫P_long/q² (eq. 4.77) | the long-background scan (§14.5, ∝ a² at two loops); the a² test fails for D ≳ 0.6 |
@@ -853,7 +858,7 @@ counterterms, including non-locality in time and generated vorticity:
 | stochastic | (k/k_NL)⁴, negligible at two loops | P_ε ∝ k⁴, 200× below the coherent part (§6) |
 
 Their Fisher analysis finds that for DESI-like data only {c_δ,1, c_δ²,1, c_∂²δ,1} are well constrained. Here:
-* c_δ,1 is measured to 0.4–5 %;
+* the linear coefficient is measured to 0.3–1 % in the density at D = 1 (Table 6) and 0.4–5 % in the displacement (Table 3);
 * c_∂²δ,1 to about a factor 2, at large k_split only;
 * the c_δ²,1-carrying second-order kernel is detected but not separated.
 
@@ -864,9 +869,9 @@ They are not one universal time dependence.
 ### 14.10 What this changes in §6–§13
 
 * **The §6 coefficient (+1.51 at D = 1) is not CHS's c_s alone.** It is the ε → 0 coefficient (−0.40 ± 0.01) plus
-  long × short terms (§14.5), which by D = 1 are larger and of opposite sign. The CHS comparison of §7 used that
-  ensemble coefficient. The plane-wave c_s(k_split) of Table 3 is the like-for-like quantity, in the same response
-  units.
+  long × short terms (§14.5), which by D = 1 are larger and of opposite sign. Those are displacement coefficients. §7 compares
+  the *density* coefficient with CHS, so its like-for-like plane-wave quantity is Table 6 (k_split = 0.2: 2.00 ± 0.02 in Table 2
+  against 1.94 ± 0.02), not Table 3.
 * **"Departure from 7LPT" at D ≳ 0.5 (§6, §7) mostly measures the divergence of the LPT series.** The irreducible
   statement rests on D ≲ 0.45, where it is now measured against the converged series limit at every split (Table 4).
   §13's window statement stands and is sharpened.
@@ -881,105 +886,126 @@ They are not one universal time dependence.
 * The R₀ floor is identified and fitted out but not explained.
 * The sections above are displacement (Lagrangian) responses. The Eulerian density is in §14.11.
 
-### 14.11 The Eulerian density response, with the exact deposit bias
+### 14.11 The Eulerian density response
 
-Scripts: `scripts/pw_density.jl`, `scripts/pw_density_exact.jl`, `scripts/pw_density_analysis.py`. Results:
-`results/pw_density*.json`. All numbers are k²-only fits, R = −C₂,δk² over the waves with k ≤ 0.1, so C₂,δ > 0 is
-suppression and ΔP/P = 2R applies. All are for the ε → 0 waves on the band of §14.1.
+Scripts: `scripts/pw_density.jl`, `scripts/pw_density_exact.jl`, `scripts/pw_waves_only.jl`, `scripts/pw_density_analysis.py`.
+Results: `results/pw_density*.json`. All numbers are k²-only fits, R = −C₂,δk² on waves with k ≤ 0.1, so C₂,δ > 0 is
+suppression and ΔP/P = 2R applies. Errors are jackknife over 4 realizations.
 
-**The CIC deposit is biased on near-lattice particles.** For nLPT we compare the deposited density with the direct sum
-δ(k_j) = N⁻³ Σ_q exp(−ik_j·(q + Ψ(q))). The bias b = C₂,δ(deposit) − C₂,δ(exact) is about +0.06 to +0.15 until the band has
-displaced the particles by about a cell, then fades:
+**Three corrections are needed before the density can be read.** Per wave,
+R = R_deposit(PM) − [R_deposit(7LPT) − R_exact(7LPT)] − R_waves(7LPT), and two waves per split are dropped at k_split ≤ 0.15.
 
-| k_split | b at D = 0.2 | b at D = 0.5 | b at D = 1 | raw → corrected C₂,δ/D² at D = 0.3 |
-|---|---|---|---|---|
-| 0.20 | +0.106 | +0.003 | +0.001 | 2.26 → 1.68 |
-| 0.33 | +0.123 | +0.028 | −0.002 | 2.01 → 0.78 |
-| 0.70 | +0.129 | +0.138 | +0.028 | 1.83 → 0.23 |
+1. **CIC deposit bias on near-lattice particles.** nLPT's deposited density is compared with the direct sum
+   δ(k_j) = N⁻³ Σ_q exp(−ik_j·(q + Ψ(q))). The bias b = C₂,δ(deposit) − C₂,δ(exact) is about +0.06 to +0.15 until the band has
+   displaced the particles by about a cell, then fades:
 
-* PM's particles are not stored in these runs, so b is measured on 7LPT and applied to PM. b(3LPT) and b(7LPT) agree to
-  ≤ 0.003 at D ≥ 0.4, and realizations 1 and 2 (tested at k_split = 0.15, 0.2, 0.7) agree to ≤ 0.012 at D = 0.1 and
-  ≤ 0.006 at D ≥ 0.3. That PM's bias equals 7LPT's after crossing is assumed, not tested.
-* Early density coefficients in §6 use a different reference (the IR member's own deposit), which may remove part of this
-  bias. How much is not quantified here, so §6's density values at D ≲ 0.4 carry an unknown bias.
-* The alternative "clean" estimator R_m − R_1LPT + R_ZA, with Gaussian R_ZA, is not valid at late times. At k_split = 0.2,
-  D = 1 it gives 1.919 ± 0.008 against 1.968 ± 0.015: exact 1LPT exceeds Gaussian R_ZA by 2 %, with b ≈ 0 there, so it
-  subtracts real signal. 1LPT also misses the early bias of the higher orders (b₁ = +0.069, b₇ = +0.106 at D = 0.2).
+   | k_split | b at D = 0.2 | b at D = 0.5 | b at D = 1 | raw → corrected C₂,δ/D² at D = 0.3 |
+   |---|---|---|---|---|
+   | 0.20 | +0.106 | +0.003 | +0.001 | 2.26 → 1.65 |
+   | 0.33 | +0.123 | +0.028 | −0.002 | 2.01 → 0.76 |
+   | 0.70 | +0.129 | +0.138 | +0.028 | 1.83 → 0.20 |
 
-**Validation against one loop (no free parameters).** The standard P13 kernel over k_split ≤ q < 1.2, at the same waves
-and fit, is compared with exact 3LPT, extrapolated to D → 0 by C₂,δ/D² = c₀ + A/D + BD² (D = 0.1–0.3):
+   PM's particles are not stored in these runs, so b is measured on 7LPT. That PM's bias equals 7LPT's after crossing is assumed,
+   not tested. Realizations differ by up to 0.009 at D ≤ 0.4 and ≤ 0.0035 at D ≥ 0.5. Where b is large compared with C₂,δ, the
+   corrected value rests on that assumption: b/C₂,δ is 0.12 at k_split = 0.33, D = 0.5; 0.70 and 0.11 at 0.5, D = 0.5 and 0.7; 2.3, 0.61 and 0.09 at
+   0.7, D = 0.5, 0.7 and 1; ≤ 0.03 elsewhere at D ≥ 0.5.
+2. **Finite ε.** The ± estimator removes even orders in ε but keeps ε³, so the waves smear one another. To lowest order
+   R_j = −D²ε²[Σ_{m≠j}(k_j·k̂_m)²/(4k_m²) + 1/8], the last term being the wave's own Bessel J₁ correction. On the 6-wave
+   ε = 0.01 and 0.02 runs this predicts the measured change in C₂ (1LPT) at D = 0.5, 0.7, 1: +0.0063, +0.0124, +0.0253 against
+   +0.0068, +0.0128, +0.0255. It is only approximate for the 12-wave production sets, so we subtract a direct sum of the waves
+   alone (`pw_waves_only.jl`): 0.02–0.04 D². Using 1LPT rather than 7LPT for this term lowers C₂,δ by 0.007–0.025 D² at D = 1,
+   a systematic. Displacement is much less affected, as §14.1's pilot found.
+3. **Wave × band noise.** Waves reached by k_j ∓ k_m in the band (k = 0.064, 0.069 at k_split = 0.12; 0.080, 0.089 at 0.15; none at
+   higher splits) pick up a term linear in the band, realization noise with R ∝ D. They are dropped, so the fit reaches
+   k = 0.058 and 0.068 at those splits.
+
+**Validation against one loop (no free parameters).** The standard P13 kernel over k_split ≤ q < 1.2, at the same waves and fit,
+against exact 3LPT with the waves removed, extrapolated by C₂,δ/D² = c₀ + A/D + BD² over D = 0.1–0.3:
 
 | k_split | 0.12 | 0.15 | 0.20 | 0.25 | 0.33 | 0.50 | 0.70 |
 |---|---|---|---|---|---|---|---|
-| one loop | 2.655 | 2.102 | 1.537 | 1.168 | 0.799 | 0.408 | 0.199 |
-| c₀, realization 1 | 2.732 | 2.122 | 1.567 | 1.192 | 0.809 | 0.426 | 0.219 |
-| c₀, realization 2 | | 2.059 | 1.566 | | | | 0.220 |
+| one loop | 2.667 | 2.116 | 1.537 | 1.168 | 0.799 | 0.408 | 0.199 |
+| c₀, realization 1 | 2.653 | 2.097 | 1.535 | 1.162 | 0.789 | 0.405 | 0.198 |
+| c₀, realization 2 | | 2.130 | 1.534 | | | | 0.199 |
 
-* Agreement is 1–3 % at k_split ≤ 0.33, 4 % at 0.5 and 10 % at 0.7.
-* The excess at k_split ≥ 0.2 repeats between realizations, so it is systematic, not noise. Its cause is not
-  identified. The continuum integral rather than the box's own modes is one candidate (not tested).
-* A is large only at k_split = 0.12 and 0.15, and at 0.15 it goes from +0.153 to −0.021 between realizations. That fits
-  a realization-specific wave × band coupling, R ∝ D. Three parameters on four points make this suggestive only. It is
-  why single-realization density values at D ≲ 0.2 are unreliable at these two splits.
+Agreement is 0.1–1.2 % at every cutoff, and |A| ≤ 1.2 × 10⁻⁴ everywhere.
 
-**Table 6.** PM density response, bias-corrected, 4 realizations. Errors are jackknife; the bias systematic is below the
-last digit shown except where noted. ct = C₂,δ − C₂,1-loop D² is the departure from pure one-loop.
+**Table 6.** PM density response, corrected. The bias systematic is below the last digit shown except where noted. "Excess" is
+C₂,δ − C₂,1-loop D². It is not a counterterm by itself: 3LPT also departs from pure one loop.
 
-| k_split | C₂,δ/D², D = 0.5 | C₂,δ, D = 1 | ΔP/P at k = 0.05, D = 1 | ct, D = 1 | C₂ displacement, D = 1 |
+| k_split | C₂,δ/D², D = 0.5 | C₂,δ, D = 1 | ΔP/P at k = 0.05, D = 1 | excess, D = 1 | C₂ displacement, D = 1 (same fit) |
 |---|---|---|---|---|---|
-| 0.12 | 3.00 ± 0.04 | 3.229 ± 0.029 | −1.61 % | +0.57 | −1.18 |
-| 0.15 | 2.55 ± 0.10 | 2.626 ± 0.055 | −1.31 % | +0.52 | −0.75 |
-| 0.20 | 1.90 ± 0.02 | 1.968 ± 0.015 | −0.98 % | +0.43 | −0.39 |
-| 0.25 | 1.48 ± 0.01 | 1.536 ± 0.006 | −0.77 % | +0.37 | −0.22 |
-| 0.33 | 1.01 ± 0.01 | 1.077 ± 0.006 | −0.54 % | +0.28 | −0.10 |
-| 0.50 | 0.54 ± 0.01 | 0.612 ± 0.003 | −0.31 % | +0.20 | −0.07 |
-| 0.70 | 0.26 ± 0.01 (syst.) | 0.336 ± 0.002 (syst.) | −0.17 % | +0.14 | −0.11 |
+| 0.12 | 3.15 ± 0.03 | 3.304 ± 0.023 | −1.65 % | +0.64 | −1.215 ± 0.012 |
+| 0.15 | 2.54 ± 0.01 (syst. 0.01) | 2.638 ± 0.015 (syst. 0.004) | −1.32 % | +0.52 | −0.761 ± 0.010 |
+| 0.20 | 1.87 ± 0.02 | 1.935 ± 0.015 | −0.97 % | +0.40 | −0.386 ± 0.007 |
+| 0.25 | 1.45 ± 0.01 | 1.506 ± 0.006 | −0.75 % | +0.34 | −0.219 ± 0.004 |
+| 0.33 | 0.99 ± 0.01 (syst. 0.01) † | 1.057 ± 0.006 (syst. 0.002) | −0.53 % | +0.26 | −0.104 ± 0.005 |
+| 0.50 | 0.52 ± 0.01 † | 0.591 ± 0.003 | −0.30 % | +0.18 | −0.073 ± 0.003 |
+| 0.70 | 0.24 ± 0.003 (syst. 0.012) † | 0.314 ± 0.001 (syst. 0.002) † | −0.16 % | +0.12 | −0.111 ± 0.000 |
 
-Using c₀ in place of the one-loop value shifts ct by up to 0.08 (usually lower), which is its systematic.
+† b/C₂,δ ≥ 0.09: rests on PM's deposit bias equalling 7LPT's (item 1 above).
 
-* **The density is suppressed at every cutoff, and the displacement is enhanced.** The two differ mainly by kinematic
-  smearing and its correlation with the displacement: at one loop 61/105 = 1 − 44/105 of σ²_ψ,band/6.
-* **PM's C₂,δ grows nearly as D² after D ≈ 0.7**, while 3LPT reaches 3.31 and 7LPT 28.9 at k_split = 0.2, D = 1 (exact).
-* **ct is positive and falls monotonically with k_split.** Its local D-slope drifts from about 3.5–5.5 at D = 0.4–0.5 to
-  1.7–2.6 at D = 0.7–1. No single power of D describes it, in line with §6.
-* **ΛCDM.** ct(k_split = 0.12) = 0.57 is below C₂(z = 0) = 1.04 ± 0.07 of the full-spectrum ΛCDM run (branch `eft-lcdm-cs`).
-  This is not like-for-like: EdS against ΛCDM, ε → 0 against the full field, only modes above 0.12. Same sign and order;
-  the factor ≈ 2 is not explained. The long × short result below makes the full field an unlikely explanation.
+* **The density is suppressed at every cutoff while the displacement is enhanced.** At one loop the difference is kinematic smearing and its
+  correlation with the displacement; the split is not measured for PM.
+* **PM's C₂,δ grows nearly as D² after D ≈ 0.7**, whereas PM − 3LPT (seed-matched) at k_split = 0.2 is −0.016 ± 0.001, −0.177 ± 0.002 and
+  −1.327 ± 0.007 at D = 0.5, 0.7, 1: fixed-order single-stream density fails badly at late times.
+* **The excess has no single power of D.** Its local D-slope is 2.8–3.4 at D = 0.5–0.7 and 1.7–2.1 at D = 0.7–1 for k_split ≤ 0.5 (4.6 and 2.7 at
+  0.7). Slopes at D < 0.5 are not quoted: the bias is larger than the excess there at high splits.
 
-**The density is far less sensitive than the displacement to crossing.** Seed-matched PM − nLPT, in which the bias
-largely cancels, passes the null test before crossing: |PM − 7LPT| ≤ 2 × 10⁻⁴ at D ≤ 0.25 at every split.
+**Density by shell.** Neighbouring splits differenced by realization, each on its own waves, at D = 1:
+
+| shell | 0.12–0.15 | 0.15–0.20 | 0.20–0.25 | 0.25–0.33 | 0.33–0.50 | 0.50–0.70 | 0.70–1.20 |
+|---|---|---|---|---|---|---|---|
+| C₂,δ, PM | 0.67 ± 0.03 | 0.70 ± 0.01 | 0.43 ± 0.01 | 0.45 ± 0.01 | 0.47 ± 0.005 | 0.28 ± 0.002 | 0.31 ± 0.001 |
+| PM / one loop | 1.21 | 1.21 | 1.16 | 1.22 | 1.19 | 1.32 | 1.58 |
+| share of the total | 20 % | 21 % | 13 % | 14 % | 14 % | 8 % | 10 % |
+
+**Unlike the displacement (§14.4), the ε → 0 density shows no decoupling of the deep UV**: every shell stays above one loop at D = 1, and
+modes above 0.33 carry about a third of the response.
+
+**The density is far less sensitive than the displacement to crossing.** Seed-matched PM − nLPT, in which the corrections
+largely cancel, passes the null test: |PM − 7LPT| ≤ 9 × 10⁻⁵ at D = 0.2 and ≤ 3.2 × 10⁻⁴ at D = 0.25, just past first crossing.
 
 | k_split | 0.12 | 0.15 | 0.20 | 0.25 | 0.33 | 0.50 | 0.70 |
 |---|---|---|---|---|---|---|---|
-| density, PM − LPT∞, D = 0.3 (10⁻⁴) | −9 ± 4 | −9 ± 3 | −3 ± 2 | 0 ± 3 | +1 ± 1 | +5 ± 3 | +2 ± 1 |
-| displacement, PM − LPT∞, D = 0.3 (10⁻⁴) | +55 ± 16 | +45 ± 11 | +36 ± 5 | +27 ± 6 | +18 ± 2 | +10 ± 2 | +2 ± 0.3 |
+| density, PM − LPT∞, D = 0.3 (10⁻⁴) | −7 ± 5 | −11 ± 2 | −3 ± 2 | 0 ± 3 | +1 ± 1 (PM − 7LPT) | +5 ± 3 | +2 ± 1 |
+| displacement, PM − LPT∞, D = 0.3 (10⁻⁴) | +56 ± 6 | +41 ± 2 | +36 ± 2 | +27 ± 3 | +18 ± 1 | +10 ± 3 | +2 ± 1 |
 
-* At D = 0.3 the density departure is at most 10⁻³. Its sign is not established: the low splits are 2–3σ negative, and
-  PM's bias could differ from 7LPT's by about this much.
-* The irreducibility statement of §14.3 rests on the displacement channel. **The density cannot test it beyond D ≈ 0.3
-  at k_split ≤ 0.33**, because its odd partial sums stop converging (r > 0.7 at D ≥ 0.4), so no LPT∞ exists there.
-  Where it does at D = 0.4, k_split = 0.5 and 0.7 give +8 ± 5 and +6 ± 2 × 10⁻⁴, against +97 and +22 × 10⁻⁴ in displacement.
+* At D = 0.3 the density departure is at most about 10⁻³, and its sign changes with k_split.
+* The irreducibility statement of §14.3 rests on the displacement channel. **The density cannot test it beyond D ≈ 0.3 at
+  k_split ≤ 0.33**, because its odd partial sums stop converging (r > 0.7 at D ≥ 0.4), so no LPT∞ exists there. Where it does, at
+  D = 0.4, k_split = 0.5 and 0.7 give +8 ± 5 and +6 ± 2 × 10⁻⁴, against +97 ± 5 and +22 ± 1 × 10⁻⁴ in displacement.
 
-**Long × short nearly cancels in the density.** The k_split = 0.2 waves on the random background, now relative to the
-band-free member, so the background's own smearing of the wave is removed (the ranges span the clean and raw estimators):
+**Long × short.** At k_split = 0.2, relative to the band-free member, so the background's own smearing of the wave is removed.
+The two estimators are "clean" (R_m − R_1LPT + R_ZA, with the waves' 7LPT − 1LPT difference removed at a = 0) and raw with the corrections
+above. They agree at D ≥ 0.7:
 
-| D | shift in C₂,δ, a = 0.5 | shift in C₂,δ, a = 1 | shift in displacement C₂, a = 1 |
+| D | C₂,δ shift, a = 0.5: clean, raw | C₂,δ shift, a = 1: clean, raw | displacement C₂ shift, a = 1 |
 |---|---|---|---|
-| 0.5 | | +0.04 to +0.05 | +0.01 |
-| 0.7 | +0.015 to +0.04 | +0.09 to +0.11 | +0.38 |
-| 0.8 | +0.02 to +0.05 | +0.09 to +0.13 | +0.78 |
-| 1.0 | +0.02 to +0.07 (± 0.015) | −0.04 to +0.02 (± 0.04) | +1.91 |
+| 0.5 | +0.011 ± 0.001, −0.014 ± 0.007 | +0.046 ± 0.003, +0.043 ± 0.004 | +0.014 ± 0.008 |
+| 0.7 | +0.030 ± 0.004, +0.031 ± 0.006 | +0.102 ± 0.009, +0.103 ± 0.011 | +0.380 ± 0.030 |
+| 1.0 | +0.059 ± 0.015, +0.055 ± 0.015 | +0.002 ± 0.039, −0.009 ± 0.039 | +1.911 ± 0.078 |
 
-* At D = 1 the +1.91 in displacement that dominates §14.5 appears as 0.0 ± 0.05 in density, on C₂,δ = 1.97. So the
-  long × short terms of §14.5–14.6 largely change how a wave's particles are displaced, not its density amplitude.
-* The a² scaling cannot be judged here: the two estimators differ by more than the statistical errors at a = 0.5.
-* The a > 0 bias has no exact calibration, so D ≤ 0.6 at a = 0.5 is not quoted.
-* The §6 random-long ensemble gives C₂,δ = 2.03 ± 0.01 at D = 1 and 1.13 at D = 0.7, within 5–7 % of a = 1 above, but
-  with k ≤ 0.08, its own weighting and no bias correction, so that difference is not interpreted.
+* At k_split = 0.2, D = 1, the +1.91 in displacement appears as about 0 in density. **This does not generalise.** Comparing the random-long
+  coefficient of Table 2 with Table 6 gives +0.31, +0.26, +0.06, −0.13, −0.21, −0.30, −0.20 for k_split = 0.12 … 0.70, so 0.2 is near a zero
+  crossing. That comparison mixes fit windows (k ≤ min(0.08, 0.4k_split) against Table 6's), and the IR member of Table 2 is itself nonlinear.
+* a² scaling: on the clean estimator, the ratio of the a = 1 to a = 0.5 shift is 4.12 ± 0.33 at D = 0.5, as two-loop scaling predicts, 3.43 ± 0.22 at
+  D = 0.7 (raw 3.30 ± 0.84), and 0.04 ± 0.68 at D = 1. The a = 0.5 raw estimator disagrees in sign at D = 0.5, possibly an uncalibrated bias at a > 0 (not
+  tested), so the D = 0.5 ratio rests on the clean estimator alone.
 
-**Momentum.** The runs store only total momentum per epoch, not Eulerian momentum modes, so no Eulerian momentum
-response can be measured from them. The Lagrangian velocity obeys C₂^v = d(D C₂^ψ)/dD to 0.3–5 % at D = 0.3–0.7 at
+**ΛCDM.** The excess at k_split = 0.12 is +0.64 at ε → 0 and +0.92 ± 0.14 for the random-long field (Table 2's PM − one loop), against
+C₂(z = 0) = 1.04 ± 0.07 of the full-spectrum ΛCDM run (branch `eft-lcdm-cs`, `results/lcdm_cs_summary.json`). The full field may account for the
+difference from ε → 0, but this is not a like-for-like test: EdS against ΛCDM, only modes above 0.12, and different fit ranges.
+
+**Momentum.** These runs store only total momentum per epoch, not Eulerian momentum modes, so no Eulerian momentum response can be
+measured from them. Experiment 3 (`twoloop/`) stores them. The Lagrangian velocity obeys C₂^v = d(D C₂^ψ)/dD to 0.3–5 % at D = 0.3–0.7,
 k_split = 0.2 (finite-difference limited), a consistency check with no new information, as in §6.
+
+**Effect on §6.** §6's density coefficients use the IR member's own deposit as reference, which removes most of the deposit bias above
+D ≈ 0.2, but not below it: its early density values (D ≲ 0.2) are distorted. Their D = 1 values are unaffected.
+
+**Limitations.** PM's own deposit bias is assumed, not measured. The a > 0 configs have no exact bias calibration. b is measured on 1–2
+realizations. Only 4 realizations and one box. Figures for this section are still to be made.
 
 ## 15. Reproduction, hardware and runtime
 
