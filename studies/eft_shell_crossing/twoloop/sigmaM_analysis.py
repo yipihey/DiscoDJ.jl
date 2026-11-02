@@ -169,14 +169,14 @@ if figdir:
         axs[0, c].set_xscale("log"); axs[0, c].set_yscale("log"); axs[1, c].set_xscale("log")
         axs[1, c].axhline(1, color=COL["lin"], lw=1.2, ls="--")
         axs[0, c].set_title(f"D = {D:g}", fontsize=11, loc="left", color="#1b1b1a")
-        axs[1, c].set_xlabel(r"$M$ [$h^{-1}M_\\odot$]", fontsize=10)
+        axs[1, c].set_xlabel(r"$M$ [$h^{-1}M_\odot$]", fontsize=10)
         for a in axs[:, c]:
             a.grid(True, which="major", color="#e4e3df", lw=0.7); a.set_axisbelow(True)
             for sp in ("top", "right"):
                 a.spines[sp].set_visible(False)
             a.tick_params(labelsize=8.5, color="#8a8a85")
     axs[0, 0].set_ylabel(r"$\sigma$", fontsize=11); axs[1, 0].set_ylabel(r"$\sigma$ / linear", fontsize=11)
-    axs[1, 0].set_ylim(0.6, 1.6)
+    axs[1, 0].set_ylim(0.6, 2.0)
     h, l = axs[0, 0].get_legend_handles_labels()
     fig.legend(h, l, loc="upper center", ncol=3, frameon=False, fontsize=9, bbox_to_anchor=(0.5, 1.0))
     fig.suptitle(" ", fontsize=20)
