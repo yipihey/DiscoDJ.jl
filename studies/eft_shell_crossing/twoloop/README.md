@@ -1,6 +1,6 @@
 # Experiment 3 — a top-down measurement of the two-loop EFTofLSS operator structure
 
-**Status: design + pipeline under construction (branch `eft-lcdm-cs`).**
+**Status: measured on all spectra; results in §5. The linear coefficient and its running are determined, the second- and third-order coefficients are not (branch `eft-lcdm-cs`).**
 
 Reference: C. Anastasiou, D. Favorito, M. Lewandowski, L. Senatore, H. Zheng, *Efficient evaluation of the dark-matter
 two-loop power spectrum in the EFT of LSS*, arXiv:2509.05187 (v15 source, Feb 2026). Equation numbers below are those of
@@ -142,3 +142,96 @@ moment except the density at D = 0.1 (3.7 %) and 0.3 (0.9 %). So treat the D = 0
 
 **Fit** (`tl_fit3.py`, tested by `test_tl_fit3.py`). The stress is dropped where n_Λ falls below its floor (`stress_epochs` in the output); density
 and momentum keep every epoch. In density the linear fit is the sum c_r1 + c_d1 only, and at late D the third-order δ³ columns make it approximate.
+
+---------------------------------------------------------------------------------------------------------------------
+
+## 5. Results
+
+All PM runs use the original settings of §4 (N = 256, 512³ force mesh, 200 steps): 4 seeds × ±L, fixed amplitudes, one box. Errors are delete-one jackknife over seeds. Because amplitudes are fixed and members are
+paired, they do not include cosmic variance, and three or four seeds make them rough. Summary: `results/stage7_summary.json`, from `stage7_analysis.py`.
+
+**T1, T6, PM against LPT.** Stress c_lin/I at Λ = 0.1, full − IR:
+
+| D | PM | 3LPT | 7LPT |
+|---|---|---|---|
+| 0.1 | 0.851 | 0.844 | 0.850 |
+| 0.2 | 0.918 | 0.881 | 0.922 |
+| 0.3 | 1.009 | 0.939 | 1.152 |
+| 0.4 | 1.066 | 1.053 | 2.16 |
+| 0.6 | 1.088 | 1.474 | 12.1 |
+
+PM follows 7LPT to D ≈ 0.2, then levels off while LPT runs away. In the far-UV band (k = 0.6–1.6) PM's coefficient falls to ≈ 0.06 by D = 0.5, though the fit explains only 11 % of the variance there. In the UV-divergent spectrum it peaks at
+D ≈ 0.2 (0.957) and declines.
+
+**T2, running of the linear coefficient.** Across all five spectra, at D = 0.1 and Λ = 0.1–0.3, the slope against I(Λ) is
+
+| spectrum | dc/dI, stress (PM) | dc/dI, density (PM) |
+|---|---|---|
+| tl_full | 0.845 | 0.898 |
+| tl_uv10 | 0.845 | 0.899 |
+| tl_uv06 | 0.846 | 0.890 |
+| tl_div | 0.844 | 0.906 |
+| tl_div10 | 0.844 | 0.916 |
+
+against the analytic 61/70 = 0.871. Stress is 3 % below and density 2–5 % above, the same in all spectra, including the divergent one. 3LPT and 7LPT give the same values (0.839–0.846, 0.89–0.92). The slopes come from four Λ at one epoch, without errors.
+This is the study's cleanest test of the paper's UV matching.
+
+**Closure.** At fixed epoch the three channels diverge by ≈ 20 % at D = 0.3, but they should not agree there if the coefficient runs in time, since density and momentum integrate the stress. With c(D) = c₀ + c₂D² and the EdS Green's function
+(density: 9/26 of c₂, momentum: 5/3 of that; `tl_closure.py`), at D = 0.1–0.3:
+
+| tl_full, Λ | I | c₀ stress | c₀ density | c₀ momentum | c₂ stress | c₂ density | c₂ momentum |
+|---|---|---|---|---|---|---|---|
+| 0.10 | 33.4 | 0.834 ± 0.023 | 0.881 ± 0.018 | 0.872 ± 0.022 | 1.97 ± 0.02 | 2.36 ± 0.13 | 2.45 ± 0.06 |
+| 0.15 | 22.7 | 0.838 ± 0.010 | 0.839 ± 0.013 | 0.838 ± 0.007 | 2.84 ± 0.02 | 3.60 ± 0.14 | 3.38 ± 0.03 |
+| 0.20 | 16.7 | 0.820 ± 0.002 | 0.840 ± 0.013 | 0.835 ± 0.012 | 3.78 ± 0.03 | 4.57 ± 0.17 | 4.21 ± 0.03 |
+| 0.30 | 10.1 | 0.799 ± 0.005 | 0.847 ± 0.006 | 0.839 ± 0.004 | 7.20 ± 0.04 | 6.93 ± 0.25 | 6.21 ± 0.05 |
+
+* c₀ closes to 0–6 %; c₂ only to 4–20 %.
+* **It fails for the UV-divergent spectrum:** tl_div stress gives c₂ ≈ 0 against 5.9–11.8 in density (Λ = 0.1–0.3), because the coefficient has already turned over by D ≈ 0.2, so c₀ + c₂D² does not apply. Closure there needs the measured c(D), not a power series.
+* The density and momentum regressors include δ̃³ (D⁵), so at late D the identification is approximate.
+
+**T7 and the eight coefficients: not achieved.** With the stress floor (`nmin_floor`), only D ≤ 0.3 is usable at Λ = 0.2 and D ≤ 0.6 at Λ = 0.1. In windows D ≤ 0.3:
+
+* c_δ,1 + c_r,1 is determined (above).
+* rδ,1 is measured but scattered: 1.7–2.2 for full − IR at Λ ≥ 0.2 against 2.04, 1.1–2.5 in far-UV bands, and −0.9 in the divergent 1.0–1.6 band, which is already non-perturbative at D ≤ 0.3.
+* δ,2 and δ²,1 are separately unconstrained, and their sum drifts with epoch with no plateau (far-UV band, 3LPT: 0.46 ± 0.35, 1.51 ± 0.24, 3.98 ± 0.23 at D = 0.2, 0.3, 0.4, against 3.64; `tl_even_test.py`). The even stress is noise-dominated at D ≤ 0.2 and contaminated by higher orders from D ≈ 0.3.
+* δ,3, rδ,2, rδ²,1 are nearly degenerate (condition number ≈ 6 × 10⁶) and vary strongly with Λ; density-only windows are singular (≈ 5 × 10¹⁷).
+
+So the second- and third-order κ are neither confirmed nor refuted, and **whether all eight are formally needed cannot be decided from this estimator**. Windows treat c as constant while it grows ≈ 35 %, so the jackknife errors understate the true uncertainty. T3 (time non-locality through c_O,α/c_O,1) is untested for the same reason; the running c(D) above is the only time-dependence result.
+
+**Stochastic part.** The stress-trace residual is white at k ≲ 0.13: slope −0.2 to +0.07 (odd) and 0 to +0.47 (even) for PM at Λ = 0.1–0.3. PM and 7LPT agree to D = 0.2; beyond that 7LPT rises by orders of magnitude and steepens (slope −1.4 by D = 0.6).
+
+**T5, vorticity: partly tested.** rms curl v_Λ against rms k·π_Λ at k ≤ 0.12, Λ = 0.2: 0.42, 0.89, 1.48, 2.9 % at D = 0.1–0.4, in PM and 7LPT alike to D = 0.3. From D = 0.5 the ratio exceeds 100 %: v_Λ = π_Λ/ρ_Λ is singular where the sharp-filtered density approaches zero, so those values are not physical. The prediction from τ̃₍₂₎ was not computed.
+
+**Deposit.** Direct particle sums against the CIC deposit, seed 1, s = +1, D = 0.1–1: tl_full, tl_ir020, tl_ir010. Every moment agrees to ≤ 1.1 × 10⁻⁴; full − IR is good to ≤ 2.5 × 10⁻⁴ with tl_ir010, and with tl_ir020 to ≤ 1.5 × 10⁻³ except the density at D = 0.1 (3.7 %) and 0.3 (0.9 %). tl_ir015 and tl_ir030 were not checked. Composite and gravitational stress were not tested directly.
+
+### 5.1 Fixed-mass sigmas (PM)
+
+`sigmaM.jl`, `sigmaM_analysis.py`, `sigmaM_sc.py`, `sc_lowmass.py`, `patch_anisotropy.py`, `patch_analysis.py`, `sigmaM_pair.py`; figures figM1–figM4. M = ρ̄V(R₀) with Ω_m = 1, about 3.2× the mass at the same radius for Ω_m = 0.31.
+
+The mean density around points drawn from the mass is ξ̄(R), linear in P(k). The variance there is σ²(R) + ⟨δ δ_R²⟩ − ξ̄²(R), so it includes an integrated bispectrum. By P(R_M ≤ R) = P_m(M_R ≥ M), one table F_m(R, μ) gives the volume distribution at fixed mass.
+
+| at D = 1, relative to linear σ at the same M | 3.7 × 10¹⁵ | 1.0 × 10¹⁶ | 1.5 × 10¹⁷ |
+|---|---|---|---|
+| random spheres, fixed radius, σ(δ_R) | +2.2 % | +0.5 % | −0.5 % |
+| random centres, fixed M, σ(ln V) | −5.7 % | −2.9 % | −0.5 % |
+| Lagrangian patch, fixed M, σ(ln V) | +19 % | +7.0 % | +0.2 % |
+| centres drawn from ρ, fixed M, σ(ln V) | +35 % | +24 % | +3.3 % |
+
+* **Spherical collapse** (exact EdS, frozen at 178, Gaussian δ_L) with density-dependent contraction R_L = R μ^(1/3) reproduces σ(δ_R) to ≤ 2.3 % at M ≥ 1.4 × 10¹⁵, D = 1. Without contraction it overshoots by 16–62 %: σ(δ_R) ≈ linear is a cancellation of growth against contraction. It also reproduces the patch σ to 2–3.4 %, and the full ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵ (figM4). At 2.5 × 10¹⁴ it explains about half of the width excess; past collapse real patches form a smooth tail, not the frozen spike. Random centres fit worst (4–8 % low).
+* **Anisotropy.** Patch images are strongly non-spherical (a₃/a₁ = 0.47–0.85 at D = 1), yet δ_L sets 86–97 % of Var(ln V). The patch's own initial shear has the expected sign (higher shear, smaller volume, correlation −0.1 to −0.3) but explains only 1–5 % of the remainder. The origin of the rest is unmeasured.
+* ρ-drawn and Lagrangian differ, though spherical collapse makes them equal: reweighting centres by μ_R closes 55–65 % of the gap.
+
+### 5.2 UV modes and IR variance
+
+Seed-matched Var_A/Var_B − 1 minus the linear power of the extra modes (`sigmaM_pair.py`), D = 1:
+
+| change | R = 20 | R = 30 | R = 50 | R = 78 | growth after D ≈ 0.8 |
+|---|---|---|---|---|---|
+| k > 0.2 (tl_full − tl_ir020) | −3.4 % | −2.4 % | −1.0 % | −0.6 % | yes |
+| power above 0.3 raised (tl_div − tl_full) | −1.29 % | −0.71 % | −0.31 % | −0.17 % | barely |
+| k = 0.6–1.6 (tl_full − tl_uv06) | −0.58 % | −0.32 % | −0.14 % | −0.07 % | barely |
+| k = 1.0–1.6 (tl_full − tl_uv10) | −0.14 % | −0.08 % | −0.03 % | −0.02 % | no |
+| k = 1.0–1.6, divergent (tl_div − tl_div10) | −0.37 % | −0.20 % | −0.09 % | −0.05 % | declines |
+
+The response is negative at D ≥ 0.5. Spherical collapse gets the sign wrong, since it contains no coupling of short modes to long ones. The R dependence is nearly universal for the deep-UV rows, while response/ΔI varies by 3.4×, so I alone does not set it: the same band gives half the response per I in the divergent spectrum, whose modes collapse earlier. This agrees with the stress turning over in the band fits above.
