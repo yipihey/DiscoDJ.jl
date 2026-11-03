@@ -163,18 +163,9 @@ paired, they do not include cosmic variance, and three or four seeds make them r
 PM follows 7LPT to D ≈ 0.2, then levels off while LPT runs away. In the far-UV band (k = 0.6–1.6) PM's coefficient falls to ≈ 0.06 by D = 0.5, though the fit explains only 11 % of the variance there. In the UV-divergent spectrum it peaks at
 D ≈ 0.2 (0.957) and declines.
 
-**T2, running of the linear coefficient.** Across all five spectra, at D = 0.1 and Λ = 0.1–0.3, the slope against I(Λ) is
+**T2, UV test of the linear coefficient.** At D = 0.1, from band differences far from Λ, PM's stress c̄/I over Λ = 0.1–0.3 is 0.863–0.871 for k = 0.6–1.6, 0.879–0.888 for k = 1.0–1.6, and 1.040–1.047 for the divergent spectrum's k = 1.0–1.6 band (7LPT 1.054–1.062), against 61/70 = 0.871. Density and momentum sit 1–13 % above stress in the Planck-shape bands.
 
-| spectrum | dc/dI, stress (PM) | dc/dI, density (PM) |
-|---|---|---|
-| tl_full | 0.845 | 0.898 |
-| tl_uv10 | 0.845 | 0.899 |
-| tl_uv06 | 0.846 | 0.890 |
-| tl_div | 0.844 | 0.906 |
-| tl_div10 | 0.844 | 0.916 |
-
-against the analytic 61/70 = 0.871. Stress is 3 % below and density 2–5 % above, the same in all spectra, including the divergent one. 3LPT and 7LPT give the same values (0.839–0.846, 0.89–0.92). The slopes come from four Λ at one epoch, without errors.
-This is the study's cleanest test of the paper's UV matching.
+dc̄/dI across Λ = 0.1–0.3 (0.844–0.846 in stress, 0.89–0.92 in density, in all five spectra) is **not** a UV test: those modes (k = 0.1–0.3) are shared by every spectrum, so the agreement is built in. It is one measurement, 3 % below 61/70.
 
 **Closure.** At fixed epoch the three channels diverge by ≈ 20 % at D = 0.3, but they should not agree there if the coefficient runs in time, since density and momentum integrate the stress. With c(D) = c₀ + c₂D² and the EdS Green's function
 (density: 9/26 of c₂, momentum: 5/3 of that; `tl_closure.py`), at D = 0.1–0.3:
@@ -186,7 +177,7 @@ This is the study's cleanest test of the paper's UV matching.
 | 0.20 | 16.7 | 0.820 ± 0.002 | 0.840 ± 0.013 | 0.835 ± 0.012 | 3.78 ± 0.03 | 4.57 ± 0.17 | 4.21 ± 0.03 |
 | 0.30 | 10.1 | 0.799 ± 0.005 | 0.847 ± 0.006 | 0.839 ± 0.004 | 7.20 ± 0.04 | 6.93 ± 0.25 | 6.21 ± 0.05 |
 
-* c₀ closes to 0–6 %; c₂ only to 4–20 %.
+* c₀ closes to 0–6 %; c₂ only to 16–27 %.
 * **It fails for the UV-divergent spectrum:** tl_div stress gives c₂ ≈ 0 against 5.9–11.8 in density (Λ = 0.1–0.3), because the coefficient has already turned over by D ≈ 0.2, so c₀ + c₂D² does not apply. Closure there needs the measured c(D), not a power series.
 * The density and momentum regressors include δ̃³ (D⁵), so at late D the identification is approximate.
 
@@ -218,7 +209,7 @@ The mean density around points drawn from the mass is ξ̄(R), linear in P(k). T
 | Lagrangian patch, fixed M, σ(ln V) | +19 % | +7.0 % | +0.2 % |
 | centres drawn from ρ, fixed M, σ(ln V) | +35 % | +24 % | +3.3 % |
 
-* **Spherical collapse** (exact EdS, frozen at 178, Gaussian δ_L) with density-dependent contraction R_L = R μ^(1/3) reproduces σ(δ_R) to ≤ 2.3 % at M ≥ 1.4 × 10¹⁵, D = 1. Without contraction it overshoots by 16–62 %: σ(δ_R) ≈ linear is a cancellation of growth against contraction. It also reproduces the patch σ to 2–3.4 %, and the full ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵ (figM4). At 2.5 × 10¹⁴ it explains about half of the width excess; past collapse real patches form a smooth tail, not the frozen spike. Random centres fit worst (4–8 % low).
+* **Spherical collapse** (exact EdS, frozen at 178, Gaussian δ_L) with density-dependent contraction R_L = R μ^(1/3) reproduces σ(δ_R) to ≤ 2.3 % at M ≥ 1.4 × 10¹⁵, D = 1 (≤ 5 % in tl_div). Without contraction it overshoots by 16–62 %: in this model σ(δ_R) ≈ linear is a cancellation of growth against contraction. It also reproduces the patch σ to 2–3.4 %, and the full ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵ (figM4). At 2.5 × 10¹⁴ it explains about half of the width excess in tl_full; past collapse real patches form a smooth tail, not the frozen spike. Random centres fit worst (4–8 % low).
 * **Anisotropy.** Patch images are strongly non-spherical (a₃/a₁ = 0.47–0.85 at D = 1), yet δ_L sets 86–97 % of Var(ln V). The patch's own initial shear has the expected sign (higher shear, smaller volume, correlation −0.1 to −0.3) but explains only 1–5 % of the remainder. The origin of the rest is unmeasured.
 * ρ-drawn and Lagrangian differ, though spherical collapse makes them equal: reweighting centres by μ_R closes 55–65 % of the gap.
 
@@ -234,4 +225,4 @@ Seed-matched Var_A/Var_B − 1 minus the linear power of the extra modes (`sigma
 | k = 1.0–1.6 (tl_full − tl_uv10) | −0.14 % | −0.08 % | −0.03 % | −0.02 % | no |
 | k = 1.0–1.6, divergent (tl_div − tl_div10) | −0.37 % | −0.20 % | −0.09 % | −0.05 % | declines |
 
-The response is negative at D ≥ 0.5. Spherical collapse gets the sign wrong, since it contains no coupling of short modes to long ones. The R dependence is nearly universal for the deep-UV rows, while response/ΔI varies by 3.4×, so I alone does not set it: the same band gives half the response per I in the divergent spectrum, whose modes collapse earlier. This agrees with the stress turning over in the band fits above.
+The response is negative at all R ≥ 10; at R ≤ 6.9 the k > 0.2 row is positive at some epochs. Spherical collapse misses it (about 0 at R ≥ 20 for the deep UV; wrong sign at R = 15 for k > 0.2). The R dependence is nearly universal for the deep-UV rows, while response/ΔI varies by 3.4×, so I alone does not set it: the same band gives half the response per I in the divergent spectrum, whose modes collapse earlier. This agrees with the stress turning over in the band fits above.
