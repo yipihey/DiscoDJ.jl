@@ -34,4 +34,4 @@ One tension remains. Plane-wave density shells show no decoupling at ε → 0 (r
 * One box size, one set of phases per seed, EdS throughout. Masses use Ω_m = 1, about 3.2× the mass at the same radius for Ω_m = 0.31, so radius is the safer label.
 * Fixed amplitudes and seed-matched differences give very small errors. They do not include cosmic variance.
 * PM's own deposit bias is assumed equal to 7LPT's where it matters (report A).
-* "Planck-shape" spectra here are EdS with the Planck18 shape. True ΛCDM enters only through the earlier c_s run on the same branch.
+* "Planck-shape" spectra here are EdS with the Planck18 shape. True ΛCDM enters only through the earlier c_s run (`results/lcdm_cs_summary.json`).

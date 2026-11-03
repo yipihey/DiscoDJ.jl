@@ -1,6 +1,6 @@
 # Experiment 3 — a top-down measurement of the two-loop EFTofLSS operator structure
 
-**Status: measured on all spectra; results in §5. The linear coefficient and its running are determined, the second- and third-order coefficients are not (branch `eft-lcdm-cs`).**
+**Status: measured on all spectra; results in §5. The linear coefficient and its running are determined, the second- and third-order coefficients are not.**
 
 Reference: C. Anastasiou, D. Favorito, M. Lewandowski, L. Senatore, H. Zheng, *Efficient evaluation of the dark-matter
 two-loop power spectrum in the EFT of LSS*, arXiv:2509.05187 (v15 source, Feb 2026). Equation numbers below are those of

@@ -34,4 +34,4 @@ Two unexplained reboots preceded the campaign (Oct 31 about 16:25 PDT, Nov 1 abo
 
 ## What remains
 
-Merging: `fixed-mass-sheet-moments` merges cleanly onto `main`. `eft-lcdm-cs` conflicts in `scripts/run_jobs.jl` (1 hunk) and `src/ics.jl` (2 hunks). `eft-lcdm-cs` lacks the FFTW fix. Nothing has been merged; only the corrected density README has been pushed. Scratch holds about 400 GB of snapshots and is worth keeping for further analysis.
+All three branches are merged into `main`; the additive conflicts were in `scripts/run_jobs.jl`, `src/ics.jl` and `src/runners.jl`. After the merge, 66 study, 32 sheet-moment and 15 fixed-mass tests pass, and both branches' ICs reproduce stored runs to 3 × 10⁻⁷. Scratch holds about 400 GB of snapshots and is worth keeping for further analysis.

@@ -1,6 +1,6 @@
 # Report C: variance at fixed mass, spherical collapse and the reach of the UV
 
-Scripts: on branch `eft-lcdm-cs`, `twoloop/sigmaM.jl`, `sigmaM_analysis.py`, `sigmaM_sc.py`, `sc_lowmass.py`, `patch_anisotropy.py`, `patch_analysis.py`, `sigmaM_pair.py`, `pk_snap.jl`, `k_of_R.py`, `k_of_R_nowiggle.py`; on branch `fixed-mass-sheet-moments`, `src/fixedmass.jl`, `scripts/run_fixedmass.jl`, `fixedmass_analysis.py`, `fixedmass_response.py`, `figures_fixedmass.py`. Figures: `figM1`–`figM5`, `figU1`, `figF1`.
+Scripts: `twoloop/sigmaM.jl`, `sigmaM_analysis.py`, `sigmaM_sc.py`, `sc_lowmass.py`, `patch_anisotropy.py`, `patch_analysis.py`, `sigmaM_pair.py`, `pk_snap.jl`, `k_of_R.py`, `k_of_R_nowiggle.py`; `src/fixedmass.jl`, `scripts/run_fixedmass.jl`, `fixedmass_analysis.py`, `fixedmass_response.py`, `figures_fixedmass.py`. Figures: `figM1`–`figM5`, `figU1`, `figF1`.
 
 ## 1. Definitions
 

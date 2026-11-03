@@ -28,6 +28,18 @@ pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;mar
 """
 
 CAPTIONS = {
+    "figP8_density_response": "Eulerian density response: C₂,δ/D² against D (solid corrected, dotted raw, dashed one loop), against k_split with displacement, and density shells relative to one loop.",
+    "figT1_running": "Linear coefficient against I(Λ) at D = 0.1. Those modes are shared by every spectrum, so agreement across spectra is built in.",
+    "figT2_stress_time": "Linear stress coefficient against D for PM and LPT, Λ = 0.1.",
+    "figT3_time_local": "Density and momentum responses against the prediction from a stress local in time.",
+    "figU1_uv_response": "Suppression of variance by UV modes against R at D = 1, and against D at R = 20 h⁻¹Mpc.",
+    "figM1_sigma_fixed_mass_tl_full": "σ(M): fixed radius, random and mass-drawn centres at fixed mass, Lagrangian patches, and linear.",
+    "figM2_sigma_spherical_collapse_tl_full": "σ(M) relative to linear, PM against spherical collapse, with and without contraction.",
+    "figM3_patch_anisotropy_tl_full": "ln V of Lagrangian patches at fixed δ_L against spherical collapse, and the scatter at fixed δ_L.",
+    "figM4_lnV_pdf_tl_full": "Distribution of ln V at fixed mass, D = 1: PM, Gaussian δ_L through spherical collapse, and a plain Gaussian.",
+    "figM4_lnV_pdf_tl_div": "The same in the UV-divergent spectrum.",
+    "figM5_k_of_R_tl_full": "Scale mapping from Δ²(k, D) = σ²(R, D): k(R), M(k) and kR(M). Dips in kR are BAO.",
+    "figF1_fixedmass": "Fixed-mass statistics of the fiducial pair: coherent suppression, added power against linear, and F(R, μ).",
     "fig1_power_ratio": "T(k, D) = P_UV/P_IR − 1 of the Eulerian density at several epochs, PM and 7LPT (k < k_split: identical initial modes).",
     "fig2_response_k": "Field-level response R(k)/k² of the long-mode displacement at three epochs (3LPT, 7LPT, PM) with the leading-order fits.",
     "fig3_c2_vs_time": "Central figure: C₂(D)/D² for 1, 3, 5, 7LPT, the extrapolated LPT∞ and PM, with the shell-crossed (inverted) mass fraction.",
