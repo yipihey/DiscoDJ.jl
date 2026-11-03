@@ -1,6 +1,6 @@
-# Fixed-mass sigmas of PM snapshots (light CPU) → $EFTSC_SCRATCH/sigmaM/<cfg>_<model>_L<seed>_s<sign>_D<D>.h5; analysis in sigmaM_analysis.py
+# Fixed-mass sigmas of PM snapshots or nLPT (light CPU) → $EFTSC_SCRATCH/sigmaM/<cfg>_<model>_L<seed>_s<sign>_D<D>.h5; analysis in sigmaM_analysis.py
 #
-#   CUDA_VISIBLE_DEVICES="" julia --project=.. -t 8 sigmaM.jl <cfg> <seeds> <signs> <D,D,...>
+#   CUDA_VISIBLE_DEVICES="" julia --project=.. -t 8 sigmaM.jl <cfg> <seeds> <signs> <D,D,...> [model]    model = pm (default) or lpt<n>, summed from the stored displacement shapes
 #
 # Eulerian: μ_R(x) by top-hat convolution of the CIC density of the 2³-resampled sheet on a 384³ mesh, for 64 radii.
 #   count[j, b]  histogram of log μ_R over mesh nodes (random centres)
@@ -112,9 +112,23 @@ end
 
 cfg, seeds, signs, Ds = ARGS[1], parse.(Int, split(ARGS[2], ",")), parse.(Int, split(ARGS[3], ",")), parse.(Float64, split(ARGS[4], ","))
 L = TOML.parsefile(joinpath(scratch(), cfg, "config.toml"))["L"]; od = joinpath(scratch(), "sigmaM"); mkpath(od)
+model = length(ARGS) >= 5 ? ARGS[5] : "pm"
+function displacement(cfg, model, s, sg, D)
+    sd = joinpath(scratch(), cfg, "snap")
+    model == "pm" && return h5open(h -> read(h["Psi"]), joinpath(sd, @sprintf("pm_IR_L%d_S0_s%+d_D%.3f.h5", s, sg, D)))
+    startswith(model, "lpt") || error("unknown model $model")
+    n = parse(Int, model[4:end])
+    h5open(joinpath(sd, @sprintf("lpt_IR_L%d_S0_s%+d_shapes.h5", s, sg))) do h
+        Ψ = Float64(D) .* read(h["psi_1"])
+        for m in 2:n
+            Ψ .+= D^m .* read(h["psi_$m"])
+        end
+        Float32.(Ψ)
+    end
+end
 for s in seeds, sg in signs, D in Ds
-    tag = @sprintf("%s_pm_L%d_s%+d_D%.3f", cfg, s, sg, D); f = joinpath(od, tag * ".h5"); isfile(f) && continue
-    t0 = time(); Ψ = h5open(h -> read(h["Psi"]), joinpath(scratch(), cfg, "snap", @sprintf("pm_IR_L%d_S0_s%+d_D%.3f.h5", s, sg, D)))
+    tag = @sprintf("%s_%s_L%d_s%+d_D%.3f", cfg, model, s, sg, D); f = joinpath(od, tag * ".h5"); isfile(f) && continue
+    t0 = time(); Ψ = displacement(cfg, model, s, sg, D)
     X = resampled(Ψ, L); ρ = cic(X, L); X = nothing; t1 = time()
     cnt, mw, mom = eulerian(ρ, L); t2 = time()
     lag, ms, mu = lagrangian(Ψ, L); t3 = time()

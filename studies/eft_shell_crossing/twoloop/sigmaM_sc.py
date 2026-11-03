@@ -90,8 +90,9 @@ for D in sorted(data):
     e = r["epochs"][f"{D:.3f}"]; smu, emu = agg(D, 0); uu, _ = agg(D, 1); slm, _ = agg(D, 2)
     pred = [sc(R, D) for R in RL]; pR = [sc_fixedR(R, D) for R in RL]; pR0 = [sc_fixedR(R, D, False) for R in RL]
     sR = np.interp(np.log(RL), np.log(RE), np.array(e["s_R"])); sLM = np.interp(np.log(RL), np.log(RE), slm)
+    pRE = [sc_fixedR(R, D) for R in RE]; pRE0 = [sc_fixedR(R, D, False) for R in RE]
     out["epochs"][f"{D:.3f}"] = dict(s_muw=smu.tolist(), e_muw=emu.tolist(), unres_muw=uu.tolist(), s_lnmu=sLM.tolist(), s_R=sR.tolist(), sc_lag=[p["lag"][1] for p in pred], sc_lag_mean=[p["lag"][0] for p in pred], sc_rand=[p["rand"][1] for p in pred],
-                                     sc_fixR_d=[p[0] for p in pR], sc_fixR_lnmu=[p[1] for p in pR], sc_nocontr_d=[p[0] for p in pR0], sc_nocontr_lnmu=[p[1] for p in pR0])
+                                     s_lnmu_RE=slm.tolist(), sc_fixRE_d=[p[0] for p in pRE], sc_fixRE_lnmu=[p[1] for p in pRE], sc_nocontrE_d=[p[0] for p in pRE0], sc_fixR_d=[p[0] for p in pR], sc_fixR_lnmu=[p[1] for p in pR], sc_nocontr_d=[p[0] for p in pR0], sc_nocontr_lnmu=[p[1] for p in pR0])
     for i in idx:
         print(f"{D:.1f} {RL[i]:5.1f} {4 * np.pi / 3 * RL[i] ** 3 * 2.775e11:.1e} | {D * sig_lin(RL[i]):.3f} | {e['s_lag'][i]:.3f} {pred[i]['lag'][1]:.3f} | {e['s_rand'][i]:.3f} {pred[i]['rand'][1]:.3f} | {e['s_mass'][i]:.3f} | {smu[i]:.3f}±{emu[i]:.3f} | u={uu[i]:.3f}")
 print("\nFixed Eulerian radius: measured sigma(delta_R), SC with contraction, SC without; measured sigma(ln mu_R), SC with, SC without.  Ratio of contraction effect = with/without")

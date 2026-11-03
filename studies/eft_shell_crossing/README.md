@@ -21,7 +21,7 @@ stochastic power). **Assessment: strong support (category 1) for the CHS irreduc
 where it can be tested (§12); beyond D ≈ 0.5 the single-stream series diverges and irreducibility is an
 extrapolation.**
 
-**Follow-up results and final reports (§16):** [synthesis](reports/00_synthesis.md); [A: density response](reports/A_density_response.md); [B: two-loop stress](reports/B_two_loop_stress.md); [C: fixed-mass sigmas and UV reach](reports/C_fixed_mass_sigma.md); [D: campaign notes](reports/D_campaign_notes.md).
+**Follow-up results and final reports (§16):** [synthesis](reports/00_synthesis.md); [A: density response](reports/A_density_response.md); [B: two-loop stress](reports/B_two_loop_stress.md); [C: σ(M), LPT and spherical collapse](reports/C_sigma_M.md); [D: reach of the UV](reports/D_uv_reach.md); [E: campaign notes](reports/E_campaign_notes.md).
 
 **Precision follow-up with plane-wave long modes (§14).** Replacing the random long field by ±ε plane waves isolates
 the coefficient of the *linear* long field. In the displacement, where ε = 0.01 is already the ε → 0 limit, it is
@@ -1039,7 +1039,7 @@ band-edge control), `test/`, `results/`, `figures/` (PNG + PDF), `figures.py`, `
 DiscoDJNative changes made for this study (same branch): Float32 deconvolution fix; memory-lean PM solver
 (`PMSolverLean`, `run_nbody(lean=true, callback_when=…)`) with tests.
 
-## 16. Follow-ups: two-loop stress, fixed-mass sigmas and the reach of the UV
+## 16. Follow-ups: two-loop stress, σ(M) and the reach of the UV
 
 Full accounts are in [`reports/`](reports/00_synthesis.md), and the two-loop design is in [`twoloop/README.md`](twoloop/README.md). These runs are EdS with the Planck18 shape, 4 seeds × ±L at fixed amplitudes, with spectra k < 1.6, 1.0, 0.6 and a UV-divergent one (P ∝ k⁻¹ above k = 0.3), plus IR members cut at Λ = 0.1–0.3. Errors exclude cosmic variance.
 
@@ -1049,13 +1049,14 @@ Full accounts are in [`reports/`](reports/00_synthesis.md), and the two-loop des
 * Through the EdS Green's function, the measured c(D) gives density and momentum to ≤ 4.4 % at Λ = 0.15 to D = 0.5 in Planck-shape spectra (≤ 8.5 % at Λ = 0.1), and misses by 13–17 % from D ≈ 0.3 in the divergent spectrum with k < 1.6 (3–11 % with k < 1.0).
 * The second- and third-order coefficients are not determined by this estimator, so **whether all eight counterterms are needed remains undecided.**
 
-**Fixed-mass sigmas** ([report C](reports/C_fixed_mass_sigma.md), [figM1](figures/figM1_sigma_fixed_mass_tl_full.png), [figM2](figures/figM2_sigma_spherical_collapse_tl_full.png), [figM3](figures/figM3_patch_anisotropy_tl_full.png), [figM4](figures/figM4_lnV_pdf_tl_full.png)).
+**σ(M), LPT and spherical collapse** ([report C](reports/C_sigma_M.md), [figM1](figures/figM1_sigma_fixed_mass_tl_full.png), [figM2](figures/figM2_sigma_spherical_collapse_tl_full.png), [figM3](figures/figM3_patch_anisotropy_tl_full.png), [figM4](figures/figM4_lnV_pdf_tl_full.png), [figM6](figures/figM6_sigma_lpt_tl_full.png), [figM7](figures/figM7_sigma_sc_reach_tl_full.png), [figM8](figures/figM8_sigma_reach_tl_full.png)).
 
 * σ(ln V) around points drawn from the density, the data-centred kNN-CDF, departs earliest from linear: +24 % at M = 10¹⁶ h⁻¹M☉, D = 1, against +7 % for Lagrangian patches and +0.5 % for fixed-radius spheres. M uses Ω_m = 1.
-* Exact spherical collapse with density-dependent contraction reproduces fixed-radius σ to ≤ 2.3 % (≤ 5 % in the divergent spectrum); without contraction it overshoots by up to 62 %. It also reproduces the non-Gaussian ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵.
+* LPT converges to ≤ 0.3 % at D = 0.3 and R ≥ 5 h⁻¹Mpc from 3LPT up, then stops improving with order. By D = 0.8 5LPT and 7LPT are worse than Zel'dovich. At D = 1 no order recovers fixed-radius σ to 5 % below R ≈ 18.
+* Exact spherical collapse with density-dependent contraction reaches σ(δ_R) to 5 % down to R ≈ 6 at D = 1 (R ≈ 11 in the divergent spectrum, and R ≈ 35 without contraction). Patches fail at R₀ ≈ 9–11 and random centres at R₀ ≈ 19. At 1 % it is no better than 3LPT at D = 1 (both R ≈ 50). It also reproduces the non-Gaussian ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵.
 * Patch images become elongated (a₃/a₁ = 0.47 at 1.3 × 10¹⁵, D = 1), yet bins in δ_L account for 86–97 % of Var(ln V) at M ≥ 1.3 × 10¹⁵.
 
-**UV reach** ([report C](reports/C_fixed_mass_sigma.md), [figU1](figures/figU1_uv_response.png)). Modes k = 0.6–1.6 change the variance by −0.58 % at R = 20 and −0.07 % at R = 78 h⁻¹Mpc at D = 1, after removing their added linear power. The fractional change flattens by D ≈ 0.8, and the deepest divergent band turns over. Spherical collapse misses this response.
+**UV reach** ([report D](reports/D_uv_reach.md), [figU1](figures/figU1_uv_response.png)). Modes k = 0.6–1.6 change the variance by −0.58 % at R = 20 and −0.07 % at R = 78 h⁻¹Mpc at D = 1, after removing their added linear power. The fractional change flattens by D ≈ 0.8, and the deepest divergent band turns over. Spherical collapse misses this response.
 
 **Scales** ([figM5](figures/figM5_k_of_R_tl_full.png)). Equating Δ²(k, D) with σ²(R, D) gives kR = 1.37–1.46 at R = 6–60 h⁻¹Mpc for a smoothed spectrum, nearly independent of D, with BAO adding −0.04 to +0.05. So M ≈ 3.6 × 10¹² k⁻³ h⁻¹M☉ for Ω_m = 1.
 

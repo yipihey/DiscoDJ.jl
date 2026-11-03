@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fixed-mass sigmas from the sigmaM.jl outputs -> results/sigmaM_<cfg>.json (run with a Python that has h5py, numpy; matplotlib for figures).
 
-    python sigmaM_analysis.py <cfg> [figdir]
+    python sigmaM_analysis.py <cfg> [figdir]        env SIGMAM_MODEL = pm (default) or lpt<n>; lpt<n> writes results/sigmaM_<cfg>_lpt<n>.json
 
 M is labelled by R0, the radius holding M at mean density: M = rhobar V(R0).  With lnV = 3 ln(R/R0):
   s_mass(M)  std of lnV around centres drawn from the density   P(R_M <= R) = P_m(mu_R >= (R0/R)^3)
@@ -18,6 +18,7 @@ import h5py
 import numpy as np
 
 cfg = sys.argv[1]
+MODEL = os.environ.get("SIGMAM_MODEL", "pm")
 figdir = sys.argv[2] if len(sys.argv) > 2 else None
 D0 = os.environ.get("EFTSC_SCRATCH", "/zpool/nvme/data/tabel_scratch/eft_shell_crossing")
 here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results")
@@ -90,7 +91,7 @@ def one(f):
     return out
 
 
-files = sorted(glob.glob(os.path.join(D0, "sigmaM", f"{cfg}_pm_L*_s*_D*.h5")))
+files = sorted(glob.glob(os.path.join(D0, "sigmaM", f"{cfg}_{MODEL}_L*_s*_D*.h5")))
 R = {}
 for f in files:
     m = re.search(r"_L(\d+)_s([+-]\d)_D([0-9.]+)\.h5$", f)
@@ -115,6 +116,9 @@ def agg(D, fld):
     return m, np.sqrt((k - 1) / k * ((J - J.mean(0)) ** 2).sum(0))
 
 
+os.makedirs(os.path.join(D0, "sigmaM_perseed"), exist_ok=True)      # (seed, epoch, radius) arrays of +- pair means, for seed-matched ratios (sigmaM_lpt.py)
+np.savez(os.path.join(D0, "sigmaM_perseed", f"{cfg}_{MODEL}.npz"), seeds=np.array(seeds), Ds=np.array(Ds),
+         **{fl: np.array([[0.5 * (R[(s, 1, D)][fl] + R[(s, -1, D)][fl]) for D in Ds] for s in seeds]) for fl in FIELDS})
 s0 = next(iter(R.values())); RE, RL = s0["RE"], s0["RL"]
 slinL = np.array([sig_lin(r) for r in RL]); slinE = np.array([sig_lin(r) for r in RE])
 res = dict(cfg=cfg, RL=RL.tolist(), RE=RE.tolist(), sig_lin_RL=slinL.tolist(), sig_lin_RE=slinE.tolist(), epochs={})
@@ -123,7 +127,7 @@ for D in Ds:
     for fl in FIELDS:
         m, s = agg(D, fl); e[fl] = m.tolist(); e["e_" + fl] = s.tolist()
     res["epochs"][f"{D:.3f}"] = e
-json.dump(res, open(os.path.join(here, f"sigmaM_{cfg}.json"), "w"), indent=0, default=float)
+json.dump(res, open(os.path.join(here, f"sigmaM_{cfg}.json" if MODEL == "pm" else f"sigmaM_{cfg}_{MODEL}.json"), "w"), indent=0, default=float)
 
 idx = [i for i, r in enumerate(RL) if any(abs(r - x) < 0.5 * (RL[1] / RL[0] - 1) * x for x in (6, 8, 10, 15, 20, 30, 50, 80))]
 print("\nAll sigmas at the same M. R0 = radius holding M at mean density. Dsig_lin is the linear sigma at R0.  Masked '--' where > 2 % of the distribution lies outside the radius range.")

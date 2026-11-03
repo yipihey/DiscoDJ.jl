@@ -5,7 +5,7 @@
 Called by .github/workflows/report-pages.yml, which publishes it at
 https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/ .  Needs the `markdown` package.
 Links to repository files (configs, scripts, results) are pointed at GitHub; figures are copied and also shown in a
-gallery at the end of the page.
+gallery at the end of the page.  reports/*.md are rendered to reports/*.html.
 """
 import os, re, sys, shutil, glob
 import markdown
@@ -39,6 +39,12 @@ CAPTIONS = {
     "figM4_lnV_pdf_tl_full": "Distribution of ln V at fixed mass, D = 1: PM, Gaussian δ_L through spherical collapse, and a plain Gaussian.",
     "figM4_lnV_pdf_tl_div": "The same in the UV-divergent spectrum.",
     "figM5_k_of_R_tl_full": "Scale mapping from Δ²(k, D) = σ²(R, D): k(R), M(k) and kR(M). Dips in kR are BAO.",
+    "figM6_sigma_lpt_tl_full": "nLPT/PM for each σ(M) statistic, ±5 % band. Patch curves above the axis are 5LPT and 7LPT, dominated by inverted patches.",
+    "figM6_sigma_lpt_tl_div": "The same in the UV-divergent spectrum (1, 3, 7LPT).",
+    "figM7_sigma_sc_reach_tl_full": "Spherical collapse/PM for each statistic, ±5 % band.",
+    "figM7_sigma_sc_reach_tl_div": "The same in the UV-divergent spectrum.",
+    "figM8_sigma_reach_tl_full": "Smallest mass matched to 5 % against D, for nLPT and spherical collapse. Dotted lines are the grid floor; missing points fail at every scale.",
+    "figM8_sigma_reach_tl_div": "The same in the UV-divergent spectrum.",
     "figF1_fixedmass": "Fixed-mass statistics of the fiducial pair: coherent suppression, added power against linear, and F(R, μ).",
     "fig1_power_ratio": "T(k, D) = P_UV/P_IR − 1 of the Eulerian density at several epochs, PM and 7LPT (k < k_split: identical initial modes).",
     "fig2_response_k": "Field-level response R(k)/k² of the long-mode displacement at three epochs (3LPT, 7LPT, PM) with the leading-order fits.",
@@ -77,10 +83,49 @@ def relink(html):
         url = m.group(1)
         if url.startswith(("http://", "https://", "#", "mailto:", "figures/")):
             return m.group(0)
+        rep = re.fullmatch(r"reports/(\w+)\.md(#.*)?", url)
+        if rep:
+            return f'href="reports/{rep.group(1)}.html{rep.group(2) or ""}"'
         if url.startswith("../../"):
             return f'href="{REPO_ROOT}{url[6:]}"'
         return f'href="{REPO}{url}"'
     return re.sub(r'href="([^"]+)"', fix, html)
+
+
+def report_links(html):
+    """Links inside reports/*.md: other reports stay on the site, figures are siblings of reports/, anything else goes to GitHub."""
+    def fix(m):
+        url = m.group(1)
+        if url.startswith(("http://", "https://", "#", "mailto:", "../figures/")):
+            return m.group(0)
+        rep = re.fullmatch(r"(\w+)\.md(#.*)?", url)
+        if rep:
+            return f'href="{rep.group(1)}.html{rep.group(2) or ""}"'
+        if url.startswith("../"):
+            return f'href="{REPO}{url[3:]}"'
+        return f'href="{REPO}reports/{url}"'
+    return re.sub(r'href="([^"]+)"', fix, html)
+
+
+def build_reports(out):
+    os.makedirs(os.path.join(out, "reports"), exist_ok=True)
+    paths = sorted(glob.glob(os.path.join(HERE, "reports", "*.md")))
+    for p in paths:
+        md = open(p, encoding="utf-8").read()
+        body = report_links(markdown.markdown(md, extensions=["tables", "fenced_code", "toc", "sane_lists"]))
+        title = re.search(r"^# (.+)$", md, re.M).group(1)
+        name = os.path.basename(p)[:-3]
+        open(os.path.join(out, "reports", name + ".html"), "w", encoding="utf-8").write(f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{title} — DiscoDJ.jl</title>
+<style>{CSS} main img{{max-width:100%;border:1px solid #e4e3df;background:#fff}}</style></head>
+<body><main>
+<p class="meta"><a href="../">EFT / shell-crossing study</a> · <a href="00_synthesis.html">synthesis</a> · <a href="{REPO}reports/{name}.md">source on GitHub</a></p>
+{body}
+</main></body></html>
+""")
+    print(f"{len(paths)} reports written to {out}/reports")
 
 
 def main(out):
@@ -113,6 +158,7 @@ def main(out):
 """
     open(os.path.join(out, "index.html"), "w", encoding="utf-8").write(html)
     print(f"site page written to {out}/index.html ({len(figs)} figures)")
+    build_reports(out)
 
 
 if __name__ == "__main__":

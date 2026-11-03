@@ -14,46 +14,35 @@ Julia tools for **DISCO-DJ**, the differentiable cosmology code of List, Hahn, W
 
 ## Studies
 
-**[LPT vs N-body Before Shell Crossing: full report with all figures](https://yipihey.github.io/DiscoDJ.jl/studies/lpt_pdf/report.html)**
-(source: [`studies/lpt_pdf/report.html`](studies/lpt_pdf/report.html))
+| study | question | read it |
+|---|---|---|
+| **LPT vs N-body before shell crossing** | How far do LPT orders reproduce N-body PDFs and correlations on scales that have almost not shell-crossed? | [report with all figures](https://yipihey.github.io/DiscoDJ.jl/) |
+| **UV sensitivity of long modes across shell crossing** | Do short modes leave an irreducible effective stress on long modes, what does it look like, and how do LPT and spherical collapse compare? | [study page with all figures](https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/), [synthesis](studies/eft_shell_crossing/reports/00_synthesis.md) |
 
-The report covers the studies, run on identical fixed-amplitude initial conditions
-(L = 300 Mpc/h, top-hat filter R_f = 14 Mpc/h, Planck18).
+All studies include resolution studies for every method.
 
-1. **[One-point density PDFs](studies/lpt_pdf/README.md):** Zel'dovich, 2LPT, 3LPT and 4LPT
-   against a converged N-body simulation, at z = 0, on scales that have almost not
-   shell-crossed.
-   - 2LPT is too narrow in both tails: its voids are not empty enough and its peaks not dense
-     enough. The mass-weighted 99.9% quantile is 29% low at 7 Mpc/h smoothing.
-   - Each higher order closes most of the remaining gap. 4LPT agrees with N-body to ≲ 1%
-     except in the far tails.
-2. **[Correlations with the PDF removed (copula)](studies/lpt_pdf/copula/report.md):**
-   rank-Gaussianized two-point statistics on the phase-space sheet, restricted to regions that
-   are single-stream in both runs.
-   - 2LPT has a small but converged two-point error, about 5.7 × 10⁻³ in ξ at 20–30 Mpc/h at
-     z = 0. 4LPT removes 75–95% of it.
-   - N-body's extra clustering at ~10 Mpc/h comes from its one-point PDF, not its copula.
+### LPT vs N-body before shell crossing
 
-3. **[Phase-space-sheet estimator](studies/lpt_pdf/sheet_pdf/README.md):** the one-point PDFs
-   redone with the exact sheet density (tetrahedra remeshed with R3D) and with a gridless mass
-   weighting from the tetrahedra, next to CIC on the same snapshots.
-   - The conclusions of study 1 hold to ≤ 0.2 percentage points.
-   - The tetrahedra resolve the caustic-dominated dense tail, where N-body carries 4–9× more mass
-     than 4LPT and 2LPT.
+Identical fixed-amplitude initial conditions (L = 300 Mpc/h, top-hat filter R_f = 14 Mpc/h, Planck18). Source: [`studies/lpt_pdf/report.html`](studies/lpt_pdf/report.html). The copula study reports its validation tests, noise floors and every deviation from its protocol.
 
-4. **[UV sensitivity of long modes across shell crossing (EFT effective stress)](https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/)**
-   (source: [`studies/eft_shell_crossing/README.md`](studies/eft_shell_crossing/README.md)):
-   paired 3D universes with bitwise-identical long modes and an added short-mode band, evolved with 1–7LPT and a
-   discreteness-suppressed PM; field-level long-mode response Δψ_L = −C₂k²ψ_L, the CHS (2012) cutoff running, counts in
-   spheres, redshift space, and the multistream kinetic stress.
-   - Before shell crossing the single-stream series converges onto PM (to 10⁻⁵ in C₂). Right after first crossing a
-     coherent, pure-k², pressure-signed residual appears that higher LPT orders do not remove, while the series still
-     converges; PM's measured multistream velocity-dispersion stress accounts for it to a factor ≈ 2.
-   - With the cutoff, PM runs like the one-loop/CHS running while 4LPT/7LPT fail; modes near k_NL carry the response.
-     Modes below 5 h⁻¹Mpc change P(k = 0.06) coherently by −2.1 % and add only 0.05 % stochastic power.
+| part | what it measures | main result |
+|---|---|---|
+| [One-point density PDFs](studies/lpt_pdf/README.md) | Zel'dovich, 2LPT, 3LPT and 4LPT against converged N-body at z = 0 | 2LPT is too narrow in both tails: the mass-weighted 99.9 % quantile is 29 % low at 7 Mpc/h. 4LPT agrees to ≲ 1 % except in the far tails. |
+| [Correlations with the PDF removed (copula)](studies/lpt_pdf/copula/report.md) | rank-Gaussianized two-point statistics on the sheet, in regions single-stream in both runs | 2LPT has a small converged error, about 5.7 × 10⁻³ in ξ at 20–30 Mpc/h; 4LPT removes 75–95 % of it. N-body's extra clustering at ~10 Mpc/h comes from its one-point PDF. |
+| [Phase-space-sheet estimator](studies/lpt_pdf/sheet_pdf/README.md) | the PDFs again with exact tetrahedral sheet density, next to CIC | The PDF conclusions hold to ≤ 0.2 percentage points. In the caustic-dominated dense tail, N-body carries 4–9× more mass than 4LPT and 2LPT. |
 
-All studies include resolution studies for every method. The copula study reports its
-validation tests, noise floors and every deviation from its protocol.
+### UV sensitivity of long modes across shell crossing
+
+Paired 3D universes with bitwise-identical long modes and an added short-mode band, evolved with 1–7LPT and a discreteness-suppressed PM, in EdS with the Planck18 shape. Source: [`studies/eft_shell_crossing/README.md`](studies/eft_shell_crossing/README.md).
+
+| part | what it measures | main result |
+|---|---|---|
+| [Main study](studies/eft_shell_crossing/README.md) | field-level long-mode response Δψ_L = −C₂k²ψ_L, the CHS (2012) cutoff running, counts in spheres, redshift space, multistream kinetic stress | The series converges onto PM before crossing (to 10⁻⁵ in C₂). Just after first crossing a coherent, pure-k², pressure-signed residual appears that higher LPT orders do not remove; PM's measured velocity-dispersion stress accounts for it to a factor ≈ 2. |
+| [A: density response](studies/eft_shell_crossing/reports/A_density_response.md) | how short modes change a long density mode, ε → 0 plane waves | Modes 0.2 ≤ k < 1.2 change P(k = 0.05) by −0.97 % at D = 1, matching the one-loop kernel to ≤ 1.2 % once three effects are removed. |
+| [B: two-loop stress](studies/eft_shell_crossing/reports/B_two_loop_stress.md) | the effective stress against two-loop EFT | The far-UV linear coefficient is within 1–2 % of 61/70 in Planck-shape spectra, and 20 % high in a UV-divergent one. Whether all eight counterterms are needed is undecided. |
+| [C: σ(M), LPT and spherical collapse](studies/eft_shell_crossing/reports/C_sigma_M.md) | variance at fixed mass, around random and mass-drawn centres and for Lagrangian patches | At D = 1 spherical collapse holds σ(δ_R) to 5 % down to R ≈ 6 h⁻¹Mpc, against R ≈ 18 for the best LPT order; beyond D ≈ 0.5 higher LPT orders do worse. |
+| [D: reach of the UV](studies/eft_shell_crossing/reports/D_uv_reach.md) | how far UV modes change the IR variance | Modes k = 0.6–1.6 change the variance by −0.58 % at R = 20 h⁻¹Mpc at D = 1, and the fraction saturates by D ≈ 0.8. |
+| [E: campaign notes](studies/eft_shell_crossing/reports/E_campaign_notes.md) | settings, machine behaviour, errors made and corrected | |
 
 ## What DiscoDJNative provides
 
@@ -105,7 +94,7 @@ ic = lpt_ics(b, 0.02)                            # ψ, pos, vel as Julia arrays
 | `studies/lpt_pdf/` | the one-point PDF study, the HTML report and the site build script |
 | `studies/lpt_pdf/copula/` | the copula study: pipeline, configuration, results and figures |
 | `studies/lpt_pdf/sheet_pdf/` | the phase-space-sheet estimator study (exact R3D remeshing, tetrahedron mass weighting) |
-| `studies/eft_shell_crossing/` | the EFT / shell-crossing study: paired-IC experiments, analysis, CHS Fig. 3 reconstruction, figures |
+| `studies/eft_shell_crossing/` | the EFT / shell-crossing study: paired-IC experiments, analysis, CHS Fig. 3 reconstruction, two-loop stress, σ(M), figures, `reports/` |
 
 ## Roadmap
 

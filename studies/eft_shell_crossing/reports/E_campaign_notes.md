@@ -1,4 +1,4 @@
-# Report D: campaign notes
+# Report E: campaign notes
 
 Running log with commands and times: `CAMPAIGN_LEDGER.md` in the scratch directory.
 
@@ -30,6 +30,7 @@ Two unexplained reboots preceded the campaign (Oct 31 about 16:25 PDT, Nov 1 abo
 | Axis-pairing bug in `patch_anisotropy.py`; a correct Jacobian was wrongly called buggy | curl/div test | fixed; statement retracted |
 | "Response scales with added power" | full set of pairs | withdrawn: varies 3.4× |
 | dc̄/dI across Λ called the clearest UV test | independent audit | withdrawn: those modes are shared, so the agreement is built in; the band fits are the test |
+| Switching Pages from `main` to `gh-pages` was recommended without checking which public URLs depended on the old source; `studies/lpt_pdf/report.html` went 404 | user report | link fixed and old URL redirected |
 | A crashed job went unnoticed for 2.5 h; `pkill`/`pgrep -f` matched my own shell twice; PID of a `setsid` wrapper; global-scope loop ran about 15× slower | status checks | time lost, no data lost |
 
 ## What remains

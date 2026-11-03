@@ -13,6 +13,7 @@ on:
       - "studies/lpt_pdf/sheet_pdf/figures/**"
       - "studies/eft_shell_crossing/README.md"
       - "studies/eft_shell_crossing/build_site.py"
+      - "studies/eft_shell_crossing/reports/**"
       - "studies/eft_shell_crossing/figures/**"
       - ".github/workflows/report-pages.yml"
   workflow_dispatch:

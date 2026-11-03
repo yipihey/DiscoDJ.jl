@@ -6,8 +6,9 @@ Three linked measurements on EdS N-body and LPT runs (Planck18 spectral shape, �
 |---|---|---|
 | [A](A_density_response.md) | How do short modes change a long density mode? | ε → 0 plane waves on bands of short modes, 7 cutoffs |
 | [B](B_two_loop_stress.md) | What effective stress do short modes exert, and does it match two-loop EFT? | 9 spectra and IR cuts, 4 seeds × ±L |
-| [C](C_fixed_mass_sigma.md) | What does the variance do at fixed mass, and how far does the UV reach? | the same runs, plus one fixed-mass UV/IR pair |
-| [D](D_campaign_notes.md) | Settings, machine behaviour, what went wrong | |
+| [C](C_sigma_M.md) | What is σ(M), how well does LPT match it, and down to what scale does spherical collapse work? | the same runs, with nLPT through the same estimator |
+| [D](D_uv_reach.md) | How far do UV modes reach into the IR variance? | the same runs, plus one fixed-mass UV/IR pair |
+| [E](E_campaign_notes.md) | Settings, machine behaviour, what went wrong | |
 
 ## Main results
 
@@ -19,9 +20,9 @@ Three linked measurements on EdS N-body and LPT runs (Planck18 spectral shape, �
 
 4. **The eight-coefficient question stays open.** Only the linear combination is determined, with c_rδ,1 roughly measured. δ,2, δ²,1, δ,3, rδ,2 and rδ²,1 are not determined by this estimator. It is a limit of the method and more seeds would not fix it (report B).
 
-5. **Spherical collapse describes the variance at fixed scale, and not the UV response.** With density-dependent contraction it reproduces σ(δ_R) to ≤ 2.3 % in the Planck-shape spectrum (≤ 5 % in the divergent one) and the patch ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵ h⁻¹M☉. In this model, fixed-radius σ stays near linear because growth and contraction cancel. Patch images become elongated (a₃/a₁ = 0.47–0.66 at M ≤ 10¹⁶), yet bins in δ_L account for 86–97 % of Var(ln V) at M ≥ 1.3 × 10¹⁵ (report C).
+5. **Spherical collapse describes the variance at fixed scale to smaller scales than LPT, and not the UV response.** With density-dependent contraction it reproduces σ(δ_R) at D = 1 to 5 % down to R ≈ 6 h⁻¹Mpc in the Planck-shape spectrum and R ≈ 11 in the divergent one, against R ≈ 18 and 25 for the best LPT order, and the patch ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵ h⁻¹M☉. LPT converges to ≤ 0.3 % at D = 0.3 and R ≥ 5, then stops improving with order: 5LPT and 7LPT are worse than Zel'dovich by D = 0.8. In this model, fixed-radius σ stays near linear because growth and contraction cancel. Patch images become elongated (a₃/a₁ = 0.47–0.66 at M ≤ 10¹⁶), yet bins in δ_L account for 86–97 % of Var(ln V) at M ≥ 1.3 × 10¹⁵ ([report C](C_sigma_M.md)).
 
-6. **UV modes suppress IR variance weakly, and in the deep UV that fraction saturates.** At D = 1, modes at k = 0.6–1.6 change the variance by −0.58 % at R = 20 and −0.07 % at R = 78 h⁻¹Mpc. The *fractional* change stops growing by D ≈ 0.8, and in the deepest divergent band it turns over, though the absolute variance difference still grows. All modes above k = 0.2 (k < 1.6) keep growing fractionally. Spherical collapse misses this response: about 0 at R ≥ 20 for the deep UV, and the wrong sign for k > 0.2 at R = 15 (report C).
+6. **UV modes suppress IR variance weakly, and in the deep UV that fraction saturates.** At D = 1, modes at k = 0.6–1.6 change the variance by −0.58 % at R = 20 and −0.07 % at R = 78 h⁻¹Mpc. The *fractional* change stops growing by D ≈ 0.8, and in the deepest divergent band it turns over, though the absolute variance difference still grows. All modes above k = 0.2 (k < 1.6) keep growing fractionally. Spherical collapse misses this response: about 0 at R ≥ 20 for the deep UV, and the wrong sign for k > 0.2 at R = 15 ([report D](D_uv_reach.md)).
 
 ## How they fit together
 
