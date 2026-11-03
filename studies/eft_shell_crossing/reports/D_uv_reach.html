@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report D: the reach of the UV into the IR variance — DiscoDJ.jl</title>
+<style>
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b1b1a;margin:0;background:#fcfcfb}
+main{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+h1{font-size:1.75em;line-height:1.25;margin:.2em 0 .6em} h2{margin-top:2.1em;padding-bottom:.25em;border-bottom:1px solid #e4e3df}
+h3{margin-top:1.6em} a{color:#2a78d6;text-decoration:none} a:hover{text-decoration:underline}
+table{border-collapse:collapse;margin:1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid #e4e3df;padding:5px 9px;text-align:left;vertical-align:top} th{background:#f3f2ef}
+code{background:#f1f0ec;padding:1px 4px;border-radius:3px;font-size:.88em} pre{background:#f1f0ec;padding:12px;overflow-x:auto;border-radius:4px}
+pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;margin-left:0;padding-left:14px;color:#52514e}
+.gallery figure{margin:28px 0} .gallery img{max-width:100%;border:1px solid #e4e3df;background:#fff}
+.gallery figcaption{font-size:.88em;color:#52514e;margin-top:4px} .meta{color:#52514e;font-size:.9em}
+ main img{max-width:100%;border:1px solid #e4e3df;background:#fff}</style></head>
+<body><main>
+<p class="meta"><a href="../">EFT / shell-crossing study</a> · <a href="00_synthesis.html">synthesis</a> · <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/reports/D_uv_reach.md">source on GitHub</a></p>
+<h1 id="report-d-the-reach-of-the-uv-into-the-ir-variance">Report D: the reach of the UV into the IR variance</h1>
+<p>Scripts: <code>twoloop/sigmaM_pair.py</code>, <code>sigmaM_uv_chain.sh</code>, <code>final_figures.py</code>; <code>src/fixedmass.jl</code>, <code>scripts/run_fixedmass.jl</code>, <code>fixedmass_analysis.py</code>, <code>fixedmass_response.py</code>, <code>figures_fixedmass.py</code>. Results: <code>results/sigmaM_pair_*</code>. σ(M) itself, LPT and spherical collapse are in <a href="C_sigma_M.html">report C</a>, which also defines the statistics.</p>
+<p><img alt="UV response" src="../figures/figU1_uv_response.png" /></p>
+<p><em>figU1: suppression of variance by UV modes against R at D = 1, and against D at R = 20 h⁻¹Mpc.</em></p>
+<h2 id="1-how-uv-modes-change-the-variance-at-larger-scales">1. How UV modes change the variance at larger scales</h2>
+<p>Seed-matched Var_A/Var_B − 1 minus the extra modes' linear power, D = 1:</p>
+<table>
+<thead>
+<tr>
+<th>change</th>
+<th>R = 20</th>
+<th>R = 30</th>
+<th>R = 50</th>
+<th>R = 78</th>
+<th>at R = 20, D = 0.3, 0.5, 0.8, 1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>k &gt; 0.2</td>
+<td>−3.4 %</td>
+<td>−2.4 %</td>
+<td>−1.0 %</td>
+<td>−0.6 %</td>
+<td>−0.21, −0.71, −2.3, −3.4</td>
+</tr>
+<tr>
+<td>raise power above k = 0.3</td>
+<td>−1.29 %</td>
+<td>−0.71 %</td>
+<td>−0.31 %</td>
+<td>−0.17 %</td>
+<td>−0.41, −0.87, −1.22, −1.29</td>
+</tr>
+<tr>
+<td>k = 0.6–1.6</td>
+<td>−0.58 %</td>
+<td>−0.32 %</td>
+<td>−0.14 %</td>
+<td>−0.07 %</td>
+<td>−0.11, −0.34, −0.54, −0.58</td>
+</tr>
+<tr>
+<td>divergent, k = 1.0–1.6</td>
+<td>−0.37 %</td>
+<td>−0.20 %</td>
+<td>−0.09 %</td>
+<td>−0.05 %</td>
+<td>−0.25, −0.40, −0.41, −0.37</td>
+</tr>
+<tr>
+<td>k = 1.0–1.6</td>
+<td>−0.14 %</td>
+<td>−0.08 %</td>
+<td>−0.03 %</td>
+<td>−0.02 %</td>
+<td>−0.04, −0.10, −0.14, −0.14</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Suppression at every R ≥ 10 for all pairs. At R ≤ 6.9, the k &gt; 0.2 row is positive at some epochs (up to +13.7 % at R = 5), where the subtraction is large and the added power's nonlinear growth matters.</li>
+<li>Spherical collapse misses this. It gives about 0 at R ≥ 20 for the deep-UV rows, and +4.2 % against −6.7 % at R = 15 for k &gt; 0.2. At R ≤ 10 contraction moves SC about 70 % of the way, at R ≥ 20 almost none. It lacks the smearing of long modes by short displacements, which is a likely cause (not tested).</li>
+<li><strong>In the deep UV the fractional response saturates by D ≈ 0.8,</strong> and the deepest divergent band turns over. The absolute variance difference still grows (+68 % from D = 0.8 to 1 for k = 0.6–1.6), since the variance itself grows. All modes above k = 0.2 keep growing fractionally.</li>
+<li><strong>The R dependence of the deep-UV rows is nearly universal,</strong> about 1 : 0.55 : 0.23 : 0.13 across R = 20, 30, 50, 78. The amplitude per unit of I is not: −0.06 to −0.20 % per unit, a factor of 3.4, and the same k = 1.0–1.6 band gives half the response per I in the divergent spectrum.</li>
+<li>The same comparison at fixed mass agrees across statistics at R₀ ≥ 29 (to within about 0.07 percentage points in σ for the far-UV bands). At smaller R₀ mass-drawn σ is noisier and is not used.</li>
+</ul>
+<h2 id="2-field-level-one-fiducial-pair">2. Field level, one fiducial pair</h2>
+<p>At R = 4.48 and 6.69 (k_uv = 1.2, interpolated to R = 5): the coherent cross term 2⟨Δδ_IR⟩/⟨δ_IR²⟩ is −0.4, −2.8, −10, −24 % at D = 0.3, 0.5, 0.7, 1 for PM, and −51 % for 3LPT at D = 1. That is a different number from the variance response: ⟨Δ²⟩ itself grows above linear (1.42× at R = 4.48, D = 1), offsetting part of it, so total minus linear added power is −7.6 % at R = 5 in tl_full.</p>
+<p><img alt="fixed-mass statistics of the fiducial pair" src="../figures/figF1_fixedmass.png" /></p>
+<p><em>figF1: coherent suppression, added power against linear, and F(R, μ) for the fiducial pair.</em></p>
+<h2 id="3-fixed-mass-statistics-of-the-fiducial-pair">3. Fixed-mass statistics of the fiducial pair</h2>
+<p>Sheet statistics of one UV/IR pair, 3LPT, 7LPT (to D = 0.7) and PM, 10 epochs, 40 radii. No error bars except spatial scatter.</p>
+<ul>
+<li><strong>Mass-budget checks:</strong> mean μ = 1 and node counts hold exactly. d⟨δ²⟩/dD closes to ≤ 1.5 % at R ≥ 10 for PM and 3LPT at D ≤ 0.5. The second-order budget closes to about 2 % for 3LPT at D ≤ 0.4 and R ≥ 10 (5 % at R = 5, D = 0.3); for PM to ≤ 1.2 % at R ≥ 22, and up to 19 % at R ≤ 10. PM's a is rebuilt from sheet-deposited gravity rather than its own force, which may be the cause (not tested). Instantaneous ∂_D F agrees with differences at μ = 1, and within about 10 % at μ = 0.5.</li>
+<li><strong>F(R, μ):</strong> at R = 5, D = 1, P(μ ≥ 8) is 0.0059 in PM and 0.0011 in 3LPT: LPT cannot keep bound structures together.</li>
+<li><strong>Conditional budget:</strong> at R = 10, D = 1, μ = 8–32, stress (−98.3) and acceleration (−98.1) nearly cancel, resembling a virial state, and dispersion is 55 % of the stress. At R = 5 they do not (−144, −92). One pair, one radius: a lead, no more.</li>
+</ul>
+<h2 id="limits">Limits</h2>
+<p>Fixed amplitudes and one box, so errors exclude cosmic variance. EdS only. Radii are h⁻¹Mpc.</p>
+</main></body></html>

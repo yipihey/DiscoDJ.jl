@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report C: σ(M), how well LPT and spherical collapse match — DiscoDJ.jl</title>
+<style>
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b1b1a;margin:0;background:#fcfcfb}
+main{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+h1{font-size:1.75em;line-height:1.25;margin:.2em 0 .6em} h2{margin-top:2.1em;padding-bottom:.25em;border-bottom:1px solid #e4e3df}
+h3{margin-top:1.6em} a{color:#2a78d6;text-decoration:none} a:hover{text-decoration:underline}
+table{border-collapse:collapse;margin:1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid #e4e3df;padding:5px 9px;text-align:left;vertical-align:top} th{background:#f3f2ef}
+code{background:#f1f0ec;padding:1px 4px;border-radius:3px;font-size:.88em} pre{background:#f1f0ec;padding:12px;overflow-x:auto;border-radius:4px}
+pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;margin-left:0;padding-left:14px;color:#52514e}
+.gallery figure{margin:28px 0} .gallery img{max-width:100%;border:1px solid #e4e3df;background:#fff}
+.gallery figcaption{font-size:.88em;color:#52514e;margin-top:4px} .meta{color:#52514e;font-size:.9em}
+ main img{max-width:100%;border:1px solid #e4e3df;background:#fff}</style></head>
+<body><main>
+<p class="meta"><a href="../">EFT / shell-crossing study</a> · <a href="00_synthesis.html">synthesis</a> · <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/reports/C_sigma_M.md">source on GitHub</a></p>
+<h1 id="report-c-m-how-well-lpt-and-spherical-collapse-match">Report C: σ(M), how well LPT and spherical collapse match</h1>
+<p>Scripts: <code>twoloop/sigmaM.jl</code>, <code>sigmaM_analysis.py</code>, <code>sigmaM_lpt_queue.sh</code>, <code>sigmaM_lpt.py</code>, <code>sigmaM_sc.py</code>, <code>sc_lowmass.py</code>, <code>patch_anisotropy.py</code>, <code>patch_analysis.py</code>, <code>pk_snap.jl</code>, <code>k_of_R.py</code>, <code>k_of_R_nowiggle.py</code>. Results: <code>results/sigmaM_*</code>, <code>sc_lowmass_*</code>, <code>patch_anisotropy_*</code>, <code>k_of_R_*</code>. The response of the variance to UV modes is in <a href="D_uv_reach.html">report D</a>.</p>
+<h2 id="summary">Summary</h2>
+<p>EdS with the Planck18 shape, cut at k = 1.6 h Mpc⁻¹ (<code>tl_full</code>), and a UV-divergent spectrum, P ∝ k⁻¹ above k = 0.3, with the same cut (<code>tl_div</code>). 4 seeds × ±L, L = 500 h⁻¹Mpc. Ratios are seed-matched, and errors exclude cosmic variance. Radii below are h⁻¹Mpc, and M ≈ 1.16 × 10¹² R³ h⁻¹M☉ for Ω_m = 1.</p>
+<ul>
+<li><strong>LPT is exact for this purpose until D ≈ 0.3, then stops improving with order.</strong> At D = 0.3 all orders from 3LPT up match PM to ≤ 0.3 % at R ≥ 5 in <code>tl_full</code>. By D = 0.5 3LPT is the best order, and at D ≥ 0.8 5LPT and 7LPT are worse than Zel'dovich. No order recovers fixed-radius σ to 5 % below R ≈ 18 at D = 1.</li>
+<li><strong>LPT is always low at fixed radius and for centres drawn from the density,</strong> and mass-drawn σ is its most sensitive test: at D = 1 the best order is 5 % off already at R₀ ≈ 29 (M ≈ 3 × 10¹⁶).</li>
+<li><strong>Spherical collapse with contraction reaches much smaller scales in the one-point variance:</strong> to 5 % down to R ≈ 6 (M ≈ 2 × 10¹⁴) at fixed radius at D = 1 in <code>tl_full</code>, and R ≈ 11 in <code>tl_div</code>, against R ≈ 18 and 25 for the best LPT. It has no phase information, so this says nothing about the field.</li>
+<li><strong>At 1 %, spherical collapse is no better than 3LPT at D = 1</strong> (both R ≈ 50). The residual at R = 20–30 has the size and sign of the UV suppression in report D, which spherical collapse lacks (not tested as a cause).</li>
+<li><strong>The limit depends on the statistic and on the small-scale power.</strong> Patches fail at R₀ ≈ 9–11 at D = 1, random centres at R₀ ≈ 19, and more small-scale power moves the fixed-radius limit from R ≈ 6 to 11.</li>
+</ul>
+<h2 id="1-definitions">1. Definitions</h2>
+<p>M is labelled by R₀ with M = ρ̄V(R₀), Ω_m = 1 (about 3.2× the mass at the same radius for Ω_m = 0.31). 5 × 10¹⁵ h⁻¹M☉ is R₀ = 16.3.</p>
+<table>
+<thead>
+<tr>
+<th>statistic</th>
+<th>what is held fixed</th>
+<th>centres</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>σ(δ_R)</td>
+<td>Eulerian radius</td>
+<td>uniform</td>
+</tr>
+<tr>
+<td>random-centred σ(ln V)</td>
+<td>mass</td>
+<td>uniform</td>
+</tr>
+<tr>
+<td>mass-drawn σ(ln V)</td>
+<td>mass</td>
+<td>drawn from ρ</td>
+</tr>
+<tr>
+<td>Lagrangian patch σ(ln V)</td>
+<td>the same mass elements</td>
+<td>every mass element</td>
+</tr>
+</tbody>
+</table>
+<p>By P(R_M ≤ R) = P(M_R ≥ M), one weighted table F_m(R, μ) gives the volume distribution at fixed mass; it is the data-centred version of the kNN-CDF. Around points drawn from the density, the mean of δ_R is ξ̄(R), linear in P(k), while the variance is σ²(R) + ⟨δ δ_R²⟩ − ξ̄²(R), which includes an integrated bispectrum even at leading order.</p>
+<p>Patch σ uses signed volumes, which count only the enclosing surface. Patches with a non-positive signed volume are clipped at ln V = ln 10⁻³, which inflates the standard deviation; core widths (q₈₄ − q₁₆)/2 are not affected, as long as those patches stay in the tail.</p>
+<p><strong>Reach</strong> at tolerance t is the smallest grid mass above which every grid point has |ratio − 1| ≤ t. "≤" means the grid ended first: R = 4 at fixed radius, R₀ = 6 for patches, and for random or mass-drawn centres wherever 2 % of the distribution leaves the radius range (R₀ = 6–7.5 and 6–13 respectively, growing with D). "None" means the statistic fails even at the largest scale.</p>
+<h2 id="2-pm-against-linear-theory">2. PM against linear theory</h2>
+<p><img alt="σ(M) for PM" src="../figures/figM1_sigma_fixed_mass_tl_full.png" /></p>
+<p><em>figM1: σ(M) at fixed radius, around random and mass-drawn centres at fixed mass, for Lagrangian patches, and in linear theory.</em></p>
+<p>Relative to linear σ at the same mass, D = 1, <code>tl_full</code>:</p>
+<table>
+<thead>
+<tr>
+<th>M (h⁻¹M☉)</th>
+<th>fixed radius</th>
+<th>random centres</th>
+<th>Lagrangian patch</th>
+<th>mass-drawn</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.7 × 10¹⁵</td>
+<td>+2.2 %</td>
+<td>−5.7 %</td>
+<td>+19 %</td>
+<td>+35 %</td>
+</tr>
+<tr>
+<td>1.0 × 10¹⁶</td>
+<td>+0.5 %</td>
+<td>−2.9 %</td>
+<td>+7.0 %</td>
+<td>+24 %</td>
+</tr>
+<tr>
+<td>1.5 × 10¹⁷</td>
+<td>−0.5 %</td>
+<td>−0.5 %</td>
+<td>+0.2 %</td>
+<td>+3.3 %</td>
+</tr>
+</tbody>
+</table>
+<p>All statistics agree with linear σ at D = 0.1 to about 1 % for 6 × 10¹⁴ ≲ M ≲ 3 × 10¹⁶, and to about 1.5 % at 2.5 × 10¹⁴. Mass-drawn σ departs earliest and most.</p>
+<p>Reweighting centres by the sphere's own μ_R rather than ρ(x) closes 55–65 % of the mass-drawn minus patch gap (0.690, 0.636, 0.607 at 3.7 × 10¹⁵). So most of it is centre density inside the sphere, and the rest is the difference between Eulerian spheres and Lagrangian patches. That split assumes this reweighting model. The unsigned sheet volume behaves very differently (0.379, 26 % below linear, at 3.7 × 10¹⁵, D = 1).</p>
+<h2 id="3-how-well-lpt-matches">3. How well LPT matches</h2>
+<p>nLPT displacements, summed from the stored shapes of the same seeds, pass through the same estimator as PM. At D = 0.1, 7LPT and PM agree to 2 × 10⁻⁶ in σ(δ_R) and patch σ (one seed, s = +1).</p>
+<p><img alt="nLPT against PM" src="../figures/figM6_sigma_lpt_tl_full.png" /></p>
+<p><em>figM6: nLPT/PM for each statistic, <code>tl_full</code>. The band is ±5 %. Patch curves above the axis are 5LPT and 7LPT. <a href="../figures/figM6_sigma_lpt_tl_div.png">The divergent spectrum</a> fails sooner.</em></p>
+<p>Fixed radius, nLPT/PM, <code>tl_full</code>, errors ≤ 0.06 %:</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>R</th>
+<th>1LPT</th>
+<th>2LPT</th>
+<th>3LPT</th>
+<th>5LPT</th>
+<th>7LPT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.3</td>
+<td>5</td>
+<td>0.971</td>
+<td>0.984</td>
+<td>0.997</td>
+<td>0.999</td>
+<td>0.999</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>5</td>
+<td>0.926</td>
+<td>0.949</td>
+<td>0.973</td>
+<td>0.965</td>
+<td>0.944</td>
+</tr>
+<tr>
+<td>0.8</td>
+<td>5</td>
+<td>0.829</td>
+<td>0.836</td>
+<td>0.836</td>
+<td>0.752</td>
+<td>0.634</td>
+</tr>
+<tr>
+<td>1</td>
+<td>5</td>
+<td>0.748</td>
+<td>0.731</td>
+<td>0.703</td>
+<td>0.578</td>
+<td>0.362</td>
+</tr>
+<tr>
+<td>1</td>
+<td>10</td>
+<td>0.880</td>
+<td>0.880</td>
+<td>0.876</td>
+<td>0.757</td>
+<td>0.535</td>
+</tr>
+<tr>
+<td>1</td>
+<td>20</td>
+<td>0.950</td>
+<td>0.950</td>
+<td>0.959</td>
+<td>0.879</td>
+<td>0.691</td>
+</tr>
+<tr>
+<td>1</td>
+<td>50</td>
+<td>0.986</td>
+<td>0.984</td>
+<td>0.990</td>
+<td>0.957</td>
+<td>0.833</td>
+</tr>
+</tbody>
+</table>
+<p>Mass-drawn σ(ln V), D = 1, <code>tl_full</code>, errors ≤ 0.4 %:</p>
+<table>
+<thead>
+<tr>
+<th>R₀</th>
+<th>M</th>
+<th>1LPT</th>
+<th>2LPT</th>
+<th>3LPT</th>
+<th>5LPT</th>
+<th>7LPT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>14.8</td>
+<td>3.8 × 10¹⁵</td>
+<td>0.777</td>
+<td>0.820</td>
+<td>0.791</td>
+<td>0.668</td>
+<td>0.473</td>
+</tr>
+<tr>
+<td>20.7</td>
+<td>1.0 × 10¹⁶</td>
+<td>0.837</td>
+<td>0.887</td>
+<td>0.880</td>
+<td>0.768</td>
+<td>0.571</td>
+</tr>
+<tr>
+<td>29</td>
+<td>2.8 × 10¹⁶</td>
+<td>0.912</td>
+<td>0.950</td>
+<td>0.956</td>
+<td>0.873</td>
+<td>0.688</td>
+</tr>
+<tr>
+<td>51</td>
+<td>1.5 × 10¹⁷</td>
+<td>0.968</td>
+<td>0.982</td>
+<td>0.989</td>
+<td>0.951</td>
+<td>0.816</td>
+</tr>
+</tbody>
+</table>
+<p>Reach at 5 %, as a radius, <code>tl_full</code>:</p>
+<table>
+<thead>
+<tr>
+<th>statistic</th>
+<th>D</th>
+<th>1LPT</th>
+<th>2LPT</th>
+<th>3LPT</th>
+<th>5LPT</th>
+<th>7LPT</th>
+<th>spherical collapse</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>fixed radius</td>
+<td>0.3</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+</tr>
+<tr>
+<td></td>
+<td>0.5</td>
+<td>7</td>
+<td>5</td>
+<td>≤ 4</td>
+<td>4</td>
+<td>6</td>
+<td>≤ 4</td>
+</tr>
+<tr>
+<td></td>
+<td>0.8</td>
+<td>15</td>
+<td>14</td>
+<td>11</td>
+<td>19</td>
+<td>56</td>
+<td>≤ 4</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>21</td>
+<td>20</td>
+<td>18</td>
+<td>45</td>
+<td>none</td>
+<td>6</td>
+</tr>
+<tr>
+<td>random centres</td>
+<td>0.5</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+</tr>
+<tr>
+<td></td>
+<td>0.8</td>
+<td>8</td>
+<td>13</td>
+<td>≤ 7</td>
+<td>21</td>
+<td>57</td>
+<td>15</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>8</td>
+<td>23</td>
+<td>19</td>
+<td>51</td>
+<td>none</td>
+<td>19</td>
+</tr>
+<tr>
+<td>mass-drawn</td>
+<td>0.5</td>
+<td>19</td>
+<td>11</td>
+<td>≤ 8</td>
+<td>≤ 8</td>
+<td>12</td>
+<td>no prediction</td>
+</tr>
+<tr>
+<td></td>
+<td>0.8</td>
+<td>32</td>
+<td>23</td>
+<td>21</td>
+<td>29</td>
+<td>64</td>
+<td>no prediction</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>41</td>
+<td>32</td>
+<td>29</td>
+<td>51</td>
+<td>none</td>
+<td>no prediction</td>
+</tr>
+<tr>
+<td>patch</td>
+<td>0.5</td>
+<td>8</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>9</td>
+<td>64</td>
+<td>≤ 6</td>
+</tr>
+<tr>
+<td></td>
+<td>0.8</td>
+<td>8</td>
+<td>≤ 6</td>
+<td>15</td>
+<td>none</td>
+<td>none</td>
+<td>8</td>
+</tr>
+<tr>
+<td></td>
+<td>1</td>
+<td>13</td>
+<td>≤ 6</td>
+<td>26</td>
+<td>none</td>
+<td>none</td>
+<td>11</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Convergence and then failure.</strong> The series converges onto PM at D ≤ 0.3. Past that, higher order is worse, and the order of best agreement falls: 3LPT at D = 0.5–0.8, and at D = 1 1LPT, 2LPT and 3LPT are within about 1 % of each other at R ≥ 10. This is the same divergence as in the main study, now in a one-point statistic.</li>
+<li><strong>The divergent spectrum fails sooner</strong> (D = 1, fixed radius, 5 %): 1LPT R = 25, 3LPT R = 43, 7LPT none. There 1LPT beats 3LPT from D = 0.8. At D = 1 7LPT gives only 2.5–7 % of PM's σ at R ≤ 50, so the structure has been scrambled. At D = 0.3, R = 5, 3LPT is 1.1 % low and 7LPT 3.4 % low.</li>
+<li><strong>Patch agreement needs care.</strong> Series that overshoot turn patches inside out: at D = 1 the share with non-positive signed volume at R₀ = 6 is 10 %, 6 %, 10 %, 35 %, 48 % for 1, 2, 3, 5, 7LPT, against 4.8 % for PM. For 5LPT it stays at 33–35 % out to R₀ = 29, and for 7LPT at 48–50 % at every scale. The huge ratios in figM6 are that clipping. 2LPT's agreement to ≤ 3.2 % at every R₀ ≥ 6 at D = 1 changes sign (+2.6 % at R₀ = 9.4, −3.1 % at 18.5) and includes clipped patches, so it is not a sign that 2LPT is right.</li>
+<li><strong>Why LPT is low.</strong> Stream-crossing particles keep moving, so dense regions disperse. The fiducial pair's F(R, μ) is consistent with this (<a href="D_uv_reach.html">report D</a>, §3), though the mechanism was not isolated here.</li>
+</ul>
+<h2 id="4-down-to-what-scale-spherical-collapse-works">4. Down to what scale spherical collapse works</h2>
+<p>The model is exact EdS collapse frozen at Δ = 178, Gaussian δ_L at the Lagrangian radius, no fitted parameter other than the freeze.</p>
+<p><img alt="spherical collapse against PM" src="../figures/figM7_sigma_sc_reach_tl_full.png" /></p>
+<p><em>figM7: spherical collapse/PM, <code>tl_full</code>. The band is ±5 %. <a href="../figures/figM7_sigma_sc_reach_tl_div.png">The divergent spectrum</a> is shown separately.</em></p>
+<p><img alt="reach against D" src="../figures/figM8_sigma_reach_tl_full.png" /></p>
+<p><em>figM8: smallest mass matched to 5 % at each D. Dotted lines are the grid floor; missing points mean the statistic fails at every scale measured. <a href="../figures/figM8_sigma_reach_tl_div.png">The divergent spectrum</a> is shown separately.</em></p>
+<p>Reach as a radius (M ≈ 1.16 × 10¹² R³):</p>
+<table>
+<thead>
+<tr>
+<th>statistic</th>
+<th>tolerance</th>
+<th>spectrum</th>
+<th>D = 0.3</th>
+<th>0.5</th>
+<th>0.8</th>
+<th>1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>σ(δ_R), contraction</td>
+<td>5 %</td>
+<td><code>tl_full</code></td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>6</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>tl_div</code></td>
+<td>4</td>
+<td>7</td>
+<td>9</td>
+<td>11</td>
+</tr>
+<tr>
+<td></td>
+<td>1 %</td>
+<td><code>tl_full</code></td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>24</td>
+<td>53</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>tl_div</code></td>
+<td>10</td>
+<td>16</td>
+<td>39</td>
+<td>59</td>
+</tr>
+<tr>
+<td>σ(δ_R), no contraction</td>
+<td>5 %</td>
+<td><code>tl_full</code></td>
+<td>7</td>
+<td>15</td>
+<td>26</td>
+<td>35</td>
+</tr>
+<tr>
+<td>σ(ln μ_R), contraction</td>
+<td>5 %</td>
+<td><code>tl_full</code></td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>≤ 4</td>
+<td>5</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>tl_div</code></td>
+<td>4</td>
+<td>6</td>
+<td>8</td>
+<td>8</td>
+</tr>
+<tr>
+<td>patch core width</td>
+<td>5 %</td>
+<td><code>tl_full</code></td>
+<td>not computed</td>
+<td>≤ 6</td>
+<td>7</td>
+<td>9</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>tl_div</code></td>
+<td>not computed</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+</tr>
+<tr>
+<td>patch std</td>
+<td>5 %</td>
+<td><code>tl_full</code></td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>8</td>
+<td>11</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>tl_div</code></td>
+<td>≤ 6</td>
+<td>7</td>
+<td>≤ 6</td>
+<td>8</td>
+</tr>
+<tr>
+<td>random centres</td>
+<td>5 %</td>
+<td><code>tl_full</code></td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>15</td>
+<td>19</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><code>tl_div</code></td>
+<td>≤ 6</td>
+<td>≤ 6</td>
+<td>12</td>
+<td>17</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Fixed radius needs contraction,</strong> R_L = R μ^{1/3}. Without it the limit at D = 1 is R ≈ 35, not 6. At D = 1 in <code>tl_full</code>:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>R</th>
+<th>measured σ(δ_R)</th>
+<th>model/measured, with contraction</th>
+<th>without</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4</td>
+<td>1.598</td>
+<td>1.102×</td>
+<td>1.334×</td>
+</tr>
+<tr>
+<td>5</td>
+<td>1.333</td>
+<td>1.065×</td>
+<td>1.467×</td>
+</tr>
+<tr>
+<td>10</td>
+<td>0.734</td>
+<td>1.023×</td>
+<td>1.641×</td>
+</tr>
+<tr>
+<td>20</td>
+<td>0.394</td>
+<td>1.018×</td>
+<td>1.172×</td>
+</tr>
+<tr>
+<td>50</td>
+<td>0.152</td>
+<td>1.010×</td>
+<td>1.023×</td>
+</tr>
+</tbody>
+</table>
+<p>So σ(δ_R) ≈ linear is a cancellation in this model: without contraction it would be up to 83 % above linear.
+* <strong>Agreement in σ(δ_R) at small R partly hides a shape error.</strong> At R = 4, D = 1 it is 10 % high while σ(ln μ_R) is 7 % low, so the model has too much in the dense tail and too little width in ln μ. Below R ≈ 10 those two errors have opposite signs.
+* <strong>A 1 % residual remains at large scales at late times.</strong> It has the same sign and, at R = 20–30, about the size of the UV suppression of report D: at D = 1 spherical collapse is +1.8 %, +1.4 % high in σ at R = 20, 30, and modes above k = 0.2 lower σ by about 1.7 %, 1.2 %. At R = 50 the two differ by a factor of 2 (1.0 % and 0.5 %). This link has not been tested.
+* <strong>More small-scale power moves the limit,</strong> from R = 6 to 11 at D = 1. <code>tl_full</code> has no power above k = 1.6, so its limit at small R may be optimistic for a spectrum that continues to higher k; <code>tl_div</code> is the deliberately extreme case.
+* <strong>The non-Gaussianity of ln V at fixed mass comes almost entirely from mapping Gaussian δ_L through collapse.</strong> Distributions agree over 2–3 decades of probability at M ≳ 10¹⁵ (figM4). Core widths at D = 1:</p>
+<table>
+<thead>
+<tr>
+<th>M</th>
+<th>linear</th>
+<th>measured width</th>
+<th>SC width</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2.5 × 10¹⁴</td>
+<td>0.979</td>
+<td>1.263</td>
+<td>1.120</td>
+</tr>
+<tr>
+<td>9.7 × 10¹⁴</td>
+<td>0.724</td>
+<td>0.800</td>
+<td>0.773</td>
+</tr>
+<tr>
+<td>3.8 × 10¹⁵</td>
+<td>0.512</td>
+<td>0.528</td>
+<td>0.526</td>
+</tr>
+</tbody>
+</table>
+<p>Below about 5 × 10¹⁴ it explains about half of the excess. Past collapse, SC is a frozen spike and real patches a smooth tail. The freeze leaves core widths unchanged but moves the low-mass std (1.34, 1.54, 1.82 for Δ = 50, 178, 1000 at 2.5 × 10¹⁴).
+* <strong>Random centres fit worst</strong> (3–9 % low at D = 1 for M ≤ 10¹⁶). <strong>Mass-drawn spheres have no SC prediction distinct from patches,</strong> and exceed them.</p>
+<p><img alt="ln V distribution" src="../figures/figM4_lnV_pdf_tl_full.png" /></p>
+<p><em>figM4: distribution of ln V at fixed mass, D = 1: PM, Gaussian δ_L through spherical collapse, and a plain Gaussian. <a href="../figures/figM4_lnV_pdf_tl_div.png">The divergent spectrum</a> agrees as well.</em></p>
+<p><img alt="spherical collapse with and without contraction" src="../figures/figM2_sigma_spherical_collapse_tl_full.png" /></p>
+<p><em>figM2: σ(M) relative to linear, PM against spherical collapse.</em></p>
+<h2 id="5-anisotropy">5. Anisotropy</h2>
+<p><img alt="patch anisotropy" src="../figures/figM3_patch_anisotropy_tl_full.png" /></p>
+<p><em>figM3: ln V of Lagrangian patches at fixed δ_L against spherical collapse, and the scatter at fixed δ_L.</em></p>
+<table>
+<thead>
+<tr>
+<th>M</th>
+<th>D</th>
+<th>share of Var(ln V) not set by δ_L</th>
+<th>scatter at fixed δ_L</th>
+<th>a₃/a₁ of the image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.3 × 10¹⁵</td>
+<td>1</td>
+<td>13.8 %</td>
+<td>0.359</td>
+<td>0.47</td>
+</tr>
+<tr>
+<td>1.0 × 10¹⁶</td>
+<td>1</td>
+<td>4.3 %</td>
+<td>0.085</td>
+<td>0.66</td>
+</tr>
+<tr>
+<td>1.5 × 10¹⁷</td>
+<td>1</td>
+<td>2.7 %</td>
+<td>0.025</td>
+<td>0.85</td>
+</tr>
+</tbody>
+</table>
+<p>Images of low-mass patches are far from spherical, yet bins in δ_L alone account for most of Var(ln V): 86–97 % at M ≥ 1.3 × 10¹⁵ (71 % at 2.5 × 10¹⁴, in the divergent spectrum, D = 1). This is variance explained, not a causal decomposition. That helps explain why a spherical model works at these scales despite the shapes. At fixed δ_L, higher initial shear means smaller volume (correlation −0.1 to −0.3), the sign the Zel'dovich product predicts, but the patch's own shear explains only 1–5 % of that scatter. Where the remainder comes from is not measured.</p>
+<p>Unsmoothed, signed cell volumes vary far more: σ(ln|J|) = 0.85, 1.75, 2.28, 2.41 at D = 0.3, 0.5, 0.8, 1, with 0.5, 8.6, 23.9, 30.6 % of cells inverted. A patch's signed volume depends only on the motion of its surface, so interior folds cancel.</p>
+<h2 id="6-converting-k-to-r-and-m">6. Converting k to R and M</h2>
+<p><img alt="k, R and M" src="../figures/figM5_k_of_R_tl_full.png" /></p>
+<p><em>figM5: scale mapping from Δ²(k, D) = σ²(R, D). Dips in kR are BAO.</em></p>
+<p>Setting Δ²(k, D) = σ²(R, D), linear theory gives one curve independent of D. For the smoothed spectrum kR = 1.37–1.46 at R = 6–60, rising to 1.57 at larger R. Nonlinearity moves k at fixed R by a median of 0.6 % by D = 1, up to 7 % near M ≈ 1.2 × 10¹⁵ where nonlinear evolution fills in a BAO dip, and ≤ 1.4 % above 10¹⁶. BAO adds −0.04 to +0.05: dips at M ≈ 1 × 10¹⁵ and 5 × 10¹⁵ fall on the P(k) wiggle maxima (k = 0.138, 0.078, period 0.061 h Mpc⁻¹), and vanish when the spectrum is smoothed. For quick use, M ≈ 3.6 × 10¹² k⁻³ h⁻¹M☉ for k in h Mpc⁻¹ (range 3.0–4.3 × 10¹²). Below M ≈ 2 × 10¹⁴ an offset of about 2–3 % appears at all D, probably because P(k) has the CIC window deconvolved and σ(R) does not.</p>
+<h2 id="limits">Limits</h2>
+<ul>
+<li>Fixed amplitudes and one box, so errors exclude cosmic variance. EdS only.</li>
+<li>Reach depends on the grid and tolerance; values are read from 64 radii (fixed radius) or 24 (fixed mass), so they are good to about one grid step, 5 % in R at fixed radius and 12 % at fixed mass. It also treats any single excursion as the limit, and at these tolerances a statistic can cross 1 and pass by chance.</li>
+<li>Radius grid starts at 4, so mass-drawn σ below about 3 × 10¹⁵ at D = 1 is unresolved. <code>tl_full</code> and <code>tl_div</code> have no power above k = 1.6 (wavelength 3.9), so R ≈ 4–5 is close to the cut. Spherical collapse's linear σ uses the same cut spectrum.</li>
+<li>Clipped patches inflate the std at low M, which is why core widths are preferred there; those were computed only to R₀ = 20.7, for PM and SC and at D ≥ 0.5, and not for LPT.</li>
+<li>Patches are sampled at 64³, overlapping at large M.</li>
+<li>PM is the reference, with its own resolution limits at small R: 256³ particles, 512³ force mesh, 2³ sheet resampling, 384³ deposit.</li>
+</ul>
+</main></body></html>

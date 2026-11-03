@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report E: campaign notes — DiscoDJ.jl</title>
+<style>
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b1b1a;margin:0;background:#fcfcfb}
+main{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+h1{font-size:1.75em;line-height:1.25;margin:.2em 0 .6em} h2{margin-top:2.1em;padding-bottom:.25em;border-bottom:1px solid #e4e3df}
+h3{margin-top:1.6em} a{color:#2a78d6;text-decoration:none} a:hover{text-decoration:underline}
+table{border-collapse:collapse;margin:1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid #e4e3df;padding:5px 9px;text-align:left;vertical-align:top} th{background:#f3f2ef}
+code{background:#f1f0ec;padding:1px 4px;border-radius:3px;font-size:.88em} pre{background:#f1f0ec;padding:12px;overflow-x:auto;border-radius:4px}
+pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;margin-left:0;padding-left:14px;color:#52514e}
+.gallery figure{margin:28px 0} .gallery img{max-width:100%;border:1px solid #e4e3df;background:#fff}
+.gallery figcaption{font-size:.88em;color:#52514e;margin-top:4px} .meta{color:#52514e;font-size:.9em}
+ main img{max-width:100%;border:1px solid #e4e3df;background:#fff}</style></head>
+<body><main>
+<p class="meta"><a href="../">EFT / shell-crossing study</a> · <a href="00_synthesis.html">synthesis</a> · <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/reports/E_campaign_notes.md">source on GitHub</a></p>
+<h1 id="report-e-campaign-notes">Report E: campaign notes</h1>
+<p>Running log with commands and times: <code>CAMPAIGN_LEDGER.md</code> in the scratch directory.</p>
+<h2 id="settings">Settings</h2>
+<p>All GPU runs used the original full-resolution settings: 256³ particles, 512³ force mesh, 200 BullFrog steps from D = 0.02 with 3LPT ICs, 4th-order deposit, 2³ sheet resampling, 8 snapshot epochs. Stage 4, testing cheaper settings and code speedups, was skipped: the GPU runs were started at the user's request before it, and about 4 hours of remaining CPU work would not have repaid half a day of tests. All 9 configs are complete: 16/16 members each, 32/32 stress measurements.</p>
+<h2 id="machine">Machine</h2>
+<p>Two unexplained reboots preceded the campaign (Oct 31 about 16:25 PDT, Nov 1 about 08:52 PST), both 7–12 minutes after two GPU queues, a tl_measure batch and run_fixedmass overlapped. Their cause is still unknown.</p>
+<ul>
+<li><strong>No reboot since Nov 1, 08:55,</strong> including one GPU process running for 4.5 h, overlapped with run_fixedmass (-t 96) for about the first hour, with this campaign's σ(M) jobs (-t 32) later, and with other sessions' CPU jobs throughout (about 55 cores at one check). This was a smaller load than the crash mix, so it does not show the machine is safe at that mix.</li>
+<li><strong>GPU:</strong> median 285 W and 86 °C when busy, peaks 300 W and 87 °C; software thermal slowdown in about two-thirds of busy samples and the software power cap in 35 %. No hardware slowdown or power brake was reported.</li>
+<li><strong>UPS:</strong> APC Smart-UPS SRT. <code>battery.runtime</code> reads 0 or −1 throughout at 100 % charge. It carried the machine through a 20 s discharge on Nov 2, 14:25:48 PST (55.2 → 48.0 V, 98 %), with no job affected; the cause of that event is not known. So the battery carried that moderate load, with the GPU idle, and the runtime value is very likely a reading problem. A self-test could look the same. Whether it can carry the crash-time load is untested.</li>
+<li><strong>Journal:</strong> made persistent on Nov 1 by the user, so kernel messages before any later crash would survive.</li>
+</ul>
+<p><strong>Not checked, for the user:</strong> UPS event log around the two crash times; card fans and airflow; <code>upsmon</code> failed its login at boot on Nov 1 (ERR ACCESS-DENIED), and that was not followed up, so shutdown on low battery may not work.</p>
+<h2 id="errors-made-and-corrected-during-the-campaign">Errors made and corrected during the campaign</h2>
+<table>
+<thead>
+<tr>
+<th>what</th>
+<th>how it was found</th>
+<th>effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>README applied the displacement C₂ to P(k): wrong sign</td>
+<td>review of line A</td>
+<td>published, then corrected</td>
+</tr>
+<tr>
+<td>Finite-ε smearing missed; explained wrongly at first; "clean" estimator misjudged</td>
+<td>independent audit</td>
+<td>C₂,δ 1.97 → 1.935; one-loop agreement 10 % → 1.2 %</td>
+</tr>
+<tr>
+<td>Wave × band noise, mismatched realizations in a series comparison</td>
+<td>own check</td>
+<td>corrected before reporting</td>
+</tr>
+<tr>
+<td>tl_fit3 closure forced c_r1 = c_d1 (11.14 for a true 10)</td>
+<td>independent audit, then synthetic test</td>
+<td>fixed before any fit used it</td>
+</tr>
+<tr>
+<td>d2 + dd1 = 0.81 ± 0.02 reported as a discrepancy</td>
+<td>own epoch-by-epoch test</td>
+<td>not a stable measurement; withdrawn</td>
+</tr>
+<tr>
+<td>"Contraction is not the main explanation"</td>
+<td>spherical-collapse test</td>
+<td>withdrawn: required for fixed-radius σ</td>
+</tr>
+<tr>
+<td>Axis-pairing bug in <code>patch_anisotropy.py</code>; a correct Jacobian was wrongly called buggy</td>
+<td>curl/div test</td>
+<td>fixed; statement retracted</td>
+</tr>
+<tr>
+<td>"Response scales with added power"</td>
+<td>full set of pairs</td>
+<td>withdrawn: varies 3.4×</td>
+</tr>
+<tr>
+<td>dc̄/dI across Λ called the clearest UV test</td>
+<td>independent audit</td>
+<td>withdrawn: those modes are shared, so the agreement is built in; the band fits are the test</td>
+</tr>
+<tr>
+<td>Switching Pages from <code>main</code> to <code>gh-pages</code> was recommended without checking which public URLs depended on the old source; <code>studies/lpt_pdf/report.html</code> went 404</td>
+<td>user report</td>
+<td>link fixed and old URL redirected</td>
+</tr>
+<tr>
+<td>A crashed job went unnoticed for 2.5 h; <code>pkill</code>/<code>pgrep -f</code> matched my own shell twice; PID of a <code>setsid</code> wrapper; global-scope loop ran about 15× slower</td>
+<td>status checks</td>
+<td>time lost, no data lost</td>
+</tr>
+</tbody>
+</table>
+<h2 id="what-remains">What remains</h2>
+<p>All three branches are merged into <code>main</code>; the additive conflicts were in <code>scripts/run_jobs.jl</code>, <code>src/ics.jl</code> and <code>src/runners.jl</code>. After the merge, 66 study, 32 sheet-moment and 15 fixed-mass tests pass, and both branches' ICs reproduce stored runs to 3 × 10⁻⁷. Scratch holds about 400 GB of snapshots and is worth keeping for further analysis.</p>
+</main></body></html>

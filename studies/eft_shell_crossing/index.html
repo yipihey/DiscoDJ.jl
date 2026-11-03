@@ -1,0 +1,2489 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EFT / shell-crossing study — DiscoDJ.jl</title>
+<style>
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b1b1a;margin:0;background:#fcfcfb}
+main{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+h1{font-size:1.75em;line-height:1.25;margin:.2em 0 .6em} h2{margin-top:2.1em;padding-bottom:.25em;border-bottom:1px solid #e4e3df}
+h3{margin-top:1.6em} a{color:#2a78d6;text-decoration:none} a:hover{text-decoration:underline}
+table{border-collapse:collapse;margin:1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid #e4e3df;padding:5px 9px;text-align:left;vertical-align:top} th{background:#f3f2ef}
+code{background:#f1f0ec;padding:1px 4px;border-radius:3px;font-size:.88em} pre{background:#f1f0ec;padding:12px;overflow-x:auto;border-radius:4px}
+pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;margin-left:0;padding-left:14px;color:#52514e}
+.gallery figure{margin:28px 0} .gallery img{max-width:100%;border:1px solid #e4e3df;background:#fff}
+.gallery figcaption{font-size:.88em;color:#52514e;margin-top:4px} .meta{color:#52514e;font-size:.9em}
+</style></head>
+<body><main>
+<p class="meta"><a href="../../">DiscoDJ.jl study reports</a> · <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/">source on GitHub</a> ·
+<a href="#figures">all figures</a></p>
+<h1 id="does-shell-crossing-leave-an-irreducible-k2-long-mode-response-paired-ic-17lpt-vs-collisionless-pm">Does shell crossing leave an irreducible k² long-mode response? — paired-IC 1–7LPT vs collisionless PM</h1>
+<p><em>Rendered with all figures: <a href="https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/">https://yipihey.github.io/DiscoDJ.jl/studies/eft_shell_crossing/</a>.</em></p>
+<p><em>Study of the "irreducible effective stress" claim of Carrasco, Hertzberg &amp; Senatore (2012,
+<a href="https://arxiv.org/abs/1206.2926">arXiv:1206.2926</a>) with DiscoDJ.jl (DiscoDJNative, GPU).</em></p>
+<p><strong>Result in one paragraph.</strong> Two 3D universes share their long modes bitwise and differ by a band of short modes
+(0.2–1.2 h Mpc⁻¹); the long-mode displacement response Δψ_L = −C₂k²ψ_L is measured at the field level, with 1–7th-order
+LPT (the pressureless single-stream fluid to increasing accuracy) and with a discreteness-suppressed collisionless PM
+validated to reproduce 7LPT to 10⁻⁴ before shell crossing. <strong>Before crossing</strong> the single-stream series converges onto
+PM (PM − 7LPT ≤ 2×10⁻⁵ against an 8 % 3LPT→7LPT change). <strong>Immediately after first crossing</strong> a coherent, pure-k²,
+pressure-signed residual appears that is common to 3, 5, 7LPT and to the extrapolated series limit, while that series
+is still convergent (0.225 &lt; D &lt; 0.5); it grows with the shell-crossed mass (∝ f^1.5), moves with the crossing time when
+the band amplitude changes, is absent in redshift-space-only crossing, is resolution-converged, and is accounted for —
+in sign and to a factor ≈ 2 in magnitude — by the velocity-dispersion stress measured directly in PM's multistream
+regions. Varying the cutoff, the collisionless response runs like the CHS (2012) one-loop running while 4LPT/7LPT fail
+once the integrated-out modes have crossed; it is carried by modes near the nonlinear scale, deeper modes decouple (for the random long field; not at ε → 0, §14.11), and
+it is a coherent effect (at k = 0.06 h Mpc⁻¹, modes below 5 h⁻¹Mpc change P(k) by −2.1 % coherently and add 0.05 %
+stochastic power). <strong>Assessment: strong support (category 1) for the CHS irreducibility statement within the window
+where it can be tested (§12); beyond D ≈ 0.5 the single-stream series diverges and irreducibility is an
+extrapolation.</strong></p>
+<p><strong>Follow-up results and final reports (§16):</strong> <a href="reports/00_synthesis.html">synthesis</a>; <a href="reports/A_density_response.html">A: density response</a>; <a href="reports/B_two_loop_stress.html">B: two-loop stress</a>; <a href="reports/C_sigma_M.html">C: σ(M), LPT and spherical collapse</a>; <a href="reports/D_uv_reach.html">D: reach of the UV</a>; <a href="reports/E_campaign_notes.html">E: campaign notes</a>.</p>
+<p><strong>Precision follow-up with plane-wave long modes (§14).</strong> Replacing the random long field by ±ε plane waves isolates
+the coefficient of the <em>linear</em> long field. In the displacement, where ε = 0.01 is already the ε → 0 limit, it is
+measured to 0.4–5 % at 7 cutoffs (k_split = 0.12–0.7) and 12 epochs from 8 PM runs per cutoff. Findings:
+* the departure from the <em>converged</em> pressureless series is significant from first crossing at every cutoff;
+* at D = 1 the <em>displacement</em> coefficient is small and negative (−0.40 at k_split = 0.2), carried by modes near k_NL. The
+  Eulerian density, which is what P(k) sees, is instead <em>suppressed</em>: C₂,δ = +1.94 ± 0.02,
+  ΔP/P = −0.97 % at k = 0.05, and it matches one-loop PT to ≤ 1.2 % before crossing (§14.11; an earlier version of this page
+  wrongly quoted +0.2 % in P). In the displacement, modes beyond ≈ 0.35 h Mpc⁻¹ have decoupled and the shells' effects do
+  not add; in the density, modes above 0.33 still carry a third of the response at D = 1;
+* about half of the §6 coefficient (+1.51) is long × short loops (+2.06; not ∝ a² after D ≈ 0.6);
+* at D ≳ 0.5, "PM − 7LPT" mostly measures the divergence of the LPT series; the counterterm at fixed loop order
+  changes sign in time;
+* a positive k⁴ departure is detected at k_split ≥ 0.5;
+* the second-order kernel acquires a suppressive counterterm (−0.54 ± 0.13 of tree at D = 1);
+* no coherent second-order vorticity (&lt; 1 % of tree).</p>
+<p>These map one-to-one onto the two-loop EFT counterterms of Anastasiou+ (2025, arXiv:2509.05187), §14.9.</p>
+<p>Study map: question &amp; falsifiable predictions §0 · PreCrossedSheet PR #4 §1 · design &amp; conventions §2 · methods §3 ·
+convergence §4 · controls §5 · fiducial results (time × order, k⁴, stochastic, velocity) §6 · RG running &amp; CHS
+Fig. 3 §7 · counts in spheres §8 · redshift space §9 · kinetic stress §10 · small-scale P(k) convergence §11 ·
+interpretation §12 · final assessment §13 · plane-wave precision counterterms (ε → 0 c_s, cutoff ladder, long × short,
+k⁴, second-order kernel, two-loop EFT mapping) §14 · reproduction §15.</p>
+<hr />
+<h2 id="0-the-question-and-what-would-count-as-evidence">0. The question, and what would count as evidence</h2>
+<p>After coarse-graining, unresolved short-scale dynamics act on long modes through an effective stress
+τ ⊃ c_s² δ_L, i.e. a long-mode displacement response</p>
+<p>Δψ_L(k) = −C₂(a) k² ψ_L(k) + O(k⁴) + ε(k).</p>
+<p>The strong claim tested here: <em>the finite renormalized coefficient is an irreducible error of the
+pressureless single-stream fluid</em> — making the perturbative pressureless solution more accurate does not
+remove the part generated by multistreaming once shell crossing occurs.</p>
+<p>We do not try to fit an EFT to a power spectrum. We construct two universes that share their long modes
+<strong>bitwise</strong> and differ only by a band of short modes, evolve both with (i) the pressureless single-stream
+solution to increasing order (1–7LPT) and (ii) the exact collisionless dynamics (PM N-body), and measure the
+<strong>field-level</strong> response of the shared long modes. The hypothesis makes falsifiable predictions:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>prediction if the hypothesis is right</th>
+<th>what would falsify it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1</td>
+<td>before any shell crossing, PM − LPT_n → 0 as n grows</td>
+<td>a pre-crossing PM−LPT residual that does not converge (→ numerics or non-perturbative physics)</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>after crossing, PM − LPT_n tends to a nonzero limit as n grows, i.e. PM departs from the <em>limit</em> of the single-stream series</td>
+<td>PM − LPT_n keeps decreasing with n after crossing</td>
+</tr>
+<tr>
+<td>P3</td>
+<td>the departure has the EFT form −C₂k² (a k_max plateau), is deterministic (correlated with ψ_L) and grows with the shell-crossed mass</td>
+<td>departure not ∝ k², or uncorrelated with ψ_L (stochastic), or unrelated to crossing</td>
+</tr>
+<tr>
+<td>P4</td>
+<td>stochastic UV→IR leakage is suppressed at low k (P_ε,δ ∝ k⁴) and is separable from the deterministic part</td>
+<td></td>
+</tr>
+<tr>
+<td>P5 (EFT)</td>
+<td>the response is dominated by modes near the nonlinear scale; very deep UV modes decouple</td>
+<td>response grows with the deepest UV modes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="1-what-precrossedsheet-pr-4-does-and-what-we-keep">1. What PreCrossedSheet PR #4 does, and what we keep</h2>
+<p><a href="https://github.com/yipihey/precrossedsheet/pull/4">yipihey/precrossedsheet#4</a> ("pair-fixed soft modes,
+dual-amplitude ratios, and EFT lab diagnostics") adds <code>core/src/eft.rs</code> (≈1200 lines), its WASM entry
+point, the <code>counterterms</code> view of the browser Lab, tests (<code>core/tests/eft_counterterms.rs</code>) and the draft
+chapter <code>chapters/05-eft.qmd</code>.  Read from the implementation:</p>
+<table>
+<thead>
+<tr>
+<th>Lab ingredient</th>
+<th>Implementation (eft.rs)</th>
+<th>Kept here?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UV / IR members</td>
+<td>Two Gaussian IC filters of one seed, <code>R_UV</code> (≈1 % inverted tets at a = 1) and <code>R_IR</code> (auto: continuum σ_IR = σ_UV/3)</td>
+<td><strong>Replaced</strong> — a Gaussian pair differs at <em>all</em> k by e^{−k²(R_UV²−R_IR²)/2} ≈ 1 − k²ΔR²/2, an IC-level k² "response" (test <code>Gaussian-filter pair</code> reproduces the spurious C₂ = (R_UV²−R_IR²)/2)</td>
+</tr>
+<tr>
+<td>Pair-fixed soft modes (<code>pfs=1</code>)</td>
+<td>One unsmoothed white-noise field, sharp cuts k = 1/R_UV, 1/R_IR, every |k| ≤ k_IR bitwise identical</td>
+<td><strong>Adopted</strong> as the only construction (split k_split, cutoff k_uv)</td>
+</tr>
+<tr>
+<td>Match linear variance (<code>mlv=1</code>)</td>
+<td>Rescale the IR δ₀ by σ_UV/σ_IR</td>
+<td><strong>Rejected</strong> — rescales the shared long modes, i.e. injects a k-independent R = s − 1</td>
+</tr>
+<tr>
+<td>1–4LPT</td>
+<td><code>build_lpt(4)</code>, positions per order</td>
+<td>Extended to <strong>1–7LPT</strong> (DiscoDJNative <code>compute_core</code>, general-order EdS recursion, 3/2 de-aliased)</td>
+</tr>
+<tr>
+<td>Displacement comparison</td>
+<td><code>fit_displacement_sound_speed</code>: LS fit of Δψ = −α k² ψ_IR over all modes k ≤ k_max (regressor = <em>nonlinear</em> IR displacement)</td>
+<td>Kept as a binned cross-correlation, regressor = the exact <strong>linear</strong> ψ_L (the δ_L of the EFT), longitudinal projection</td>
+</tr>
+<tr>
+<td>Density / P(k)</td>
+<td>Exact P1 sheet deposit on a 2× mesh, ΔP = −2 c_s² k² P_lin fit</td>
+<td>CIC (deconvolved) density; field-level R_δ = ⟨Δδ δ_L*⟩/⟨|δ_L|²⟩ rather than power ratios; T(k) = P_UV/P_IR − 1 kept as a raw observable</td>
+</tr>
+<tr>
+<td>Native vs matched comparisons</td>
+<td>Both IR amplitudes evolved, side-by-side ratios</td>
+<td>Not needed (no amplitude matching)</td>
+</tr>
+<tr>
+<td>k_max stability</td>
+<td>Refit on a ladder 0.4–2 × k_max</td>
+<td>C₂(k_max) and (C₂, C₄)(k_max) on 12 cutoffs, jackknife errors</td>
+</tr>
+<tr>
+<td>Stochastic residual</td>
+<td>Gaussian draws with the shell power of Δψ − ψ_ct (a <em>model</em> of the residual)</td>
+<td>Measured directly: conditional variance over short-mode seeds at fixed long modes, and the even-in-L part</td>
+</tr>
+<tr>
+<td>Shell crossing</td>
+<td>Fraction of negatively oriented Kuhn simplices</td>
+<td>Same diagnostic on the GPU (6 Kuhn tets per Lagrangian cube) for LPT <em>and</em> PM</td>
+</tr>
+<tr>
+<td>CSV / JSON export</td>
+<td>Fit table CSV, full run JSON in the replay library</td>
+<td>Per-job compact HDF5 (low-k modes) + reduced <code>results/*.h5</code> + <code>results/summary.json</code>/CSV</td>
+</tr>
+<tr>
+<td>Collisionless reference</td>
+<td>none ("No PM trajectory enters this path")</td>
+<td>DiscoDJNative PM (<code>run_nbody</code>, BullFrog), converged against nLPT before crossing</td>
+</tr>
+</tbody>
+</table>
+<p>The browser Lab runs one 32³–64³ realization at one epoch.  Its conclusion in the draft chapter — the
+UV sheet "carries the nonlinear response of the intermediate band that the IR filter removed" — cannot
+separate filter artefacts, truncation error, stochasticity and multistreaming; the design below is built
+to do exactly that.</p>
+<h2 id="2-experimental-design">2. Experimental design</h2>
+<p><strong>Background.</strong> Einstein–de Sitter (Ω_m = 1, D₊ = a) with the Planck18 linear spectrum <em>shape</em>
+(σ₈ = 0.8105 at D = 1). In EdS the general-order nLPT of <code>compute_core</code> (Ψ = Σ Dⁿψₙ) is the exact
+fastest-growing single-stream solution, and PM integrates the same equations — so "finite LPT order" is the
+<em>only</em> difference between the single-stream curves, and there is no growth-approximation confound between
+LPT and PM. Time is labelled by D = a.</p>
+<p><strong>Paired initial conditions</strong> (<code>src/ics.jl</code>). One real-space unit white-noise field per seed on a fixed
+256³ grid; potential φ(k) = ω̂(k)√(P(k)(N/L)³)(−1/k²) (DiscoDJNative faithful convention, ψ₁ = −∇φ):</p>
+<p>ω̂_IR = s_L·1[|k| &lt; k_split] ω̂_L,   ω̂_UV = ω̂_IR + A·1[k_lo ≤ |k| &lt; k_uv] ω̂_S.</p>
+<p>Every mode with |k| &lt; k_split is <strong>bitwise identical</strong> in the two members (tested), so there is no initial
+k² difference — unlike Gaussian-filter pairs (§5). Fiducial: L = 500 h⁻¹Mpc, k_split = 0.2, k_uv = 1.2
+h Mpc⁻¹ (band σ_δ = 1.91 D, σ_ψ = 4.0 D h⁻¹Mpc; long modes σ_δ = 0.71 D). The response is measured at
+k ≤ 0.08 ≪ k_split (6 fundamental shells; 0.0126 ≤ k ≤ 0.19 stored). Realizations are embedded <em>exactly</em>
+(mode by mode) into finer particle grids, so LPT on 256³ and PM on 384³/512³ evolve the same universe.</p>
+<p><strong>Ensemble structure</strong> (<code>config/*.toml</code>, <code>[seeds]</code>). For each long seed L and short seed S both long-mode
+signs s_L = ±1 are run:</p>
+<ul>
+<li>the <em>odd-in-L</em> combination ½[Δψ(+L,S) − Δψ(−L,S)] removes the L-independent short×short term <em>exactly</em>
+  — it isolates the deterministic response;</li>
+<li>the <em>even-in-L</em> part ½[Δψ(+L,S) + Δψ(−L,S)] carries the stochastic leakage;</li>
+<li>several short seeds at fixed L give the conditional mean ⟨Δψ|L⟩ and the conditional variance
+  Var_{S|L}(Δψ) directly (Experiment B).</li>
+</ul>
+<p>Errors are delete-one jackknife over long seeds (the independent unit).</p>
+<p><strong>Observables</strong> (<code>src/measure.jl</code>, all on the GPU, reduced to the low-k Fourier modes on the device):
+Lagrangian displacement ψ(q) = x − q; velocity Π = dΨ/dD; CIC density (window-deconvolved); the
+fraction of the 6N³ equal-mass Kuhn tetrahedra whose orientation is inverted (shell-crossed mass).</p>
+<p><strong>Estimators</strong> (<code>src/estimators.jl</code>, <code>scripts/analyze.jl</code>). With x = ψ_L∥ = D k̂·ψ̂₁ (the exact linear
+displacement, identical in both members):</p>
+<p>R(k) = Σ Re(Δψ_∥ x*) / Σ|x|²  (binned),  R = −C₂k² [+ C₄k⁴] fitted for k ≤ k_max (12 cutoffs);</p>
+<p>the same with the Eulerian density (regressor δ_L = −i|k|x) and with the velocity (regressor ψ₁∥). The
+PM − LPT_n residual is computed <strong>realization by realization</strong> (Δψ_PM − Δψ_LPTn regressed on x), which cancels
+the common short×short noise; the single-stream limit LPT_∞ is estimated from the odd partial sums
+(3, 5, 7) by a Shanks/geometric-tail transform where the increment ratio is &lt; 0.7.</p>
+<p><strong>Dimensional dictionary.</strong> C₂ is a comoving length². A stress term −c_s²(k/a)²δ in the EdS growth
+equation, δ'' + (3/2a)δ' − (3/2a²)δ = −k² ℓ²(a) δ/a² with ℓ² ≡ c_s²/(aH)², has for ℓ² ∝ a^m the
+particular solution Δδ/δ_L = −k² ℓ²/[m(m+5/2)]. Hence</p>
+<p>ℓ²(a) = m(m + 5/2) C₂(a),  c_s²(a) = (aH)² ℓ²(a),  m = d ln C₂/d ln D,</p>
+<p>valid only where C₂ is a power law. For the density, ΔP/P_L = 2R = −2C₂k² (the P_UV = P_IR − 2c_s²k²P_L
+convention of the PreCrossedSheet Lab and of CHS up to their k_NL normalisation). We do <strong>not</strong> identify
+our band-response C₂ with the CHS c_s² of the full ΛCDM field: it is the response to <em>one added band</em>, and
+the mapping above assumes time-local stress.</p>
+<h2 id="3-numerical-methods">3. Numerical methods</h2>
+<ul>
+<li><strong>nLPT 1–7</strong> — DiscoDJNative <code>compute_core</code> (general-order EdS recursion, longitudinal + transverse,
+  3/2-rule de-aliased), Float32 on the GPU. Grid-converged: 256³ and 384³ give the same C₂ to &lt; 0.5 % at
+  every order and epoch (<code>config/conv_lpt384.toml</code>).</li>
+<li><strong>PM</strong> — DiscoDJNative <code>run_nbody</code> (faithful port of DISCO-DJ, BullFrog stepper, 200 steps uniform in D
+  from D = 0.02 with 3LPT ICs; every epoch is a step node).</li>
+<li><strong>Discreteness was the dominant numerical issue</strong> (§4): a standard CIC/finite-difference PM does <em>not</em>
+  reproduce the two-loop (D⁴) part of the pre-crossing response even at 512³ particles on a 1024³ mesh. The
+  production PM therefore uses DISCO-DJ's discreteness-suppression settings (arXiv:2309.10865): PCS
+  assignment, window deconvolution, spectral gradient, interlacing, and 2³ Fourier <strong>sheet resampling</strong>
+  (the displacement field is Fourier-interpolated to 8 sub-particles per particle, i.e. the density is that
+  of the continuous Lagrangian sheet). This reproduces 7LPT to ~10⁻⁴ before crossing and is converged
+  after it (256³ vs 384³).</li>
+</ul>
+<p>DiscoDJNative changes made for this study (commits on this branch): Float32 deconvolution fix (982cc10);
+memory-lean PM solver <code>PMSolverLean</code> / <code>run_nbody(lean=true, callback_when=…)</code> (4e61176), which puts
+512³ particles on a 1024³ mesh on the 48 GB GPU in Float32 at no accuracy cost.</p>
+<h2 id="4-numerical-convergence-what-had-to-be-fixed-before-any-physics">4. Numerical convergence — what had to be fixed before any physics</h2>
+<p><strong>LPT.</strong> 256³ and 384³ agree to &lt; 0.5 % for every order and epoch (<code>conv_lpt256</code> vs <code>conv_lpt384</code>), including
+orders 5–7 whose intermediate fields formally extend beyond the 256³ Nyquist frequency. The odd-order
+series is the object of interest: in the ensemble mean only odd orders contribute to R (the even orders' cross
+term with ψ_L is an odd-point function of a Gaussian field), and indeed C₂^(2n) ≈ C₂^(2n−1) (Table 1).</p>
+<p><strong>PM: particle discreteness, not time stepping, was the problem</strong> (<a href="figures/fig10_pm_convergence.png">fig10</a>).
+A standard PM (CIC, 4th-order finite-difference force) reproduces the <em>one-loop</em> (3LPT) pre-crossing response but
+misses the two-loop D⁴ part, by an amount that depends on the particle grid:</p>
+<table>
+<thead>
+<tr>
+<th>PM (one realization)</th>
+<th>PM − 7LPT at D = 0.2</th>
+<th>at D = 0.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CIC 256³ / 512³ mesh</td>
+<td>0.0218</td>
+<td>0.181</td>
+</tr>
+<tr>
+<td>CIC 384³ / 768³</td>
+<td>0.0084</td>
+<td>0.121</td>
+</tr>
+<tr>
+<td>CIC 384³ / 768³, 400 instead of 200 steps</td>
+<td>0.0084</td>
+<td>0.121</td>
+</tr>
+<tr>
+<td>CIC 512³ / 1024³ (<code>PMSolverLean</code>)</td>
+<td>0.0042</td>
+<td>0.1005</td>
+</tr>
+<tr>
+<td>Richardson limit of the CIC sequence (p ≈ 2.4–2.9)</td>
+<td>≈ 0.000</td>
+<td>≈ 0.080</td>
+</tr>
+<tr>
+<td><strong>suppressed*, 256³ / 512³ (production)</strong></td>
+<td><strong>0.0001</strong></td>
+<td><strong>0.0797</strong></td>
+</tr>
+<tr>
+<td>suppressed*, 384³ / 768³</td>
+<td>−0.0002</td>
+<td>0.0803</td>
+</tr>
+</tbody>
+</table>
+<p>*PCS + deconvolution + spectral gradient + interlacing + 2³ Fourier sheet resampling (the DISCO-DJ
+discreteness-suppression settings; the density is effectively that of the continuous Lagrangian sheet).
+The band (k ≤ 1.2) reaches 0.75 of the 256³ particle Nyquist frequency, and its <em>nonlinear products</em> reach the
+particle Nyquist, so a lattice of point masses cannot follow the fluid there; doubling the time steps changes
+nothing (10⁻⁴). Two independent routes to the continuum collisionless answer — extrapolating plain PM in
+resolution, and suppressing discreteness directly — agree, also after crossing (0.080 vs 0.0797 at D = 0.4). The
+suppressed PM at 256³ and 384³ agree to ≲ 10 % of the residual after crossing and to 10⁻⁴ before. A naive PM
+comparison would have reported a large spurious "pre-crossing EFT residual".</p>
+<p>Other checks (<code>scripts/diagnostics.jl</code>, <code>results/diagnostics_fiducial.json</code>):
+* PM total momentum |ΣP|/(N³ rms P) ≤ 1.8×10⁻⁴ over all runs and epochs (the spectral-gradient/interlaced force
+  is not exactly momentum conserving; plain CIC/FD conserves it to round-off). Mass is conserved exactly.
+* Isotropy: C₂ from modes near the grid axes (Σk̂ᵢ⁴ &gt; 0.7) and near the diagonals (&lt; 0.5) agree within 1–2σ up to
+  D = 0.6 (e.g. −0.2172 ± 0.0018 vs −0.2169 ± 0.0019 at D = 0.3); at D = 1 they differ by 4.5 %
+  (1.609 ± 0.015 vs 1.540 ± 0.013, 3.6σ) — a modest late-time grid anisotropy, larger than the 0.7 % axis/diagonal
+  difference of 7LPT on the same modes.
+* The stochastic residual of the density is ∝ k^4.0–4.2 and of the displacement ∝ k^2.0 (mass and momentum
+  conservation).</p>
+<h2 id="5-controls">5. Controls</h2>
+<ul>
+<li><strong>Null pair</strong> (band amplitude 0): Δψ ≡ 0 at every LPT order (test); the PM null pair measures the GPU
+  reproducibility floor (<code>config/null.toml</code>).</li>
+<li><strong>Shared long modes</strong> are bitwise identical (test), and <strong>1LPT gives C₂ ≡ 0</strong> at every epoch (Table 1).</li>
+<li><strong>IC artifacts</strong> (<a href="figures/fig11_ic_controls.png">fig11</a>, <code>scripts/controls.jl</code>): a PreCrossedSheet-style
+  Gaussian pair (R = 3 / 6 h⁻¹Mpc) has a 1LPT "response" C₂ = −14.0 (analytic −13.5 = (R_UV²−R_IR²)/2) at
+  <em>all</em> D — ~80× the dynamical 3LPT response at D = 0.3; "match linear variance" adds a k-independent offset
+  that a k² fit turns into C₂ = +73. A dynamical response must vanish as D → 0; these do not.</li>
+<li><strong>Odd/even in L</strong>: with both signs of every long realization, the plain estimator <em>is</em> the odd estimator
+  (x(−L) = −x(+L)), so the L-independent short × short term cancels exactly in R.</li>
+<li><strong>Estimator recovery</strong>: injected −C₂k² + C₄k⁴ responses and k² stochastic noise are recovered (tests).</li>
+<li><strong>Kinematic check</strong>: 1LPT density response = σ²_ψ,band D²/6 = 2.67 D² (measured 2.64–2.80 for D = 0.2–0.8),
+  a pure projection effect with no dynamics.</li>
+<li><strong>Time stepping, mesh, particle number, IC order and start time</strong> — §4 and <code>config/conv_*</code>.</li>
+</ul>
+<h2 id="6-results-fiducial-ensemble-k_split-02-band-0212-h-mpc1">6. Results — fiducial ensemble (k_split = 0.2, band 0.2–1.2 h Mpc⁻¹)</h2>
+<p>4 long seeds × (2 short seeds, 6 for seed 1) × ±L: 32 UV + 8 IR members, each evolved with 1–7LPT and with PM.</p>
+<p><strong>Table 1</strong> — displacement response C₂/D² [(h⁻¹Mpc)²] (k ≤ 0.08; jackknife errors over long seeds), the
+realization-level residual PM − 7LPT, and the shell-crossed (inverted) mass fraction of the UV member (PM).</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>3LPT</th>
+<th>5LPT</th>
+<th>7LPT</th>
+<th>PM</th>
+<th>PM − 7LPT [C₂]</th>
+<th>inverted</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.10</td>
+<td>−2.128</td>
+<td>−2.164</td>
+<td>−2.166</td>
+<td>−2.162 ± 0.052</td>
+<td>+0.00002 ± 0.00000</td>
+<td>0</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>−2.072</td>
+<td>−2.213</td>
+<td>−2.232</td>
+<td>−2.231 ± 0.024</td>
+<td>+0.00002 ± 0.00002</td>
+<td>0</td>
+</tr>
+<tr>
+<td>0.225</td>
+<td>−2.066</td>
+<td>−2.243</td>
+<td>−2.274</td>
+<td>−2.274 ± 0.021</td>
+<td>+0.00001 ± 0.00001</td>
+<td>2×10⁻⁴</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>−2.061</td>
+<td>−2.279</td>
+<td>−2.326</td>
+<td>−2.323 ± 0.019</td>
+<td>+0.00026 ± 0.00002</td>
+<td>8×10⁻⁴</td>
+</tr>
+<tr>
+<td>0.30</td>
+<td>−2.053</td>
+<td>−2.366</td>
+<td>−2.463</td>
+<td>−2.419 ± 0.015</td>
+<td>+0.0042 ± 0.0001</td>
+<td>0.006</td>
+</tr>
+<tr>
+<td>0.35</td>
+<td>−2.046</td>
+<td>−2.471</td>
+<td>−2.651</td>
+<td>−2.469 ± 0.013</td>
+<td>+0.0229 ± 0.0001</td>
+<td>0.020</td>
+</tr>
+<tr>
+<td>0.40</td>
+<td>−2.041</td>
+<td>−2.595</td>
+<td>−2.901</td>
+<td>−2.435 ± 0.009</td>
+<td>+0.0757 ± 0.0002</td>
+<td>0.043</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>−2.032</td>
+<td>−2.896</td>
+<td>−3.643</td>
+<td>−2.072 ± 0.005</td>
+<td>+0.395 ± 0.001</td>
+<td>0.104</td>
+</tr>
+<tr>
+<td>0.60</td>
+<td>−2.026</td>
+<td>−3.269</td>
+<td>−4.818</td>
+<td>−1.414 ± 0.011</td>
+<td>+1.229 ± 0.004</td>
+<td>0.167</td>
+</tr>
+<tr>
+<td>0.80</td>
+<td>−2.019</td>
+<td>−4.226</td>
+<td>−9.124</td>
+<td>+0.198 ± 0.011</td>
+<td>+5.97 ± 0.02</td>
+<td>0.266</td>
+</tr>
+<tr>
+<td>1.00</td>
+<td>−2.014</td>
+<td>−5.462</td>
+<td>−17.415</td>
+<td>+1.511 ± 0.018</td>
+<td>+18.90 ± 0.09</td>
+<td>0.330</td>
+</tr>
+</tbody>
+</table>
+<p>(Even orders: 2LPT ≡ 1LPT, 4LPT ≈ 3LPT, 6LPT ≈ 5LPT to the precision shown; <code>results/summary_fiducial.csv</code>.)</p>
+<p><strong>Experiment A — the single-stream series converges onto PM before crossing, and PM leaves it at crossing.</strong>
+(<a href="figures/fig3_c2_vs_time.png">fig3</a>, <a href="figures/fig4_lpt_convergence.png">fig4</a>)
+* One loop: C₂^(3) = −2.05 D² (Mpc/h)², i.e. ≈ −0.128 σ²_ψ,band — short modes <em>enhance</em> the long displacement
+  (negative C₂). Higher odd orders add −3.7 D⁴ and −12.9 D⁶.
+* Before first crossing (D ≤ 0.2) PM − LPT_n falls by ~an order of magnitude per odd order and PM − 7LPT is
+  ≤ 2×10⁻⁵ — 10⁻⁵ of C₂ while 7LPT − 3LPT is 8 %: the pressureless series converges onto the collisionless
+  answer (prediction P1).
+* The residual switches on immediately after first crossing (inverted fraction 2×10⁻⁴ at D = 0.225) and is
+  then common to 3, 5, 7LPT and to the extrapolated series limit LPT∞ (Shanks transform of the odd partial sums,
+  where their increment ratio &lt; 0.7): at D = 0.3 it is 0.004, at 0.35 0.02–0.04, at 0.4 ≈ 0.08–0.15. It does
+  <strong>not</strong> decrease with order (prediction P2). The odd series itself stops converging only at D ≈ 0.5
+  (increment ratio → 1, fig4 right), so for 0.225 &lt; D &lt; 0.5 the comparison is with a <em>convergent</em>
+  single-stream series: the departure is not LPT truncation error.
+* Sign: the departure is positive (C₂^PM &gt; C₂^LPT): the collisionless response is <em>less</em> enhancing — the
+  pressure-like sign of the CHS c_s². PM's C₂/D² bottoms out at −2.47 (D ≈ 0.35), crosses zero at D ≈ 0.78 and
+  reaches +1.51 ± 0.02 at D = 1 (net <em>suppression</em> of the long displacement), while every LPT order runs away
+  negative.</p>
+<p><strong>Universality with the crossed mass</strong> (<a href="figures/fig12_band_variants.png">fig12</a>; variants <code>amp07</code>, <code>kuv06</code>, 2 long seeds
+each, sharing the fiducial IR members). Reducing the band amplitude to 0.7 delays first crossing to D ≈ 0.3 and the
+departure with it; a narrower band (0.2–0.6) changes the response amplitude. Plotted against the inverted mass fraction of
+the UV member, the fractional departure (C₂^PM − C₂^LPT)/|C₂^3LPT| of all three set-ups collapses onto one curve
+(&lt; 1 % at 10⁻³ crossed mass, ≈ 10 % at 2 %, ≈ 50–80 % at 7–8 %), i.e. the departure is a function of how much mass has
+shell-crossed, not of D or of the band. (The variants' errors are mode-counting estimates from 2 seeds.)</p>
+<p><strong>The departure has the EFT form</strong> (<a href="figures/fig7_pm_vs_lpt.png">fig7</a>, <a href="figures/fig5_kmax_stability.png">fig5</a>).
+(R_PM − R_7LPT)/k² is flat in k up to 0.19 h Mpc⁻¹ at every post-crossing epoch (prediction P3): a pure
+−ΔC₂k² term, with no k⁴ structure visible. The PM C₂ itself has a genuine k_max plateau (−0.089 ± 0.002 for
+k_max = 0.03–0.18 at D = 0.2; 1.46–1.51 at D = 1), and adding C₄k⁴ changes it by ≤ 5 %.</p>
+<p><strong>k⁴ convergence</strong> (<code>scripts/c4_convergence.jl</code>, <code>results/c4_convergence.txt</code>; band-edge control
+<code>chs/band_edge.py</code>). The absolute C₄ is noise-limited, not set by the proximity of the band edge: the exact one-loop
+response to the band [0.2, 1.2) departs from pure k² by only 1.2 / 2.6 / 5.1 % at k = 0.08 / 0.12 / 0.18, which shifts
+a fitted C₂ by &lt; 0.5 % and contributes a smooth, computable C₄ ≈ +2.5 D² (Mpc/h)⁴ (density); for k_split = 0.33 and
+0.5 the edge effect is 2.5 % and 1.4 % at k = 0.18. The apparent k_max dependence of the ensemble C₄
+(−17.6 ± 9.5 at k_max = 0.12 vs −5.2 ± 1.1 at 0.18, D = 0.2) is statistical. Convergence is therefore judged on
+realization-level differences with fixed weights, where the cosmic-variance noise cancels. Before crossing the k⁴
+part of the odd LPT series converges (ΔC₄ of 5−3 / 7−5 LPT: −0.022 / −0.004 at D = 0.2, −0.107 / −0.038 at 0.3),
+more slowly than C₂ (increment ratio 0.36 vs 0.32 at D = 0.3, 0.58 vs 0.57 at 0.4, → 1 near D = 0.5, as for C₂).
+The suppressed PM matches 7LPT in C₄ before crossing (ΔC₄ = 0.000–0.002 ± 0.001), whereas plain-CIC 512³ PM is
+off by −0.11 ± 0.017 — C₄ is a far more sensitive discreteness diagnostic than C₂. After crossing, the suppressed
+PM at 256³ and 384³ agree in ΔC₄ within ~1σ at every epoch (D = 0.4: 0.23 / 0.26 ± 0.05; D = 0.6: 4.29 / 4.34 ± 0.5;
+D = 1: 71.3 / 71.4 ± 7). The multistream residual's own k⁴ part is small (≈ 6 % of its k² part at k = 0.15,
+D = 0.4) but from D ≈ 0.35 it is comparable to 7LPT's k⁴ truncation, so at this split it is not separable from LPT
+truncation; the RG splits k_split ≥ 0.33 (k/k_split ≤ 0.55 for k ≤ 0.18) test this with the same seeds.</p>
+<p><strong>Experiment B — deterministic vs stochastic</strong> (<a href="figures/fig6_deterministic_vs_stochastic.png">fig6</a>).
+With 6 short seeds at fixed long modes the conditional variance Var_{S|L}(Δ) is measured directly. At D = 1,
+k = 0.064 h Mpc⁻¹: coherent ΔP/P = 2R ≈ −1.6 %, stochastic P_ε/P_L ≈ 7×10⁻⁵ — the coherent response
+dominates by ~200×; P_ε,δ ∝ k^4.0–4.2 and P_ε,ψ ∝ k^2.0 at every epoch (mass and momentum conservation),
+before and after crossing (prediction P4). UV → IR coupling at these scales is a coherent modification of
+existing long modes, not added noise.</p>
+<p><strong>Density vs displacement</strong> (<a href="figures/fig8_density_vs_displacement.png">fig8</a>). The Eulerian density response
+is dominated by the <em>kinematic</em> smearing of the long mode by the short displacements: 1LPT gives
+C₂,δ = σ²_ψ,band D²/6 = 2.67 D² with no dynamics at all; one loop (3LPT) gives 1.68 D² at D = 0.2 (SPT UV
+limit: (61/105)·2.67 = 1.55). PM's density coefficient stays 1.6–2.3 D² through crossing (it does not change
+sign), while 7LPT's density coefficient runs away (45 D² at D = 1). P(k)-ratio and density-based fits are
+therefore far less sensitive to the multistream physics than the Lagrangian displacement.</p>
+<p><strong>Velocity</strong> (<a href="figures/fig9_velocity_response.png">fig9</a>): the Lagrangian velocity response obeys
+C₂^v = d(D C₂^ψ)/dD to 1–2 % up to D = 0.4 (finite-difference limited later) — a consistency check, not new
+information.</p>
+<p><strong>Time dependence / effective sound speed.</strong> The local slope m = d ln C₂,δ/d ln D of the PM density
+coefficient is ≈ 2.2–2.4 for 0.3 ≤ D ≤ 0.6 and falls to 1.4 by D = 1; the displacement coefficient changes
+sign. Under the time-local power-law mapping of §2, ℓ² = m(m+5/2)C₂ ≈ 10–12 C₂,δ in the plateau region, but
+the drifting m means <strong>no single time-independent c_s²</strong> describes the response, and the CHS assumption
+(their Eq. 59) that c²(a) follows the one-loop (P13) time dependence fails for the multistream part.</p>
+<h2 id="7-rg-running-the-cutoff-experiment-and-chs-2012-fig-3">7. RG running: the cutoff experiment and CHS (2012) Fig. 3</h2>
+<h3 id="71-what-chss-is-and-how-it-maps-onto-a-sharp-split">7.1 What CHS's Λ is, and how it maps onto a sharp split</h3>
+<p>CHS smooth the fields with a Gaussian W_Λ(k) = exp(−k²/2Λ²) (their Eq. 14; real-space width 1/Λ, so Λ = 1/3 h Mpc⁻¹
+↔ σ_x = 3 h⁻¹Mpc), and the loops use P·exp(−k²/Λ²) (Eq. 49). Their running (Eq. 62, k_ext = 0.01) is
+c²(Λ) = c²(∞) + lim_{k→0}[P13(k,∞) − P13(k,Λ)] / (−2k² Γ P), with the counterterm Green's factor of their Eq. 57 /
+App. C Eq. 83, R_ct = −c² k²/(9ℋ₀²f₀²). In the k_ext → 0 limit P13 → −(61/105)k²σ_v²P, so the running depends on Λ
+<strong>only through the removed velocity variance</strong> Δσ_v² = (1/6π²)∫P(1 − e^{−q²/Λ²})dq. A sharp split k_s is therefore
+equivalent to the Λ that removes the same σ_v²: Λ = 1/3 ↔ k_s = 0.21, Λ = 1/6 ↔ 0.115, <strong>Λ = 0.2 (a 5 h⁻¹Mpc
+Gaussian) ↔ k_s = 0.136</strong> (<code>chs/chs_running.json</code>, nearly identical for their and our spectrum).</p>
+<p><strong>Units.</strong> Our density coefficient is C₂,δ = c²/(9ℋ₀²f₀²). In our EdS run (f = 1, a = 1), c²[10⁻⁶ c²] = C₂,δ[(h⁻¹Mpc)²]
+exactly; in the CHS cosmology (Ω_m = 0.25, f₀ ≈ 0.48) the same c² is a 4.4× larger response. At fixed σ₈ the response
+C₂ (a length²) is the nearly cosmology-independent quantity; the c² normalisation carries f₀². Both are shown
+(<a href="figures/figR1_chs_fig3_comparison.png">figR1</a>, <a href="figures/figR1_chs_fig3_comparison_c2units.png">figR1 in c² units</a>).</p>
+<h3 id="72-reconstruction-of-chs-fig-3-chschs_fig3py">7.2 Reconstruction of CHS Fig. 3 (<code>chs/chs_fig3.py</code>)</h3>
+<p>From CAMB (linear + halofit-original) in their cosmology and their App. C one-loop kernels (verified against
+50-digit evaluation): c²(∞) matched at k_ren = 0.16 = <strong>0.614 × 10⁻⁶ c²</strong> (quoted: 6.2 × 10⁻⁷); the running
+c²(0.1) − c²(1) = 0.79 × 10⁻⁶ c² vs 0.77 digitized (+2.5 %), and the k_ren = 0.10 curve agrees with the digitized one to
+2–3 % over Λ = 0.1–1 (<code>chs/chs2012_fig3_digitized.json</code>, calibrated on the axis labels and their N-body points). The
+k_ren = 0.18 curve (0.44 vs ≈ 0.53) is sensitive to their exact time dependence, since P22/P = 1.2 there.</p>
+<h3 id="73-the-cutoff-rg-experiment">7.3 The cutoff (RG) experiment</h3>
+<p>For each of 4 seeds, a single white-noise field defines the UV member (all modes &lt; 1.2 h Mpc⁻¹, shared by every split)
+and one IR member per split k_s = 0.12, 0.15, 0.20, 0.25, 0.33, 0.50, 0.70 (configs <code>rg_ks*</code>), evolved with 1–7LPT and
+the suppressed PM. <strong>Table 2</strong> — density response C₂,δ at D = 1 [(h⁻¹Mpc)²], k ≤ min(0.08, 0.4 k_s), jackknife errors:</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>0.12</th>
+<th>0.15</th>
+<th>0.20</th>
+<th>0.25</th>
+<th>0.33</th>
+<th>0.50</th>
+<th>0.70</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PM</td>
+<td>3.62 ± 0.14</td>
+<td>2.90 ± 0.06</td>
+<td>2.00 ± 0.02</td>
+<td>1.375 ± 0.009</td>
+<td>0.848 ± 0.005</td>
+<td>0.294 ± 0.002</td>
+<td>0.114 ± 0.004</td>
+</tr>
+<tr>
+<td>one-loop PT (this setup)</td>
+<td>2.70</td>
+<td>2.14</td>
+<td>1.55</td>
+<td>1.18</td>
+<td>0.80</td>
+<td>0.41</td>
+<td>0.20</td>
+</tr>
+<tr>
+<td>PM / one-loop</td>
+<td>1.34</td>
+<td>1.35</td>
+<td>1.29</td>
+<td>1.17</td>
+<td>1.06</td>
+<td>0.72</td>
+<td>0.57</td>
+</tr>
+<tr>
+<td>3LPT</td>
+<td>6.29</td>
+<td>5.42</td>
+<td>4.42</td>
+<td>3.82</td>
+<td>3.01</td>
+<td>1.95</td>
+<td>1.16</td>
+</tr>
+<tr>
+<td>4LPT</td>
+<td>12.3</td>
+<td>11.2</td>
+<td>9.27</td>
+<td>8.28</td>
+<td>6.98</td>
+<td>4.97</td>
+<td>3.21</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The running is real and steep</strong>, and at D = 1 PM follows the shape of the one-loop / CHS running
+  (<a href="figures/figR2_running_shape.png">figR2</a>) while 4LPT overshoots it ~2× and 7LPT ~15×; at D ≤ 0.5 PM, 4LPT and 7LPT
+  run identically. This is the visual form of the CHS argument: the collisionless response to integrated-out modes is
+  PT-like in its running, while the single-stream solution fails once those modes have crossed.</li>
+<li><strong>Which modes carry it</strong> (<a href="figures/figR4_band_contribution.png">figR4</a>): per shell, PM exceeds one-loop PT by up to
+  ≈ 1.65× for modes just below the nonlinear scale (k ≈ 0.7 k_NL), and falls below it (0.85×) at k ≈ 1.8 k_NL — the
+  response is dominated by modes near k_NL and the deeper UV <strong>decouples</strong>, as EFT power counting expects. This is for the
+  random long field: at ε → 0 every density shell stays above one loop (§14.11).</li>
+<li><strong>PM − PT is not k_s-independent</strong> (0.9 → 0.05 from k_s = 0.12 to 0.33): the IR member also contains nonlinear modes
+  below k_s and needs its own counterterm, so the measurement is the difference of two universes' counterterms. Only
+  for k_s → 0 does PM − PT approach a CHS-style "c²(∞)" of the UV universe: ≈ 0.9–1.0 (h⁻¹Mpc)², i.e. ≈ 1.0 × 10⁻⁶ c² in
+  EdS units — 1.5× the CHS value in c² units and 0.35× it in response units. Given the different cosmology (EdS vs
+  ΛCDM, n_s, our band ending at k = 1.2) this factor-of-3 bracket is all the absolute comparison supports; the
+  <em>running</em> is the robust comparison.</li>
+<li><strong>(k_split, D) map</strong> (<a href="figures/figR3_c2_map.png">figR3</a>): the PM − 4LPT departure switches on at nearly the same D for
+  every split (it is carried by the shared UV member's multistreaming); the IR members' own shell crossing (contours)
+  marks where each IR universe acquires its own counterterm.</li>
+</ul>
+<h3 id="74-the-below-5-h1mpc-question">7.4 The "below 5 h⁻¹Mpc" question</h3>
+<p>For the split equivalent to a 5 h⁻¹Mpc Gaussian (k_s = 0.136, interpolated between the 0.12 and 0.15 runs), PM at
+D = 1 (<a href="figures/figR5_bao_consequence.png">figR5</a>, <code>results/rg_summary.json</code>):</p>
+<table>
+<thead>
+<tr>
+<th>k [h Mpc⁻¹]</th>
+<th>Δδ/δ (coherent)</th>
+<th>ΔP/P coherent = (1+R)²−1</th>
+<th>stochastic P_ε/P_L</th>
+<th>4LPT coherent ΔP/P</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.03</td>
+<td>−0.29 %</td>
+<td>−0.58 %</td>
+<td>1.4 × 10⁻⁵</td>
+<td>−2.1 %</td>
+</tr>
+<tr>
+<td>0.05</td>
+<td>−0.74 %</td>
+<td>−1.48 %</td>
+<td>1.5 × 10⁻⁴</td>
+<td>−5.4 %</td>
+</tr>
+<tr>
+<td>0.06</td>
+<td>−1.06 %</td>
+<td>−2.11 %</td>
+<td>4.8 × 10⁻⁴</td>
+<td>−7.5 %</td>
+</tr>
+<tr>
+<td>0.10</td>
+<td>−2.5 %</td>
+<td>−5.0 %</td>
+<td>1.2 × 10⁻² (k close to k_s)</td>
+<td>−17 %</td>
+</tr>
+</tbody>
+</table>
+<p><em>Modes below a 5 h⁻¹Mpc smoothing scale, absent from an otherwise identical realization, coherently lower the power
+of the k = 0.06 h Mpc⁻¹ modes by 2.1 % (amplitude 1.06 %), while the independent stochastic power they add is 0.05 %
+of P.</em> This is not "BAO variance generated by small scales": it is a deterministic rescaling of existing long modes.</p>
+<h2 id="8-counts-in-spheres">8. Counts in spheres</h2>
+<p>Every RG member records top-hat sphere contrasts at identical centres (32³ lattice, R = 20–150 h⁻¹Mpc), their
+Laplacian, the spheres of the field low-passed at every split, and the exact linear spheres (<code>scripts/cis_analysis.jl</code>,
+<a href="figures/figR6_counts_in_spheres.png">figR6</a>). Decomposition at k_s = 0.2, PM, D = 1:</p>
+<table>
+<thead>
+<tr>
+<th>R</th>
+<th>Δσ²/σ² total</th>
+<th>coherent (k &lt; k_s)</th>
+<th>stochastic (k &lt; k_s)</th>
+<th>band leakage (k ≥ k_s)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>20</td>
+<td>−1.30 %</td>
+<td>−3.49 %</td>
+<td>+0.42 %</td>
+<td>+1.77 %</td>
+</tr>
+<tr>
+<td>40</td>
+<td>−0.69 %</td>
+<td>−1.29 %</td>
+<td>+0.07 %</td>
+<td>+0.54 %</td>
+</tr>
+<tr>
+<td>80</td>
+<td>−0.29 %</td>
+<td>−0.52 %</td>
+<td>+0.03 %</td>
+<td>+0.20 %</td>
+</tr>
+<tr>
+<td>150</td>
+<td>−0.18 %</td>
+<td>−0.26 %</td>
+<td>+0.013 %</td>
+<td>+0.07 %</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The sphere variance <strong>decreases</strong>: the coherent response dominates the stochastic one 8–20×, and the added band's own
+  modes leaking through the top-hat window (a projection effect, not coupling) offset about half of it at R = 20.</li>
+<li>Per sphere the stochastic scatter of Δδ_R (≈ 6.5 % of σ_R at R = 20) exceeds the coherent shift (≈ 1.8 %), so the
+  Δδ_R–∇²δ_R scatter plots have correlation r ≈ 0.25–0.3; the coherent part dominates σ²_R because it enters at first
+  order (2b) and the stochastic part at second order.</li>
+<li><strong>Real-space EFT test</strong>: Δδ_R = C₂,R ∇²δ_R holds with an R-independent slope (1.52–1.63 for R = 20–150 at k_s = 0.2),
+  and the slope equals the Fourier response R(k) weighted by k⁴W²_TH(kR)P to ~1 % at every R (k_s = 0.15, 0.2). It is
+  below the k → 0 coefficient (2.0) because ∇² of a sharp top-hat weights k ≈ k_s, where −R/k² is smaller (k⁴ and
+  band-edge terms). (For k_s = 0.33 the weighted prediction lacks the stored modes 0.25 &lt; k &lt; 0.33.)</li>
+<li><strong>Mass-flux decomposition</strong> (<a href="figures/figR7_flux_decomposition.png">figR7</a>, shared modes, R = 20): before crossing
+  (D = 0.2) kinematic diffusion alone (1LPT) gives −0.196 %, gravitational infall brings 40 % back (3LPT/7LPT/PM:
+  −0.118 %). After crossing PM (−3.6 % at D = 1) loses <em>less</em> than free diffusion (1LPT −4.5 %), while the single-stream
+  solutions run away (3LPT −8.4 %, 7LPT −42 %): bound multistream structures trap their mass (capping the diffusive
+  flux the single-stream solution keeps growing), and their velocity dispersion acts as a pressure on the long
+  displacement (C₂,ψ &gt; 0) — §9 measures that stress directly.</li>
+</ul>
+<h2 id="9-redshift-space">9. Redshift space</h2>
+<p>With s = x + u_z ẑ (u = dx/d ln a), PM and LPT redshift-space densities and the s-space shell-crossed fraction were
+measured in every RG run (<code>scripts/rsd_analysis.jl</code>). k_s = 0.2, realization-level jackknife errors:</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>inverted (real)</th>
+<th>inverted (s-space)</th>
+<th>PM − 7LPT, C₂(μ≈0.22 / 0.56 / 0.86)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.20</td>
+<td>0</td>
+<td>0.94 %</td>
+<td>+0.0002 / +0.0004 / +0.0003 (± 0.0003)</td>
+</tr>
+<tr>
+<td>0.225</td>
+<td>0.02 %</td>
+<td>2.0 %</td>
+<td>+0.0001 / +0.0004 / −0.0003 (± 0.0004)</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>0.08 %</td>
+<td>3.4 %</td>
+<td>−0.0002 / −0.0008 / −0.0031 (± 0.0005)</td>
+</tr>
+<tr>
+<td>0.30</td>
+<td>0.61 %</td>
+<td>7.1 %</td>
+<td>−0.005 / −0.020 / −0.041 (± 0.001)</td>
+</tr>
+</tbody>
+</table>
+<p>The redshift-space sheet crosses at D ≈ 0.13, ~0.1 in D before the real-space sheet, and the single-stream series still
+converges onto PM in redshift space through it (PM − 5LPT is 10× larger than PM − 7LPT at D = 0.225): redshift-space
+crossing is a projection the pre-crossed sheet represents exactly. The departure switches on with <em>real-space</em> crossing,
+strongest along the line of sight (a μ²k² velocity term). From D ≈ 0.275 the redshift-space LPT series itself stops
+converging at high μ (5LPT and 7LPT differ in sign), earlier than in real space.</p>
+<h2 id="10-experiment-2-is-the-departure-the-multistream-kinetic-stress">10. Experiment 2 — is the departure the multistream kinetic stress?</h2>
+<p><strong>Measurement</strong> (<code>config/stress.toml</code>, <code>scripts/stress_analysis.jl</code>; 4 long seeds × ±L, PM and 7LPT). At every
+snapshot each member deposits (NGP) mass, momentum and kinetic moments with u = dx/d ln a on 64³ and 128³ cells
+(7.8 and 3.9 h⁻¹Mpc) and forms the velocity-dispersion stress with the smooth single-stream flow removed per cell
+(least-squares linear velocity field: τ = n[Cov(u) − Cov(u,x)Cov(x)⁻¹Cov(x,u)]; this suppresses the finite-cell
+"dispersion" of a smooth flow 30–125× in tests). Cells containing particles of an inverted Lagrangian tetrahedron
+are flagged as multistream; flagged cells with an unflagged neighbour are "boundary" (the outermost caustic /
+splashback shell at that resolution). The longitudinal long-mode stress response c²_τ(D) = Re⟨k̂k̂:Δτ̂ δ_L*⟩/(ρ̄⟨|δ_L|²⟩)
+drives the long displacement through the EdS Green's function y'' + y'/2 − (3/2)y = c²_τ a (′ = d/d ln a,
+C₂,σ = y/a), giving the response the stress implies.</p>
+<p><strong>Validation.</strong> Before crossing the stress response of PM and 7LPT agrees to 3–4 digits (0.3217 vs 0.3217 at D = 0.2,
+7.8 Mpc/h cells): the residual coarse-graining artifacts are identical and cancel. After crossing 7LPT's coarse-grained
+"stress" explodes (×140 PM's at D = 1) because its crossed streams fly apart ballistically — but LPT's equations of
+motion contain no stress, so this is a diagnostic of unphysical streaming, not a force. The test is therefore whether
+<strong>PM's own multistream stress</strong> accounts for PM's departure from the single-stream series.</p>
+<p><strong>Result</strong> (<a href="figures/fig13_kinetic_stress.png">fig13</a>, <code>results/stress_stress.h5</code>):</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>C₂,σ from PM multistream stress (7.8 / 3.9 Mpc/h cells)</th>
+<th>measured PM − 7LPT</th>
+<th>inverted mass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.275</td>
+<td>0.0055 / 0.0021</td>
+<td>0.0011</td>
+<td>0.26 %</td>
+</tr>
+<tr>
+<td>0.30</td>
+<td>0.0125 / 0.0050</td>
+<td>0.0040</td>
+<td>0.61 %</td>
+</tr>
+<tr>
+<td>0.35</td>
+<td>0.041 / 0.0185</td>
+<td>0.0225</td>
+<td>2.0 %</td>
+</tr>
+<tr>
+<td>0.40</td>
+<td>0.090 / 0.046</td>
+<td>0.076</td>
+<td>4.3 %</td>
+</tr>
+<tr>
+<td>0.45</td>
+<td>0.161 / 0.089</td>
+<td>0.192</td>
+<td>7.2 %</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The kinetic velocity-dispersion stress of PM's multistream regions, propagated through the long-mode Green's function,
+  has the <strong>sign and magnitude</strong> of the measured departure (against 7LPT and against the extrapolated LPT∞) over the
+  range where the single-stream series still converges (0.25 ≲ D ≲ 0.45), within the factor-2 bracket set by the
+  coarse-graining scale; it vanishes identically before crossing.</li>
+<li>The coarse-graining dependence is physical: on finer cells part of the multistream motion is resolved as bulk flow
+  (Reynolds stress) rather than dispersion. A complete accounting at fixed coarse-graining scale would add the resolved
+  Reynolds and gravitational stresses, which were not measured; the data therefore establish the multistream kinetic
+  stress as a <em>sufficient</em> explanation to a factor ~2, not an exact budget.</li>
+<li>Early after crossing essentially all of the stress lies in <strong>boundary cells</strong> (young multistream regions are thin
+  sheets and filaments, every flagged cell borders single-stream flow); by D = 0.5 the interiors carry 40–50 % on
+  7.8 Mpc/h cells. This answers the "sharp features vs volume" question of §6: the stress is localised at the
+  caustic/splashback layers while those are thin, and becomes volume-filling as the multistream regions thicken — the
+  coefficient is set by the integrated momentum flux, not by the k-space sharpness of the caustics (it is also
+  resolution-converged, §4).</li>
+</ul>
+<h2 id="11-small-scale-power-spectrum-convergence">11. Small-scale power-spectrum convergence</h2>
+<p>One realization (UV member) with the production PM (suppressed, 256³ particles / 512³ mesh), the same at 384³ / 768³,
+and plain CIC at 512³ / 1024³ (<code>config/pkconv_*</code>, <code>scripts/pk_convergence.jl</code>,
+<a href="figures/fig14_pk_convergence.png">fig14</a>). Density on a common 512³ CIC deposit mesh (window deconvolved, no
+shot-noise subtraction); displacement on each particle grid. Ratios to suppressed 384³:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>k = 0.22</th>
+<th>0.38</th>
+<th>0.65</th>
+<th>1.14 h Mpc⁻¹</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>density, D = 0.5, suppressed 256³</td>
+<td>1.000</td>
+<td>0.999</td>
+<td>0.996</td>
+<td>0.991</td>
+</tr>
+<tr>
+<td>density, D = 1, suppressed 256³</td>
+<td>0.998</td>
+<td>0.994</td>
+<td>0.987</td>
+<td>0.957</td>
+</tr>
+<tr>
+<td>density, D = 1, plain CIC 512³</td>
+<td>1.001</td>
+<td>1.000</td>
+<td>0.993</td>
+<td>0.964</td>
+</tr>
+<tr>
+<td>displacement, D = 1, suppressed 256³</td>
+<td>1.006</td>
+<td>1.016</td>
+<td>1.036</td>
+<td>1.085</td>
+</tr>
+</tbody>
+</table>
+<p>The nonlinear power spectrum is converged to ≲ 1 % for k ≲ 0.5 h Mpc⁻¹ at D = 1 (≲ 0.5 % for all k ≤ 1 at D ≤ 0.5) but
+<em>not</em> at k ≈ 1 at late times (4 % in density, 8.5 % in displacement between 256³ and 384³), as expected for halo
+interiors at ~1 h⁻¹Mpc force resolution; beyond the 256³ particle Nyquist frequency (1.6 h Mpc⁻¹) the comparison is not
+meaningful. The long-mode response (C₂, C₄) is nevertheless converged to ~1σ between the same resolutions (§4): the
+EFT decoupling statement — the long-wavelength effect of small scales is insensitive to their unresolved interiors —
+holds numerically.</p>
+<h2 id="12-interpretation-which-explanation-each-measurement-rules-in-or-out">12. Interpretation — which explanation each measurement rules in or out</h2>
+<table>
+<thead>
+<tr>
+<th>candidate explanation of the long-mode UV response</th>
+<th>what it predicts</th>
+<th>what is measured</th>
+<th>verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IC / filter artifact</td>
+<td>C₂ ≠ 0 at D → 0, already in 1LPT</td>
+<td>sharp split: 1LPT C₂ ≡ 0; Gaussian pairs give −14 (Mpc/h)² at every D (§5)</td>
+<td>ruled out for this design; dominant for Gaussian-filter pairs</td>
+</tr>
+<tr>
+<td>ordinary pre-crossing mode coupling</td>
+<td>k² response ∝ D² (one loop), converging with LPT order</td>
+<td>C₂^(3) = −2.05 D², odd series converging, PM = 7LPT to 10⁻⁵</td>
+<td>present, fully captured by single-stream LPT</td>
+</tr>
+<tr>
+<td>finite-LPT truncation</td>
+<td>PM − LPT_n shrinks with n</td>
+<td>before crossing: ~10× per odd order; after: common residual for n = 3, 5, 7 and LPT∞</td>
+<td>explains nothing after crossing within the convergent window</td>
+</tr>
+<tr>
+<td>numerical PM error</td>
+<td>resolution/discreteness dependence</td>
+<td>plain PM <em>does</em> miss the D⁴ term (discreteness); suppressed PM converged (256³ ↔ 384³, Richardson limit of plain PM agrees after crossing)</td>
+<td>controlled (§4)</td>
+</tr>
+<tr>
+<td>stochastic UV → IR leakage</td>
+<td>uncorrelated with ψ_L, P_ε,δ ∝ k⁴</td>
+<td>P_ε,δ ∝ k^4.0–4.2, P_ε,ψ ∝ k^2.0; 200× below the coherent part at k ≈ 0.06; ±L design cancels it exactly in R</td>
+<td>real but negligible for the coherent response</td>
+</tr>
+<tr>
+<td>kinematic (displacement-smearing) projection</td>
+<td>density-only, no dynamics, = σ²_ψ/6</td>
+<td>1LPT density C₂ = 2.67 D² exactly; absent from the displacement response</td>
+<td>explains most of the <em>density</em> response; not the multistream effect</td>
+</tr>
+<tr>
+<td>multistream effective stress</td>
+<td>departure starts at crossing, k², pressure sign, ∝ crossed mass, carried by the stress of multistream regions</td>
+<td>all of these (§6, §9, §10)</td>
+<td>supported</td>
+</tr>
+</tbody>
+</table>
+<h2 id="13-final-scientific-assessment">13. Final scientific assessment</h2>
+<p><strong>Category 1 — strong support, within a stated window.</strong> A converged, deterministic, pure-k² long-mode response
+remains relative to increasingly accurate single-stream dynamics, and it correlates with — and is quantitatively
+attributable to — multistream evolution:
+1. <em>Convergence before crossing, not after.</em> PM − LPT_n falls ~10× per odd order before first crossing and becomes a
+   common, order-independent residual after it, while the single-stream series itself still converges (D &lt; 0.5).
+2. <em>Tied to real-space shell crossing.</em> Onset coincides with the first inverted tetrahedra (D ≈ 0.225); the residual
+   scales as (crossed mass)^1.5; reducing the band amplitude delays both crossing and departure, and the fractional
+   departure of all band variants collapses onto one function of the crossed mass; redshift-space crossing
+   (D ≈ 0.13), a pure projection, produces no departure.
+3. <em>EFT form.</em> (R_PM − R_7LPT)/k² is flat to k = 0.19 h Mpc⁻¹; C₂ has a k_max plateau; the k⁴ remainder is ~6 % at
+   k = 0.15 and resolution-converged; real-space spheres obey Δδ_R = C₂∇²δ_R with the predicted R-dependence.
+4. <em>Physical origin.</em> PM's own multistream velocity-dispersion stress reproduces the departure's sign and magnitude to a
+   factor ≈ 2 (coarse-graining dependent), living first in the caustic/splashback layers and then in the interiors.
+5. <em>Running.</em> With the cutoff, PM runs like one-loop/CHS while 4LPT and 7LPT fail; the response is carried by modes
+   near k_NL and deeper modes decouple (random long field; not at ε → 0, §14.11).</p>
+<p><strong>What the data do not establish.</strong> (i) "Irreducible" is demonstrated relative to the 7th-order single-stream solution
+and its extrapolated limit only for D ≲ 0.5; beyond, the series diverges and the statement is an extrapolation.
+(ii) The stress budget is the kinetic part only, coarse-graining dependent by a factor ~2; resolved Reynolds and
+gravitational stresses were not measured. (iii) Absolute agreement with the CHS coefficient is only established to a
+factor ≈ 3 (EdS vs ΛCDM, band-limited UV member, c² vs response normalisation); the running shape is the robust
+comparison. (iv) One box size (500 h⁻¹Mpc), one spectrum shape, EdS background.</p>
+<p><strong>Revision after the plane-wave follow-up (§14).</strong> Points 1–2 hold and are sharpened: against the <em>converged</em> series
+limit the departure is significant from D = 0.3 at all seven cutoffs. Point 4 and the D = 1 numbers of §6/§7
+describe the random long field, which includes long × short loops (about half of the departure, and the sign of the
+D = 1 coefficient). The linear-long-field coefficient at k_split = 0.2, D = 1 is −0.40 ± 0.01 in the displacement
+(Table 3) and +1.94 ± 0.02 in the density (Table 6), each with its own running. At D ≳ 0.5 the irreducibility statement is about PM versus a <em>divergent</em> pressureless series, and
+the fixed-loop-order counterterm changes sign in time (Table 4).</p>
+<p><strong>Unexpected findings worth following up.</strong> The pressureless response is <em>negative</em> (short modes enhance the long
+displacement) and the multistream contribution reverses it; in density, multistreaming <em>reduces</em> the diffusive mass
+flux (trapping) while adding pressure, so density-based EFT fits see a much smaller effect than the displacement;
+plain PM silently misses the two-loop response through particle discreteness, and C₄ is the most sensitive diagnostic
+of that; LPT converges onto PM in redshift space through redshift-space crossing.</p>
+<h2 id="14-precision-counterterms-with-plane-wave-long-modes-0">14. Precision counterterms with plane-wave long modes (ε → 0)</h2>
+<p>§6–§13 used random long modes (all |k| &lt; k_split at full ΛCDM amplitude). That answers "how do the realistic long modes
+respond", but it mixes two things the EFT keeps apart: the <em>linear</em> counterterm (the coefficient of the linear long
+field, CHS's c_s) and terms in which the long modes themselves run in the loop. It is also noisy. A noise budget of the
+fiducial ensemble showed why: at fixed long modes, changing only the short seed scatters the per-pair C₂ by as much
+as changing the long seed (PM, D = 1: 0.022 vs 0.042). Pairs of short modes couple <em>different</em> long modes into each
+measured mode, and the ±L pairing cannot cancel that. Here the long field is replaced by a few small-amplitude plane
+waves.</p>
+<h3 id="141-design">14.1 Design</h3>
+<ul>
+<li><strong>Long field</strong> = s ε Σ_j cos(k_j·x) (δ amplitude ε at D = 1, sign s = ±1), 12 waves per run, |k_j| log-spaced from
+  0.028 to min(0.6 k_split, 0.3) h Mpc⁻¹ in random directions. No wave equals ± another, and no k_a ± k_b lands on a
+  third wave (<code>config/prod_ks*.toml</code>, <code>PairSpec(pw=…, pw_amp=…)</code>). The <strong>band</strong> is the study's: modes
+  k_split ≤ |k| &lt; 1.2 of each realization's own white noise (single field, 4 realizations).</li>
+<li><strong>Odd combination.</strong> Δ_j = [ψ(+ε) − ψ(−ε)]/2 − x_j at k_j, with x_j = D ψ₁(k_j). The band-free member of a plane
+  wave is exactly Zel'dovich: no self-coupling and no crossing at ε = 0.01. Then R_j = Re(Δ_j x_j*)/|x_j|² and
+  R(k) = −C₂k² + C₄k⁴. Every term even in ε cancels exactly, including the band's own field.</li>
+<li><strong>Pilot</strong> (<code>config/pw_*.toml</code>, <code>scripts/pw_response.jl</code>):</li>
+<li>ε = 0.01 and 0.02 give the same displacement departure to ≤ 0.5 %, so ε = 0.01 is already the ε → 0 limit there. The
+    density is different: at finite ε the waves smear one another, which is removed in §14.11.</li>
+<li>The noise is independent of ε, so PM chaos sets no floor.</li>
+<li>6 waves in one run reproduce a single-wave run to 2 % at D = 1 and better earlier.</li>
+<li><strong>Long background</strong> (<code>prod_ks20_bg05/10</code>, <code>PairSpec(pw_bg=a)</code>): the same waves on a fixed random long field
+  (|k| &lt; k_split) scaled by a = 0.5 or 1. The background is <em>not</em> flipped with s, and its own modes at ±k_j are removed.
+  The odd combination is then the response of a linear wave in a nonlinear long background. These configs run the
+  band-free member (background + waves) too.</li>
+<li><strong>A/B sign groups</strong> (<code>prod_ks20_ab</code>, <code>PairSpec(pw_flip=…)</code>): waves are split into groups A and B (alternate in |k|)
+  and the signs (+,+), (−,−), (+,−), (−,+) are run. [ψ(++) − ψ(+−) − ψ(−+) + ψ(−−)]/4 at k_a ± k_b isolates the
+  second-order A×B coupling exactly.</li>
+<li><strong>Every PM run has a 1–7LPT twin</strong> on identical ICs (seconds each), so PM − LPT_n is realization-matched.</li>
+</ul>
+<h3 id="142-numerics-time-steps-and-the-pm-floor">14.2 Numerics: time steps and the PM floor</h3>
+<p><strong>Time steps</strong> (<code>scripts/step_convergence.jl</code>, <a href="figures/figP7_step_convergence.png">figP7</a>; one realization, max over
+D = 0.2–1 of |C₂(n) − C₂(400 steps)| at k ≤ 0.08):</p>
+<table>
+<thead>
+<tr>
+<th>steps (uniform in D)</th>
+<th>start</th>
+<th>worst δC₂ [(h⁻¹Mpc)²]</th>
+<th>relative GPU cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200 (study default §3)</td>
+<td>D = 0.02, 3LPT ICs</td>
+<td>1.1 × 10⁻⁴</td>
+<td>1</td>
+</tr>
+<tr>
+<td>64</td>
+<td>D = 0.02</td>
+<td>1.3 × 10⁻³</td>
+<td>0.35</td>
+</tr>
+<tr>
+<td>32</td>
+<td>D = 0.02</td>
+<td>4.5 × 10⁻³</td>
+<td>0.2</td>
+</tr>
+<tr>
+<td>32</td>
+<td>D = 0.15, 7LPT ICs</td>
+<td>1.9 × 10⁻³</td>
+<td>0.2</td>
+</tr>
+<tr>
+<td><strong>100 (production here)</strong></td>
+<td><strong>D = 0.15, 7LPT ICs</strong></td>
+<td><strong>3.4 × 10⁻⁴</strong></td>
+<td><strong>0.5</strong></td>
+</tr>
+<tr>
+<td>16 (either start)</td>
+<td></td>
+<td>≈ 6 × 10⁻²</td>
+<td>0.12</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>The BullFrog error falls as n⁻². It is dominated by the first large steps out of D = 0.02, so the 7LPT late start
+  costs nothing: 7LPT = PM to 2 × 10⁻⁵ before first crossing, and no tetrahedron is inverted at D = 0.15.</li>
+<li>The production setting's residual, −2 × 10⁻⁴ at D = 0.2, does not shrink from 32 to 100 steps. It is the truncation
+  of the 7LPT ICs at D = 0.15 (7LPT − 5LPT = −2 × 10⁻⁴ there). It is ≤ 0.1 % of every departure after D = 0.4.</li>
+</ul>
+<p><strong>A k-independent PM floor R₀.</strong> Translation invariance forbids a constant term in R(k), so a fit
+R = R₀ − C₂k² + C₄k⁴ measures a numerical error. For k_split = 0.5 and 0.7:
+* R₀ = −0.7, −2.9 and −7.5 × 10⁻⁵ at D = 0.5, 0.7 and 1, identical for both bands;
+* zero at D = 0.3 and for every LPT order;
+* unmeasurable (≲ 2 × 10⁻⁵) at the low splits, where C₂ is large.</p>
+<p>It shows up as the low-k upturn of −R/k² in <a href="figures/figP6_per_wave_fits.png">figP6</a>. It is <em>not</em> PM's error on bare
+waves: run without the band (<code>config/prod_ks50_ir.toml</code>), PM's bare-wave error is positive (+1…+7 × 10⁻⁵ at D = 1)
+and grows with k. That error is set by the near-perfect lattice and does not carry over once the band has displaced
+the particles, so it is not subtracted. All fits are repeated with R₀ as a nuisance parameter (<code>scripts/pw_robustness.jl</code>):
+* C₂ changes by 1–5 %, almost always within 1σ;
+* the k⁴ departures at k_split = 0.5 and 0.7 change from 1.39 to 1.33 and from 0.43 to 0.37.
+The spread between the two estimators is part of the quoted systematic. Cost of the production set: 96 PM jobs
+(4.8 GPU-h on a shared card) and 96 LPT jobs (0.3 GPU-h).</p>
+<h3 id="143-the-0-coefficient-and-its-departure-from-the-pressureless-series">14.3 The ε → 0 coefficient and its departure from the pressureless series</h3>
+<p><strong>Table 3.</strong> Displacement C₂ [(h⁻¹Mpc)²] from R = −C₂k² + C₄k⁴ over the 12 waves, 4 realizations, jackknife errors.
+Crossed mass is the inverted fraction of the PM UV member. LPT errors are of the same size as PM's and are omitted.</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>D</th>
+<th>crossed mass</th>
+<th>C₂ PM</th>
+<th>C₂ 3LPT</th>
+<th>C₂ 5LPT</th>
+<th>C₂ 7LPT</th>
+<th>ΔC₂ = PM − 7LPT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.12</td>
+<td>0.3</td>
+<td>0.0045</td>
+<td>-0.343 ± 0.001</td>
+<td>-0.314</td>
+<td>-0.339</td>
+<td>-0.346</td>
+<td>+0.003 ± 0.001</td>
+</tr>
+<tr>
+<td>0.12</td>
+<td>0.5</td>
+<td>0.094</td>
+<td>-0.910 ± 0.003</td>
+<td>-0.874</td>
+<td>-1.065</td>
+<td>-1.209</td>
+<td>+0.299 ± 0.004</td>
+</tr>
+<tr>
+<td>0.12</td>
+<td>0.7</td>
+<td>0.21</td>
+<td>-1.335 ± 0.009</td>
+<td>-1.713</td>
+<td>-2.443</td>
+<td>-3.529</td>
+<td>+2.194 ± 0.018</td>
+</tr>
+<tr>
+<td>0.12</td>
+<td>1.0</td>
+<td>0.32</td>
+<td>-1.338 ± 0.040</td>
+<td>-3.496</td>
+<td>-6.531</td>
+<td>-15.755</td>
+<td>+14.417 ± 0.120</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>0.3</td>
+<td>0.0038</td>
+<td>-0.276 ± 0.003</td>
+<td>-0.251</td>
+<td>-0.272</td>
+<td>-0.278</td>
+<td>+0.002 ± 0.000</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>0.5</td>
+<td>0.089</td>
+<td>-0.724 ± 0.009</td>
+<td>-0.698</td>
+<td>-0.860</td>
+<td>-0.987</td>
+<td>+0.263 ± 0.006</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>0.7</td>
+<td>0.2</td>
+<td>-0.987 ± 0.021</td>
+<td>-1.368</td>
+<td>-1.994</td>
+<td>-2.945</td>
+<td>+1.959 ± 0.023</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>1.0</td>
+<td>0.32</td>
+<td>-0.781 ± 0.033</td>
+<td>-2.792</td>
+<td>-5.405</td>
+<td>-13.491</td>
+<td>+12.710 ± 0.140</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>0.3</td>
+<td>0.0028</td>
+<td>-0.202 ± 0.001</td>
+<td>-0.182</td>
+<td>-0.199</td>
+<td>-0.204</td>
+<td>+0.002 ± 0.000</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>0.5</td>
+<td>0.08</td>
+<td>-0.530 ± 0.003</td>
+<td>-0.506</td>
+<td>-0.636</td>
+<td>-0.735</td>
+<td>+0.205 ± 0.002</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>0.7</td>
+<td>0.19</td>
+<td>-0.683 ± 0.004</td>
+<td>-0.993</td>
+<td>-1.489</td>
+<td>-2.234</td>
+<td>+1.550 ± 0.003</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>1.0</td>
+<td>0.31</td>
+<td>-0.397 ± 0.008</td>
+<td>-2.026</td>
+<td>-4.091</td>
+<td>-10.410</td>
+<td>+10.013 ± 0.023</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>0.3</td>
+<td>0.0019</td>
+<td>-0.156 ± 0.001</td>
+<td>-0.140</td>
+<td>-0.154</td>
+<td>-0.157</td>
+<td>+0.001 ± 0.000</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>0.5</td>
+<td>0.071</td>
+<td>-0.414 ± 0.003</td>
+<td>-0.390</td>
+<td>-0.494</td>
+<td>-0.572</td>
+<td>+0.158 ± 0.001</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>0.7</td>
+<td>0.18</td>
+<td>-0.520 ± 0.004</td>
+<td>-0.765</td>
+<td>-1.163</td>
+<td>-1.750</td>
+<td>+1.230 ± 0.010</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>1.0</td>
+<td>0.3</td>
+<td>-0.245 ± 0.006</td>
+<td>-1.560</td>
+<td>-3.220</td>
+<td>-8.215</td>
+<td>+7.970 ± 0.065</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.3</td>
+<td>0.00091</td>
+<td>-0.106 ± 0.000</td>
+<td>-0.095</td>
+<td>-0.104</td>
+<td>-0.106</td>
+<td>+0.001 ± 0.000</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.5</td>
+<td>0.055</td>
+<td>-0.286 ± 0.002</td>
+<td>-0.264</td>
+<td>-0.334</td>
+<td>-0.385</td>
+<td>+0.099 ± 0.001</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.7</td>
+<td>0.16</td>
+<td>-0.354 ± 0.003</td>
+<td>-0.517</td>
+<td>-0.789</td>
+<td>-1.167</td>
+<td>+0.812 ± 0.004</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>1.0</td>
+<td>0.28</td>
+<td>-0.112 ± 0.005</td>
+<td>-1.055</td>
+<td>-2.190</td>
+<td>-5.403</td>
+<td>+5.291 ± 0.032</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.3</td>
+<td>9.2e-05</td>
+<td>-0.053 ± 0.000</td>
+<td>-0.049</td>
+<td>-0.053</td>
+<td>-0.054</td>
+<td>+0.000 ± 0.000</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.5</td>
+<td>0.025</td>
+<td>-0.152 ± 0.001</td>
+<td>-0.135</td>
+<td>-0.168</td>
+<td>-0.187</td>
+<td>+0.035 ± 0.000</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.7</td>
+<td>0.11</td>
+<td>-0.213 ± 0.002</td>
+<td>-0.264</td>
+<td>-0.391</td>
+<td>-0.536</td>
+<td>+0.323 ± 0.001</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>1.0</td>
+<td>0.24</td>
+<td>-0.086 ± 0.004</td>
+<td>-0.539</td>
+<td>-1.068</td>
+<td>-2.294</td>
+<td>+2.208 ± 0.011</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.3</td>
+<td>6.6e-07</td>
+<td>-0.026 ± 0.000</td>
+<td>-0.024</td>
+<td>-0.025</td>
+<td>-0.026</td>
+<td>-0.000 ± 0.000</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.5</td>
+<td>0.0045</td>
+<td>-0.076 ± 0.000</td>
+<td>-0.066</td>
+<td>-0.078</td>
+<td>-0.083</td>
+<td>+0.007 ± 0.000</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.7</td>
+<td>0.048</td>
+<td>-0.130 ± 0.000</td>
+<td>-0.129</td>
+<td>-0.176</td>
+<td>-0.211</td>
+<td>+0.081 ± 0.000</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>1.0</td>
+<td>0.16</td>
+<td>-0.121 ± 0.000</td>
+<td>-0.264</td>
+<td>-0.456</td>
+<td>-0.761</td>
+<td>+0.639 ± 0.003</td>
+</tr>
+</tbody>
+</table>
+<p>(± 0.000 means an error below 5 × 10⁻⁴.) <a href="figures/figP1_cs_vs_time.png">figP1</a>,
+<a href="figures/figP2_cs_running.png">figP2</a>.</p>
+<ul>
+<li><strong>The displacement coefficient is measured to 0.4–5 % at every split and epoch (≤ 1.3 % at D ≤ 0.5) from 8 PM runs per split.</strong> That is better than the 40-run random
+  ensemble of §6, for a cleaner quantity. The model systematic is ≤ 5 % (two- vs three-term fit, nuisance R₀).</li>
+<li><strong>Before crossing PM equals the pressureless series</strong>: |PM − 7LPT| ≤ 3 × 10⁻⁴ at D ≤ 0.25 at every split.</li>
+<li><strong>Separating the departure from the series' own divergence.</strong> "PM − 7LPT" at D ≳ 0.5 mostly measures 7LPT running
+  away. At k_split = 0.2 and D = 1 the odd partial sums are −2.0, −4.1, −10.4, with increment ratio r = 3.1. The
+  physically clean comparisons are therefore:</li>
+</ul>
+<p><strong>Table 4.</strong> Departure from the converged series limit where it exists, and the counterterm a fixed-loop-order EFT fit
+would absorb. LPT∞ is the Shanks limit of the odd partial sums, used only where r &lt; 0.7.</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>D</th>
+<th>r</th>
+<th>PM − LPT∞</th>
+<th>PM − 3LPT (one-loop counterterm)</th>
+<th>PM − 5LPT (two-loop counterterm)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.12</td>
+<td>0.30</td>
+<td>0.27</td>
+<td>+0.0059</td>
+<td>-0.028</td>
+<td>-0.003</td>
+</tr>
+<tr>
+<td>0.12</td>
+<td>0.40</td>
+<td>0.48</td>
+<td>+0.0937</td>
+<td>-0.058</td>
+<td>+0.020</td>
+</tr>
+<tr>
+<td>0.12</td>
+<td>0.45</td>
+<td>0.61</td>
+<td>+0.2653</td>
+<td>-0.058</td>
+<td>+0.068</td>
+</tr>
+<tr>
+<td>0.12</td>
+<td>1.00</td>
+<td>3.04</td>
+<td>— (r ≥ 0.7)</td>
+<td>+2.158</td>
+<td>+5.193</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>0.30</td>
+<td>0.28</td>
+<td>+0.0033</td>
+<td>-0.020</td>
+<td>-0.003</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>0.40</td>
+<td>0.49</td>
+<td>+0.0618</td>
+<td>-0.042</td>
+<td>+0.011</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>0.45</td>
+<td>0.62</td>
+<td>+0.1818</td>
+<td>-0.042</td>
+<td>+0.043</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>1.00</td>
+<td>3.06</td>
+<td>— (r ≥ 0.7)</td>
+<td>+1.628</td>
+<td>+3.694</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.30</td>
+<td>0.26</td>
+<td>+0.0014</td>
+<td>-0.011</td>
+<td>-0.002</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.40</td>
+<td>0.45</td>
+<td>+0.0272</td>
+<td>-0.026</td>
+<td>+0.003</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.45</td>
+<td>0.57</td>
+<td>+0.0803</td>
+<td>-0.028</td>
+<td>+0.018</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>1.00</td>
+<td>2.83</td>
+<td>— (r ≥ 0.7)</td>
+<td>+0.942</td>
+<td>+2.078</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.30</td>
+<td>0.21</td>
+<td>+0.0007</td>
+<td>-0.005</td>
+<td>-0.000</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.40</td>
+<td>0.37</td>
+<td>+0.0087</td>
+<td>-0.013</td>
+<td>+0.001</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.45</td>
+<td>0.47</td>
+<td>+0.0244</td>
+<td>-0.017</td>
+<td>+0.005</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>1.00</td>
+<td>2.32</td>
+<td>— (r ≥ 0.7)</td>
+<td>+0.453</td>
+<td>+0.982</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.30</td>
+<td>0.14</td>
+<td>+0.0000</td>
+<td>-0.002</td>
+<td>-0.000</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.40</td>
+<td>0.25</td>
+<td>+0.0014</td>
+<td>-0.005</td>
+<td>-0.000</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.45</td>
+<td>0.32</td>
+<td>+0.0041</td>
+<td>-0.007</td>
+<td>+0.000</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>1.00</td>
+<td>1.58</td>
+<td>— (r ≥ 0.7)</td>
+<td>+0.143</td>
+<td>+0.335</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The departure is irreducible from first crossing on, at every cutoff.</strong> Against the converged series limit it is
+  positive (pressure-like) and significant already at D = 0.3, with 0.1–0.5 % of the mass crossed: +0.0033 at
+  k_split = 0.2, against a pre-crossing level ≤ 3 × 10⁻⁴. It grows ~20× by D = 0.4 and decreases monotonically as
+  more of the UV is kept explicit (larger k_split).</li>
+<li><strong>At fixed loop order the counterterm has no single time dependence.</strong> The one-loop counterterm PM − 3LPT is
+  <em>negative</em> until D ≈ 0.55: there PM enhances the long mode's displacement <em>more</em> than one loop, because the two-loop and higher
+  pressureless terms are negative. It changes sign at D ≈ 0.55–0.6 and reaches +1.6 at D = 1 (k_split = 0.2). The
+  two-loop counterterm PM − 5LPT is positive from D ≈ 0.35 and twice as large at D = 1. An EFT fit of a fixed D-power
+  counterterm at one loop is therefore an effective description over a limited time range only. The required
+  counterterm depends strongly on the loop order it accompanies, because the loop series itself stops converging
+  once D²σ²_ψ,band k² is O(1) (r ≥ 0.7 for D ≳ 0.5 at every split ≤ 0.33).</li>
+</ul>
+<h3 id="144-how-much-each-band-of-short-modes-modifies-the-long-modes">14.4 How much each band of short modes modifies the long modes</h3>
+<p>Differences of the cumulative C₂ between neighbouring splits give the <em>marginal</em> effect of each shell with all higher
+modes present. <strong>Correction:</strong> these are displacement coefficients. −2C₂k² below is the fractional change of the
+long mode's <em>Lagrangian displacement</em> power, not of the density P(k). The density response has the opposite sign and
+is given in §14.11.</p>
+<table>
+<thead>
+<tr>
+<th>shell (h Mpc⁻¹)</th>
+<th>D = 0.5: PM</th>
+<th>D = 0.5: 3LPT</th>
+<th>D = 1: PM</th>
+<th>D = 1: 3LPT</th>
+<th>D = 1: PM / 3LPT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.12–0.15</td>
+<td>−0.186 ± 0.010</td>
+<td>−0.176</td>
+<td>−0.56 ± 0.05</td>
+<td>−0.70</td>
+<td>0.79</td>
+</tr>
+<tr>
+<td>0.15–0.20</td>
+<td>−0.194 ± 0.010</td>
+<td>−0.191</td>
+<td>−0.38 ± 0.03</td>
+<td>−0.77</td>
+<td>0.50</td>
+</tr>
+<tr>
+<td>0.20–0.25</td>
+<td>−0.116 ± 0.004</td>
+<td>−0.116</td>
+<td>−0.15 ± 0.01</td>
+<td>−0.47</td>
+<td>0.33</td>
+</tr>
+<tr>
+<td>0.25–0.33</td>
+<td>−0.128 ± 0.003</td>
+<td>−0.126</td>
+<td>−0.13 ± 0.01</td>
+<td>−0.51</td>
+<td>0.26</td>
+</tr>
+<tr>
+<td>0.33–0.50</td>
+<td>−0.133 ± 0.002</td>
+<td>−0.129</td>
+<td>−0.03 ± 0.01</td>
+<td>−0.52</td>
+<td>0.05</td>
+</tr>
+<tr>
+<td>0.50–0.70</td>
+<td>−0.077 ± 0.001</td>
+<td>−0.069</td>
+<td><strong>+0.035 ± 0.004</strong></td>
+<td>−0.28</td>
+<td>opposite sign</td>
+</tr>
+<tr>
+<td>0.70–1.20 (alone)</td>
+<td>−0.076</td>
+<td>−0.066</td>
+<td>−0.121</td>
+<td>−0.264</td>
+<td>0.46</td>
+</tr>
+<tr>
+<td><strong>all ≥ 0.12</strong></td>
+<td><strong>−0.910</strong></td>
+<td><strong>−0.874</strong></td>
+<td><strong>−1.338 ± 0.040</strong></td>
+<td><strong>−3.496</strong></td>
+<td><strong>0.38</strong></td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The net effect on a linear long mode's displacement is a small enhancement.</strong> At D = 1 all modes above 0.12 h Mpc⁻¹
+  raise its displacement power by 0.7 % at k = 0.05 (2.7 % at k = 0.1). 3LPT gives 1.8 %. It is coherent; §6 found the
+  stochastic part 200× smaller. The density P(k) at the same k <em>falls</em> by 1.65 % (§14.11).</li>
+<li><strong>Until D ≈ 0.5, one loop is essentially the whole answer, shell by shell</strong> (PM/3LPT = 1.00–1.15).</li>
+<li><strong>By D = 1 the modes beyond ~0.35 h Mpc⁻¹ have decoupled from the displacement.</strong> Their structures are bound and no longer
+  move coherently with the long mode. ~70 % of the displacement total comes from 0.12–0.20 h Mpc⁻¹, near k_NL. The density does
+  not decouple (§14.11).</li>
+<li><strong>Adding 0.5–0.7 <em>reduces</em> the enhancement</strong> (+0.035 ± 0.004). It merges the smaller structures into bigger bound
+  objects and lowers the effect of the 0.7–1.2 band. The trapping of §8, resolved by band.</li>
+<li><strong>The shells do not add.</strong> The 0.7–1.2 band acts more strongly alone than inside the full stack. A
+  sum-of-independent-shells (one-loop-like) picture of the cutoff dependence fails once the shells have crossed.</li>
+</ul>
+<h3 id="145-long-short-the-realistic-long-field">14.5 Long × short: the realistic long field</h3>
+<p><strong>Table 5.</strong> The k_split = 0.2 waves on a fixed random long background of amplitude a
+(<a href="figures/figP4_background_scan.png">figP4</a>).</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>a</th>
+<th>C₂ PM</th>
+<th>C₂ 3LPT</th>
+<th>C₂ 7LPT</th>
+<th>ΔC₂ = PM − 7LPT</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.3</td>
+<td>0.0</td>
+<td>-0.202 ± 0.001</td>
+<td>-0.182</td>
+<td>-0.204</td>
+<td>+0.002 ± 0.000</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>0.5</td>
+<td>-0.205 ± 0.001</td>
+<td>-0.182</td>
+<td>-0.207</td>
+<td>+0.002 ± 0.000</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>1.0</td>
+<td>-0.216 ± 0.002</td>
+<td>-0.182</td>
+<td>-0.219</td>
+<td>+0.003 ± 0.000</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>0.0</td>
+<td>-0.530 ± 0.003</td>
+<td>-0.506</td>
+<td>-0.735</td>
+<td>+0.205 ± 0.002</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>0.5</td>
+<td>-0.534 ± 0.005</td>
+<td>-0.505</td>
+<td>-0.773</td>
+<td>+0.239 ± 0.002</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>1.0</td>
+<td>-0.521 ± 0.010</td>
+<td>-0.506</td>
+<td>-0.908</td>
+<td>+0.387 ± 0.007</td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>0.0</td>
+<td>-0.683 ± 0.004</td>
+<td>-0.993</td>
+<td>-2.234</td>
+<td>+1.550 ± 0.003</td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>0.5</td>
+<td>-0.634 ± 0.006</td>
+<td>-0.989</td>
+<td>-2.448</td>
+<td>+1.814 ± 0.016</td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>1.0</td>
+<td>-0.310 ± 0.036</td>
+<td>-0.992</td>
+<td>-3.221</td>
+<td>+2.911 ± 0.062</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>0.0</td>
+<td>-0.397 ± 0.008</td>
+<td>-2.026</td>
+<td>-10.410</td>
+<td>+10.013 ± 0.023</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>0.5</td>
+<td>-0.095 ± 0.021</td>
+<td>-2.018</td>
+<td>-11.887</td>
+<td>+11.792 ± 0.107</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>1.0</td>
+<td>+1.661 ± 0.112</td>
+<td>-2.025</td>
+<td>-17.353</td>
+<td>+19.014 ± 0.339</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The one-loop response does not depend on the long modes</strong> (3LPT is −2.02 for every a), as it must not.</li>
+<li><strong>The plane-wave and random-ensemble methods agree.</strong> With the full long field (a = 1) the waves' C₂ is
+  +1.66 ± 0.11, against +1.51 ± 0.02 from the random-long-mode ensemble of §6 (1.3σ). So the §6 coefficient is the
+  ε → 0 coefficient (−0.40) <em>plus</em> long × short terms worth +2.06. By D = 1 these turn the displacement's enhancement
+  into suppression. The density behaves differently (§14.11).</li>
+<li><strong>The a-dependence is not two-loop at late times.</strong> At two loops the shift is ∝ a². The ratio
+  [C₂(1) − C₂(0)]/[C₂(0.5) − C₂(0)] is 6.8 at D = 1 and 7.6 at D = 0.7, against 4. At D ≤ 0.5 the shifts are ≤ 0.01
+  and consistent with a² within errors. The long modes up to 0.2 h Mpc⁻¹ are themselves nonlinear after D ≈ 0.6.</li>
+<li><strong>Caveat.</strong> The a &gt; 0 configs subtract PM's own band-free member; the a = 0 configs subtract exact Zel'dovich
+  (§14.2). The difference in baseline is ≲ 0.02 in C₂ at the lowest-k waves, small against the shifts above.</li>
+</ul>
+<h3 id="146-the-loop-counterterm-ladder">14.6 The loop / counterterm ladder</h3>
+<p>Each term below is isolated by construction (k_split = 0.2; <a href="figures/figP3_loop_ladder.png">figP3</a>; C₂ units).</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>one loop (3LPT)</th>
+<th>two loop, short×short (5−3)</th>
+<th>≥ three loop, short×short (7−5)</th>
+<th>long×short, perturbative (7LPT: a = 1 − 0)</th>
+<th>beyond PT, short×short (PM − 7LPT)</th>
+<th>beyond PT, long×short</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.2</td>
+<td>-0.0810</td>
+<td>-0.0033</td>
+<td>-0.0004</td>
+<td>-0.0026</td>
+<td>-0.0002</td>
+<td>+0.0001</td>
+</tr>
+<tr>
+<td>0.3</td>
+<td>-0.1823</td>
+<td>-0.0168</td>
+<td>-0.0046</td>
+<td>-0.0152</td>
+<td>+0.0015</td>
+<td>+0.0018</td>
+</tr>
+<tr>
+<td>0.4</td>
+<td>-0.3241</td>
+<td>-0.0531</td>
+<td>-0.0260</td>
+<td>-0.0581</td>
+<td>+0.0368</td>
+<td>+0.0349</td>
+</tr>
+<tr>
+<td>0.5</td>
+<td>-0.5064</td>
+<td>-0.1295</td>
+<td>-0.0991</td>
+<td>-0.1734</td>
+<td>+0.2051</td>
+<td>+0.1819</td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>-0.9926</td>
+<td>-0.4966</td>
+<td>-0.7445</td>
+<td>-0.9872</td>
+<td>+1.5502</td>
+<td>+1.3610</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>-2.0255</td>
+<td>-2.0657</td>
+<td>-6.3190</td>
+<td>-6.9427</td>
+<td>+10.0129</td>
+<td>+9.0009</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Before crossing everything is perturbative and ordered.</strong> At D = 0.3: one loop −0.18, two loop −0.017, higher
+  −0.005. The beyond-PT terms are +0.0015–0.0018, already 10σ (§14.3), but an order below the two-loop terms.</li>
+<li><strong>The two kinds of two-loop term are equal.</strong> The perturbative long×short term tracks the short×short two-loop term
+  to 10 % up to D = 0.4 and 35 % at D = 0.5. For the realistic long field they enter together.</li>
+<li><strong>The beyond-PT terms overtake the two-loop terms at D ≈ 0.45 and one loop at D ≈ 0.6</strong>, while the LPT series is
+  diverging.</li>
+<li><strong>The beyond-PT long×short term is almost equal to the short×short one</strong>, 0.9× at every D ≥ 0.4. That is why the
+  departure of §6 (random long field, 18.9 at D = 1) is about twice the ε → 0 departure (10.0).</li>
+</ul>
+<h3 id="147-the-k4-term">14.7 The k⁴ term</h3>
+<p>R(k) is flat to 10 % over k = 0.03–0.12 at k_split ≤ 0.25. There the k⁴ coefficient is not robust to the fit range or
+model (<a href="figures/figP6_per_wave_fits.png">figP6</a>, <code>results/pw_robustness.json</code>). In particular the negative ΔC₄
+(−29 ± 12) at k_split = 0.12, mentioned while the runs were coming in, does not survive: it becomes −53 ± 130 on 80 %
+of the range and −177 ± 245 with a k⁶ term. A k⁴ <em>departure</em> is detected robustly only where the waves reach
+k ≈ 0.3:</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>waves k</th>
+<th>D</th>
+<th>ΔC₄ two-term</th>
+<th>k ≤ 0.8 k_max</th>
+<th>with C₆</th>
+<th>with R₀</th>
+<th>χ²/dof (two-term)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.50</td>
+<td>0.031–0.298</td>
+<td>0.7</td>
+<td>+0.20 ± 0.02</td>
+<td>+0.25 ± 0.09</td>
+<td>+0.42 ± 0.13</td>
+<td>+0.17 ± 0.02</td>
+<td>14.5</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.031–0.298</td>
+<td>1.0</td>
+<td>+1.39 ± 0.11</td>
+<td>+1.37 ± 0.35</td>
+<td>+2.24 ± 0.64</td>
+<td>+1.33 ± 0.14</td>
+<td>40.4</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.031–0.298</td>
+<td>0.7</td>
+<td>+0.06 ± 0.00</td>
+<td>+0.19 ± 0.08</td>
+<td>+0.29 ± 0.06</td>
+<td>+0.03 ± 0.01</td>
+<td>14.1</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.031–0.298</td>
+<td>1.0</td>
+<td>+0.43 ± 0.06</td>
+<td>+0.67 ± 0.14</td>
+<td>+1.06 ± 0.31</td>
+<td>+0.37 ± 0.07</td>
+<td>24.5</td>
+</tr>
+</tbody>
+</table>
+<p>ΔC₄ is in (h⁻¹Mpc)⁴.</p>
+<ul>
+<li><strong>The k⁴ departure is positive, the same sign as the k² departure</strong>: +1.3 … 2.2 (k_split = 0.5) and +0.4 … 1.1
+  (k_split = 0.7) at D = 1. The spread across estimators, about ×2, is the honest uncertainty.</li>
+<li><strong>k⁴ is not the end of the expansion.</strong> χ²/dof is 15–40, where ≈ 3 is expected for errors from 4 realizations, so
+  R(k) has structure beyond k⁴ (k⁶ and/or direction dependence) once k/k_NL ~ 1. Higher-k precision needs more
+  realizations and waves on axes of equal |k| to separate anisotropy.</li>
+<li><strong>The PM total C₄ is consistent with ≲ 0.2 (h⁻¹Mpc)⁴ at k_split ≥ 0.5.</strong> The pressureless k⁴ growth is what PM
+  removes.</li>
+</ul>
+<h3 id="148-the-second-order-kernel-and-vorticity-ab-sign-groups">14.8 The second-order kernel and vorticity (A/B sign groups)</h3>
+<p>70 clean pair targets k_t = k_a ± k_b (0.018–0.223 h Mpc⁻¹; one target hit by two pairs is dropped), 4 realizations,
+k_split = 0.2 (<code>scripts/ab_kernel.jl</code>, <a href="figures/figP5_second_order_kernel.png">figP5</a>). K is the pair response
+relative to the tree-level (2LPT) kernel at the same target, so 2LPT ≡ 1.</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>⟨K⟩ − 1: 7LPT</th>
+<th>⟨K⟩ − 1: PM</th>
+<th>PM − 7LPT (± s.e.m. over pairs)</th>
+<th>PM − 7LPT, Eulerian density</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.30</td>
+<td>+0.016</td>
+<td>+0.017</td>
+<td>+0.0003 ± 0.0004</td>
+<td>+0.0002</td>
+</tr>
+<tr>
+<td>0.40</td>
+<td>+0.032</td>
+<td>+0.025</td>
+<td>−0.007 ± 0.002</td>
+<td>+0.002</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>+0.057</td>
+<td>+0.024</td>
+<td>−0.033 ± 0.009</td>
+<td>+0.007</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>+0.148</td>
+<td>−0.005</td>
+<td>−0.15 ± 0.04</td>
+<td>+0.083</td>
+</tr>
+<tr>
+<td>1.00</td>
+<td>+0.458</td>
+<td>−0.083</td>
+<td>−0.54 ± 0.13</td>
+<td>+0.42</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>The kernel's one-loop correction is pressureless until crossing.</strong> PM reproduces the +1.6 % band-induced
+  enhancement of the tree kernel at D = 0.3 to 3 × 10⁻⁴.</li>
+<li><strong>The kernel departure starts with the linear one (D ≈ 0.35–0.4) and is suppressive.</strong> By D = 1 the multistream band
+  turns a +46 % pressureless enhancement into −8 %. This is the measured second-order counterterm F_ct,2 (§14.9).</li>
+<li><strong>What it does not give yet.</strong> It is ≥ 3.5σ from D = 0.5. The pair-to-pair scatter, which grows with k_t, is too
+  large with 4 realizations to fit the three quadratic coefficients separately. A simple c·k_t² fit gives formal
+  errors that are too small, so it is not quoted.</li>
+<li><strong>No coherent second-order vorticity is detected.</strong> PM's transverse displacement at the pair targets equals its
+  level at modes no pair reaches (0.0055 vs 0.0056 of the tree kernel at D = 0.3; 0.0238 vs 0.0240 at D = 1). Any
+  coherent second-order vorticity is therefore ≲ 1 % of the tree kernel. 7LPT has a small coherent transverse part
+  (0.5 % at D = 1, from fourth and higher orders); PM does not exceed its noise floor.</li>
+</ul>
+<h3 id="149-mapping-onto-the-two-loop-eft-counterterms-anastasiou-favorito-lewandowski-senatore-zheng-2025">14.9 Mapping onto the two-loop EFT counterterms (Anastasiou, Favorito, Lewandowski, Senatore &amp; Zheng 2025)</h3>
+<p><a href="https://arxiv.org/abs/2509.05187">arXiv:2509.05187</a> renormalize the two-loop dark-matter P(k) with eight
+counterterms, including non-locality in time and generated vorticity:
+* c_δ,1, the speed of sound, split into one-loop and two-loop UV parts c^[1] and c^[2];
+* the higher-derivative c_∂²δ,1;
+* six stress coefficients quadratic or cubic in the long fields: c_δ,2, c_δ²,1, c_rδ,1, c_δ,3, c_rδ,2, c_rδ²,1.</p>
+<table>
+<thead>
+<tr>
+<th>their term</th>
+<th>what it multiplies</th>
+<th>where it is in this study</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>c_δ,1^[1] = −(61/70) k_NL² ∫P/q²</td>
+<td>k²P, one loop</td>
+<td>the 61/105 UV limit of §6 (same number after conventions); C₂,δ/D² as D → 0, verified to ≤ 1.2 % at all 7 cutoffs (§14.11)</td>
+</tr>
+<tr>
+<td>c_δ,1^[2] (their eq. 4.80)</td>
+<td>k²P, two loop</td>
+<td>the D⁴ part and its running with k_split; displacement in Tables 3–4 and figP2, density in Table 6</td>
+</tr>
+<tr>
+<td>c_δ,1^fin</td>
+<td>k²P, finite</td>
+<td>PM − LPT at fixed loop order (Table 4): sign change near D ≈ 0.55 at one loop</td>
+</tr>
+<tr>
+<td>c_∂²δ,1</td>
+<td>k⁴P</td>
+<td>ΔC₄ (§14.7): positive, detected at k_split ≥ 0.5</td>
+</tr>
+<tr>
+<td>quadratic and cubic coefficients, through ∫F_ct,3(k, q, −q) P(q)</td>
+<td>k²P × ∫P_long (combination of their eq. 4.76) and k⁴P × ∫P_long/q² (eq. 4.77)</td>
+<td>the long-background scan (§14.5, ∝ a² at two loops); the a² test fails for D ≳ 0.6</td>
+</tr>
+<tr>
+<td>c_δ,2, c_δ²,1, c_rδ,1 through F_ct,2</td>
+<td>the second-order kernel</td>
+<td>the A/B kernel (§14.8), detected; separating the three needs more realizations</td>
+</tr>
+<tr>
+<td>generated vorticity</td>
+<td>δ at third order</td>
+<td>transverse A/B channel: &lt; 1 % of tree</td>
+</tr>
+<tr>
+<td>stochastic</td>
+<td>(k/k_NL)⁴, negligible at two loops</td>
+<td>P_ε ∝ k⁴, 200× below the coherent part (§6)</td>
+</tr>
+</tbody>
+</table>
+<p>Their Fisher analysis finds that for DESI-like data only {c_δ,1, c_δ²,1, c_∂²δ,1} are well constrained. Here:
+* the linear coefficient is measured to 0.3–1 % in the density at D = 1 (Table 6) and 0.4–5 % in the displacement (Table 3);
+* c_∂²δ,1 to about a factor 2, at large k_split only;
+* the c_δ²,1-carrying second-order kernel is detected but not separated.</p>
+<p>The fixed-loop-order counterterm (Table 4) changes sign in time and depends strongly on the loop order. That is the
+practical warning: at late times the EFT coefficients are effective numbers tied to the order of the calculation.
+They are not one universal time dependence.</p>
+<h3 id="1410-what-this-changes-in-613">14.10 What this changes in §6–§13</h3>
+<ul>
+<li><strong>The §6 coefficient (+1.51 at D = 1) is not CHS's c_s alone.</strong> It is the ε → 0 coefficient (−0.40 ± 0.01) plus
+  long × short terms (§14.5), which by D = 1 are larger and of opposite sign. Those are displacement coefficients. §7 compares
+  the <em>density</em> coefficient with CHS, so its like-for-like plane-wave quantity is Table 6 (k_split = 0.2: 2.00 ± 0.02 in Table 2
+  against 1.94 ± 0.02), not Table 3.</li>
+<li><strong>"Departure from 7LPT" at D ≳ 0.5 (§6, §7) mostly measures the divergence of the LPT series.</strong> The irreducible
+  statement rests on D ≲ 0.45, where it is now measured against the converged series limit at every split (Table 4).
+  §13's window statement stands and is sharpened.</li>
+<li><strong>The kinetic-stress match of §10 (to × 2) was made against the ensemble departure</strong>, which includes the long×short
+  part.</li>
+<li><strong>Nothing in §4–§5 changes.</strong> The study's 200-step default is converged to 10⁻⁴; 100 steps from a 7LPT late start
+  are converged to 3 × 10⁻⁴.</li>
+</ul>
+<p><strong>Limitations of this section.</strong>
+* 4 realizations: the C₄, kernel-coefficient and χ² statements are statistics-limited.
+* One box, one spectrum shape, EdS.
+* The R₀ floor is identified and fitted out but not explained.
+* The sections above are displacement (Lagrangian) responses. The Eulerian density is in §14.11.</p>
+<h3 id="1411-the-eulerian-density-response">14.11 The Eulerian density response</h3>
+<p>Scripts: <code>scripts/pw_density.jl</code>, <code>scripts/pw_density_exact.jl</code>, <code>scripts/pw_waves_only.jl</code>, <code>scripts/pw_density_analysis.py</code>.
+Results: <code>results/pw_density*.json</code>. All numbers are k²-only fits, R = −C₂,δk² on waves with k ≤ 0.1, so C₂,δ &gt; 0 is
+suppression and ΔP/P = 2R applies. Errors are jackknife over 4 realizations.</p>
+<p><strong>Three corrections are needed before the density can be read.</strong> Per wave,
+R = R_deposit(PM) − [R_deposit(7LPT) − R_exact(7LPT)] − R_waves(7LPT), and two waves per split are dropped at k_split ≤ 0.15.</p>
+<ol>
+<li><strong>CIC deposit bias on near-lattice particles.</strong> nLPT's deposited density is compared with the direct sum
+   δ(k_j) = N⁻³ Σ_q exp(−ik_j·(q + Ψ(q))). The bias b = C₂,δ(deposit) − C₂,δ(exact) is about +0.06 to +0.15 until the band has
+   displaced the particles by about a cell, then fades:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>b at D = 0.2</th>
+<th>b at D = 0.5</th>
+<th>b at D = 1</th>
+<th>raw → corrected C₂,δ/D² at D = 0.3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.20</td>
+<td>+0.106</td>
+<td>+0.003</td>
+<td>+0.001</td>
+<td>2.26 → 1.65</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>+0.123</td>
+<td>+0.028</td>
+<td>−0.002</td>
+<td>2.01 → 0.76</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>+0.129</td>
+<td>+0.138</td>
+<td>+0.028</td>
+<td>1.83 → 0.20</td>
+</tr>
+</tbody>
+</table>
+<p>PM's particles are not stored in these runs, so b is measured on 7LPT. That PM's bias equals 7LPT's after crossing is assumed,
+   not tested. Realizations differ by up to 0.009 at D ≤ 0.4 and ≤ 0.0035 at D ≥ 0.5. Where b is large compared with C₂,δ, the
+   corrected value rests on that assumption: b/C₂,δ is 0.12 at k_split = 0.33, D = 0.5; 0.70 and 0.11 at 0.5, D = 0.5 and 0.7; 2.3, 0.61 and 0.09 at
+   0.7, D = 0.5, 0.7 and 1; ≤ 0.03 elsewhere at D ≥ 0.5.
+2. <strong>Finite ε.</strong> The ± estimator removes even orders in ε but keeps ε³, so the waves smear one another. To lowest order
+   R_j = −D²ε²[Σ_{m≠j}(k_j·k̂_m)²/(4k_m²) + 1/8], the last term being the wave's own Bessel J₁ correction. On the 6-wave
+   ε = 0.01 and 0.02 runs this predicts the measured change in C₂ (1LPT) at D = 0.5, 0.7, 1: +0.0063, +0.0124, +0.0253 against
+   +0.0068, +0.0128, +0.0255. It is only approximate for the 12-wave production sets, so we subtract a direct sum of the waves
+   alone (<code>pw_waves_only.jl</code>): 0.02–0.04 D². Using 1LPT rather than 7LPT for this term lowers C₂,δ by 0.007–0.025 D² at D = 1,
+   a systematic. Displacement is much less affected, as §14.1's pilot found.
+3. <strong>Wave × band noise.</strong> Waves reached by k_j ∓ k_m in the band (k = 0.064, 0.069 at k_split = 0.12; 0.080, 0.089 at 0.15; none at
+   higher splits) pick up a term linear in the band, realization noise with R ∝ D. They are dropped, so the fit reaches
+   k = 0.058 and 0.068 at those splits.</p>
+<p><strong>Validation against one loop (no free parameters).</strong> The standard P13 kernel over k_split ≤ q &lt; 1.2, at the same waves and fit,
+against exact 3LPT with the waves removed, extrapolated by C₂,δ/D² = c₀ + A/D + BD² over D = 0.1–0.3:</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>0.12</th>
+<th>0.15</th>
+<th>0.20</th>
+<th>0.25</th>
+<th>0.33</th>
+<th>0.50</th>
+<th>0.70</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one loop</td>
+<td>2.667</td>
+<td>2.116</td>
+<td>1.537</td>
+<td>1.168</td>
+<td>0.799</td>
+<td>0.408</td>
+<td>0.199</td>
+</tr>
+<tr>
+<td>c₀, realization 1</td>
+<td>2.653</td>
+<td>2.097</td>
+<td>1.535</td>
+<td>1.162</td>
+<td>0.789</td>
+<td>0.405</td>
+<td>0.198</td>
+</tr>
+<tr>
+<td>c₀, realization 2</td>
+<td></td>
+<td>2.130</td>
+<td>1.534</td>
+<td></td>
+<td></td>
+<td></td>
+<td>0.199</td>
+</tr>
+</tbody>
+</table>
+<p>Agreement is 0.1–1.2 % at every cutoff, and |A| ≤ 1.2 × 10⁻⁴ everywhere.</p>
+<p><strong>Table 6.</strong> PM density response, corrected. The bias systematic is below the last digit shown except where noted. "Excess" is
+C₂,δ − C₂,1-loop D². It is not a counterterm by itself: 3LPT also departs from pure one loop.</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>C₂,δ/D², D = 0.5</th>
+<th>C₂,δ, D = 1</th>
+<th>ΔP/P at k = 0.05, D = 1</th>
+<th>excess, D = 1</th>
+<th>C₂ displacement, D = 1 (same fit)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.12</td>
+<td>3.15 ± 0.03</td>
+<td>3.304 ± 0.023</td>
+<td>−1.65 %</td>
+<td>+0.64</td>
+<td>−1.215 ± 0.012</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>2.54 ± 0.01 (syst. 0.01)</td>
+<td>2.638 ± 0.015 (syst. 0.004)</td>
+<td>−1.32 %</td>
+<td>+0.52</td>
+<td>−0.761 ± 0.010</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>1.87 ± 0.02</td>
+<td>1.935 ± 0.015</td>
+<td>−0.97 %</td>
+<td>+0.40</td>
+<td>−0.386 ± 0.007</td>
+</tr>
+<tr>
+<td>0.25</td>
+<td>1.45 ± 0.01</td>
+<td>1.506 ± 0.006</td>
+<td>−0.75 %</td>
+<td>+0.34</td>
+<td>−0.219 ± 0.004</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>0.99 ± 0.01 (syst. 0.01) †</td>
+<td>1.057 ± 0.006 (syst. 0.002)</td>
+<td>−0.53 %</td>
+<td>+0.26</td>
+<td>−0.104 ± 0.005</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>0.52 ± 0.01 †</td>
+<td>0.591 ± 0.003</td>
+<td>−0.30 %</td>
+<td>+0.18</td>
+<td>−0.073 ± 0.003</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.24 ± 0.003 (syst. 0.012) †</td>
+<td>0.314 ± 0.001 (syst. 0.002) †</td>
+<td>−0.16 %</td>
+<td>+0.12</td>
+<td>−0.111 ± 0.000</td>
+</tr>
+</tbody>
+</table>
+<p>† b/C₂,δ ≥ 0.09: rests on PM's deposit bias equalling 7LPT's (item 1 above).</p>
+<ul>
+<li><strong>The density is suppressed at every cutoff while the displacement is enhanced.</strong> At one loop the difference is kinematic smearing and its
+  correlation with the displacement; the split is not measured for PM.</li>
+<li><strong>PM's C₂,δ grows nearly as D² after D ≈ 0.7</strong>, whereas PM − 3LPT (seed-matched) at k_split = 0.2 is −0.016 ± 0.001, −0.177 ± 0.002 and
+  −1.327 ± 0.007 at D = 0.5, 0.7, 1: fixed-order single-stream density fails badly at late times.</li>
+<li><strong>The excess has no single power of D.</strong> Its local D-slope is 2.8–3.4 at D = 0.5–0.7 and 1.7–2.1 at D = 0.7–1 for k_split ≤ 0.5 (4.6 and 2.7 at
+  0.7). Slopes at D &lt; 0.5 are not quoted: the bias is larger than the excess there at high splits.</li>
+</ul>
+<p><strong>Density by shell.</strong> Neighbouring splits differenced by realization, each on its own waves, at D = 1:</p>
+<table>
+<thead>
+<tr>
+<th>shell</th>
+<th>0.12–0.15</th>
+<th>0.15–0.20</th>
+<th>0.20–0.25</th>
+<th>0.25–0.33</th>
+<th>0.33–0.50</th>
+<th>0.50–0.70</th>
+<th>0.70–1.20</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C₂,δ, PM</td>
+<td>0.67 ± 0.03</td>
+<td>0.70 ± 0.01</td>
+<td>0.43 ± 0.01</td>
+<td>0.45 ± 0.01</td>
+<td>0.47 ± 0.005</td>
+<td>0.28 ± 0.002</td>
+<td>0.31 ± 0.001</td>
+</tr>
+<tr>
+<td>PM / one loop</td>
+<td>1.21</td>
+<td>1.21</td>
+<td>1.16</td>
+<td>1.22</td>
+<td>1.19</td>
+<td>1.32</td>
+<td>1.58</td>
+</tr>
+<tr>
+<td>share of the total</td>
+<td>20 %</td>
+<td>21 %</td>
+<td>13 %</td>
+<td>14 %</td>
+<td>14 %</td>
+<td>8 %</td>
+<td>10 %</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Unlike the displacement (§14.4), the ε → 0 density shows no decoupling of the deep UV</strong>: every shell stays above one loop at D = 1, and
+modes above 0.33 carry about a third of the response.</p>
+<p><strong>The density is far less sensitive than the displacement to crossing.</strong> Seed-matched PM − nLPT, in which the corrections
+largely cancel, passes the null test: |PM − 7LPT| ≤ 9 × 10⁻⁵ at D = 0.2 and ≤ 3.2 × 10⁻⁴ at D = 0.25, just past first crossing.</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>0.12</th>
+<th>0.15</th>
+<th>0.20</th>
+<th>0.25</th>
+<th>0.33</th>
+<th>0.50</th>
+<th>0.70</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>density, PM − LPT∞, D = 0.3 (10⁻⁴)</td>
+<td>−7 ± 5</td>
+<td>−11 ± 2</td>
+<td>−3 ± 2</td>
+<td>0 ± 3</td>
+<td>+1 ± 1 (PM − 7LPT)</td>
+<td>+5 ± 3</td>
+<td>+2 ± 1</td>
+</tr>
+<tr>
+<td>displacement, PM − LPT∞, D = 0.3 (10⁻⁴)</td>
+<td>+56 ± 6</td>
+<td>+41 ± 2</td>
+<td>+36 ± 2</td>
+<td>+27 ± 3</td>
+<td>+18 ± 1</td>
+<td>+10 ± 3</td>
+<td>+2 ± 1</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>At D = 0.3 the density departure is at most about 10⁻³, and its sign changes with k_split.</li>
+<li>The irreducibility statement of §14.3 rests on the displacement channel. <strong>The density cannot test it beyond D ≈ 0.3 at
+  k_split ≤ 0.33</strong>, because its odd partial sums stop converging (r &gt; 0.7 at D ≥ 0.4), so no LPT∞ exists there. Where it does, at
+  D = 0.4, k_split = 0.5 and 0.7 give +8 ± 5 and +6 ± 2 × 10⁻⁴, against +97 ± 5 and +22 ± 1 × 10⁻⁴ in displacement.</li>
+</ul>
+<p><strong>Long × short.</strong> At k_split = 0.2, relative to the band-free member, so the background's own smearing of the wave is removed.
+The two estimators are "clean" (R_m − R_1LPT + R_ZA, with the waves' 7LPT − 1LPT difference removed at a = 0) and raw with the corrections
+above. They agree at D ≥ 0.7:</p>
+<table>
+<thead>
+<tr>
+<th>D</th>
+<th>C₂,δ shift, a = 0.5: clean, raw</th>
+<th>C₂,δ shift, a = 1: clean, raw</th>
+<th>displacement C₂ shift, a = 1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.5</td>
+<td>+0.011 ± 0.001, −0.014 ± 0.007</td>
+<td>+0.046 ± 0.003, +0.043 ± 0.004</td>
+<td>+0.014 ± 0.008</td>
+</tr>
+<tr>
+<td>0.7</td>
+<td>+0.030 ± 0.004, +0.031 ± 0.006</td>
+<td>+0.102 ± 0.009, +0.103 ± 0.011</td>
+<td>+0.380 ± 0.030</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>+0.059 ± 0.015, +0.055 ± 0.015</td>
+<td>+0.002 ± 0.039, −0.009 ± 0.039</td>
+<td>+1.911 ± 0.078</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>At k_split = 0.2, D = 1, the +1.91 in displacement appears as about 0 in density. <strong>This does not generalise.</strong> Comparing the random-long
+  coefficient of Table 2 with Table 6 gives +0.31, +0.26, +0.06, −0.13, −0.21, −0.30, −0.20 for k_split = 0.12 … 0.70, so 0.2 is near a zero
+  crossing. That comparison mixes fit windows (k ≤ min(0.08, 0.4k_split) against Table 6's), and the IR member of Table 2 is itself nonlinear.</li>
+<li>a² scaling: on the clean estimator, the ratio of the a = 1 to a = 0.5 shift is 4.12 ± 0.33 at D = 0.5, as two-loop scaling predicts, 3.43 ± 0.22 at
+  D = 0.7 (raw 3.30 ± 0.84), and 0.04 ± 0.68 at D = 1. The a = 0.5 raw estimator disagrees in sign at D = 0.5, possibly an uncalibrated bias at a &gt; 0 (not
+  tested), so the D = 0.5 ratio rests on the clean estimator alone.</li>
+</ul>
+<p><strong>ΛCDM.</strong> The excess at k_split = 0.12 is +0.64 at ε → 0 and +0.92 ± 0.14 for the random-long field (Table 2's PM − one loop), against
+C₂(z = 0) = 1.04 ± 0.07 of the full-spectrum ΛCDM run (<code>results/lcdm_cs_summary.json</code>). The full field may account for the
+difference from ε → 0, but this is not a like-for-like test: EdS against ΛCDM, only modes above 0.12, and different fit ranges.</p>
+<p><strong>Momentum.</strong> These runs store only total momentum per epoch, not Eulerian momentum modes, so no Eulerian momentum response can be
+measured from them. Experiment 3 (<code>twoloop/</code>) stores them. The Lagrangian velocity obeys C₂^v = d(D C₂^ψ)/dD to 0.3–5 % at D = 0.3–0.7,
+k_split = 0.2 (finite-difference limited), a consistency check with no new information, as in §6.</p>
+<p><strong>Effect on §6.</strong> §6's density coefficients use the IR member's own deposit as reference, which removes most of the deposit bias above
+D ≈ 0.2, but not below it: its early density values (D ≲ 0.2) are distorted. Their D = 1 values are unaffected.</p>
+<p><strong>Limitations.</strong> PM's own deposit bias is assumed, not measured. The a &gt; 0 configs have no exact bias calibration. b is measured on 1–2
+realizations. Only 4 realizations and one box. Figures for this section are still to be made.</p>
+<h2 id="15-reproduction-hardware-and-runtime">15. Reproduction, hardware and runtime</h2>
+<pre><code class="language-bash">cd studies/eft_shell_crossing
+EFTSC_SCRATCH=/path/to/scratch ./run_all.sh     # every configuration, analysis and figure (see the script)
+julia --project=. -t 8 test/runtests.jl         # 66 tests: IC pairing, null pair, ±L parity, tetrahedra, estimators,
+                                                # spheres, redshift-space crossing, stress estimator, power spectra,
+                                                # plane waves (field, Hermiticity, embedding, background, A/B groups)
+python3 chs/chs_fig3.py; python3 chs/band_edge.py   # CHS Fig. 3 reconstruction, band-edge control (needs camb)
+python3 figures.py results figures; python3 figures_rg.py results figures; python3 figures_pw.py results figures
+</code></pre>
+<p>Hardware: one NVIDIA RTX A6000 (48 GB), dual AMD EPYC 7763 (128 cores, 2 TB RAM), Julia 1.12.6, CUDA.jl, FFTW
+(do <strong>not</strong> switch the FFTW provider to MKL: it returns wrong strided multi-region transforms, §3). Measured job time:
+109 PM jobs = 11.1 GPU-h (6.1 min mean: suppressed PM 256³ particles / 512³ mesh, 200 steps, all diagnostics), 95 LPT
+jobs (1–7th order + diagnostics) = 0.6 GPU-h. The plane-wave follow-up (§14): 96 production PM jobs (100 steps from
+D = 0.15) = 4.8 GPU-h, 16 step-ladder and 8 pilot PM jobs = 1.5 GPU-h, 104 LPT jobs = 0.3 GPU-h, on a GPU shared with
+other work (queues capped at <code>JULIA_CUDA_HARD_MEMORY_LIMIT=20GiB</code>). Raw per-job outputs (compact low-k modes, spheres, stress) total 19 GB and
+are not committed; <code>results/</code> holds the reduced statistics (HDF5/JSON/CSV) from which every figure is regenerated.</p>
+<p><strong>Files.</strong> <code>src/</code> (EFTShell module: <code>ics.jl</code> paired ICs, <code>measure.jl</code> GPU measurements, <code>runners.jl</code>, <code>estimators.jl</code>,
+<code>analysis.jl</code>), <code>scripts/</code> (<code>run_jobs.jl</code>, <code>run_queue.sh</code>, <code>analyze.jl</code>, <code>residual_response.jl</code>, <code>c4_convergence.jl</code>,
+<code>controls.jl</code>, <code>diagnostics.jl</code>, <code>spheres_from_modes.jl</code>, <code>cis_analysis.jl</code>, <code>rsd_analysis.jl</code>, <code>stress_analysis.jl</code>;
+plane waves: <code>pw_response.jl</code> (pilot), <code>pw_production.jl</code>, <code>pw_robustness.jl</code>, <code>ab_kernel.jl</code>, <code>step_convergence.jl</code>),
+<code>config/</code> (one TOML per experiment; <code>retired/</code> holds superseded tests), <code>chs/</code> (CHS reconstruction, digitized Fig. 3,
+band-edge control), <code>test/</code>, <code>results/</code>, <code>figures/</code> (PNG + PDF), <code>figures.py</code>, <code>figures_rg.py</code>, <code>figures_pw.py</code>,
+<code>build_site.py</code> (GitHub Pages rendering), <code>run_all.sh</code>.</p>
+<p>DiscoDJNative changes made for this study (same branch): Float32 deconvolution fix; memory-lean PM solver
+(<code>PMSolverLean</code>, <code>run_nbody(lean=true, callback_when=…)</code>) with tests.</p>
+<h2 id="16-follow-ups-two-loop-stress-m-and-the-reach-of-the-uv">16. Follow-ups: two-loop stress, σ(M) and the reach of the UV</h2>
+<p>Full accounts are in <a href="reports/00_synthesis.html"><code>reports/</code></a>, and the two-loop design is in <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/twoloop/README.md"><code>twoloop/README.md</code></a>. These runs are EdS with the Planck18 shape, 4 seeds × ±L at fixed amplitudes, with spectra k &lt; 1.6, 1.0, 0.6 and a UV-divergent one (P ∝ k⁻¹ above k = 0.3), plus IR members cut at Λ = 0.1–0.3. Errors exclude cosmic variance.</p>
+<p><strong>Two-loop stress</strong> (<a href="reports/B_two_loop_stress.html">report B</a>, <a href="figures/figT1_running.png">figT1</a>, <a href="figures/figT2_stress_time.png">figT2</a>, <a href="figures/figT3_time_local.png">figT3</a>).</p>
+<ul>
+<li>In far-UV bands at D = 0.1, PM's stress c̄/I is 0.86–0.87 (k = 0.6–1.6) and 0.88–0.89 (k = 1.0–1.6), against the analytic 61/70 = 0.871, and 1.04–1.05 in the divergent spectrum's k = 1.0–1.6 band, where 7LPT agrees. dc̄/dI across Λ agrees in all spectra only because those modes are shared; it is not a UV test.</li>
+<li>Through the EdS Green's function, the measured c(D) gives density and momentum to ≤ 4.4 % at Λ = 0.15 to D = 0.5 in Planck-shape spectra (≤ 8.5 % at Λ = 0.1), and misses by 13–17 % from D ≈ 0.3 in the divergent spectrum with k &lt; 1.6 (3–11 % with k &lt; 1.0).</li>
+<li>The second- and third-order coefficients are not determined by this estimator, so <strong>whether all eight counterterms are needed remains undecided.</strong></li>
+</ul>
+<p><strong>σ(M), LPT and spherical collapse</strong> (<a href="reports/C_sigma_M.html">report C</a>, <a href="figures/figM1_sigma_fixed_mass_tl_full.png">figM1</a>, <a href="figures/figM2_sigma_spherical_collapse_tl_full.png">figM2</a>, <a href="figures/figM3_patch_anisotropy_tl_full.png">figM3</a>, <a href="figures/figM4_lnV_pdf_tl_full.png">figM4</a>, <a href="figures/figM6_sigma_lpt_tl_full.png">figM6</a>, <a href="figures/figM7_sigma_sc_reach_tl_full.png">figM7</a>, <a href="figures/figM8_sigma_reach_tl_full.png">figM8</a>).</p>
+<ul>
+<li>σ(ln V) around points drawn from the density, the data-centred kNN-CDF, departs earliest from linear: +24 % at M = 10¹⁶ h⁻¹M☉, D = 1, against +7 % for Lagrangian patches and +0.5 % for fixed-radius spheres. M uses Ω_m = 1.</li>
+<li>LPT converges to ≤ 0.3 % at D = 0.3 and R ≥ 5 h⁻¹Mpc from 3LPT up, then stops improving with order. By D = 0.8 5LPT and 7LPT are worse than Zel'dovich. At D = 1 no order recovers fixed-radius σ to 5 % below R ≈ 18.</li>
+<li>Exact spherical collapse with density-dependent contraction reaches σ(δ_R) to 5 % down to R ≈ 6 at D = 1 (R ≈ 11 in the divergent spectrum, and R ≈ 35 without contraction). Patches fail at R₀ ≈ 9–11 and random centres at R₀ ≈ 19. At 1 % it is no better than 3LPT at D = 1 (both R ≈ 50). It also reproduces the non-Gaussian ln V distribution over 2–3 decades of probability at M ≳ 10¹⁵.</li>
+<li>Patch images become elongated (a₃/a₁ = 0.47 at 1.3 × 10¹⁵, D = 1), yet bins in δ_L account for 86–97 % of Var(ln V) at M ≥ 1.3 × 10¹⁵.</li>
+</ul>
+<p><strong>UV reach</strong> (<a href="reports/D_uv_reach.html">report D</a>, <a href="figures/figU1_uv_response.png">figU1</a>). Modes k = 0.6–1.6 change the variance by −0.58 % at R = 20 and −0.07 % at R = 78 h⁻¹Mpc at D = 1, after removing their added linear power. The fractional change flattens by D ≈ 0.8, and the deepest divergent band turns over. Spherical collapse misses this response.</p>
+<p><strong>Scales</strong> (<a href="figures/figM5_k_of_R_tl_full.png">figM5</a>). Equating Δ²(k, D) with σ²(R, D) gives kR = 1.37–1.46 at R = 6–60 h⁻¹Mpc for a smoothed spectrum, nearly independent of D, with BAO adding −0.04 to +0.05. So M ≈ 3.6 × 10¹² k⁻³ h⁻¹M☉ for Ω_m = 1.</p>
+<p>Sheet-level budgets for the fiducial pair are in <a href="figures/figF1_fixedmass.png">figF1</a>, and the density response in <a href="figures/figP8_density_response.png">figP8</a>.</p>
+<h2 id="figures">Figures</h2><div class="gallery"><figure id="figM1_sigma_fixed_mass_tl_full"><a href="figures/figM1_sigma_fixed_mass_tl_full.png"><img src="figures/figM1_sigma_fixed_mass_tl_full.png" alt="figM1_sigma_fixed_mass_tl_full" loading="lazy"></a><figcaption><b>figM1_sigma_fixed_mass_tl_full</b> — σ(M): fixed radius, random and mass-drawn centres at fixed mass, Lagrangian patches, and linear. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM1_sigma_fixed_mass_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="figT1_running"><a href="figures/figT1_running.png"><img src="figures/figT1_running.png" alt="figT1_running" loading="lazy"></a><figcaption><b>figT1_running</b> — Linear coefficient against I(Λ) at D = 0.1. Those modes are shared by every spectrum, so agreement across spectra is built in. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figT1_running.pdf">PDF</a>)</figcaption></figure><figure id="figF1_fixedmass"><a href="figures/figF1_fixedmass.png"><img src="figures/figF1_fixedmass.png" alt="figF1_fixedmass" loading="lazy"></a><figcaption><b>figF1_fixedmass</b> — Fixed-mass statistics of the fiducial pair: coherent suppression, added power against linear, and F(R, μ). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figF1_fixedmass.pdf">PDF</a>)</figcaption></figure><figure id="figU1_uv_response"><a href="figures/figU1_uv_response.png"><img src="figures/figU1_uv_response.png" alt="figU1_uv_response" loading="lazy"></a><figcaption><b>figU1_uv_response</b> — Suppression of variance by UV modes against R at D = 1, and against D at R = 20 h⁻¹Mpc. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figU1_uv_response.pdf">PDF</a>)</figcaption></figure><figure id="fig1_power_ratio"><a href="figures/fig1_power_ratio.png"><img src="figures/fig1_power_ratio.png" alt="fig1_power_ratio" loading="lazy"></a><figcaption><b>fig1_power_ratio</b> — T(k, D) = P_UV/P_IR − 1 of the Eulerian density at several epochs, PM and 7LPT (k < k_split: identical initial modes). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig1_power_ratio.pdf">PDF</a>)</figcaption></figure><figure id="figT2_stress_time"><a href="figures/figT2_stress_time.png"><img src="figures/figT2_stress_time.png" alt="figT2_stress_time" loading="lazy"></a><figcaption><b>figT2_stress_time</b> — Linear stress coefficient against D for PM and LPT, Λ = 0.1. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figT2_stress_time.pdf">PDF</a>)</figcaption></figure><figure id="fig2_response_k"><a href="figures/fig2_response_k.png"><img src="figures/fig2_response_k.png" alt="fig2_response_k" loading="lazy"></a><figcaption><b>fig2_response_k</b> — Field-level response R(k)/k² of the long-mode displacement at three epochs (3LPT, 7LPT, PM) with the leading-order fits. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig2_response_k.pdf">PDF</a>)</figcaption></figure><figure id="figM2_sigma_spherical_collapse_tl_full"><a href="figures/figM2_sigma_spherical_collapse_tl_full.png"><img src="figures/figM2_sigma_spherical_collapse_tl_full.png" alt="figM2_sigma_spherical_collapse_tl_full" loading="lazy"></a><figcaption><b>figM2_sigma_spherical_collapse_tl_full</b> — σ(M) relative to linear, PM against spherical collapse, with and without contraction. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM2_sigma_spherical_collapse_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="fig3_c2_vs_time"><a href="figures/fig3_c2_vs_time.png"><img src="figures/fig3_c2_vs_time.png" alt="fig3_c2_vs_time" loading="lazy"></a><figcaption><b>fig3_c2_vs_time</b> — Central figure: C₂(D)/D² for 1, 3, 5, 7LPT, the extrapolated LPT∞ and PM, with the shell-crossed (inverted) mass fraction. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig3_c2_vs_time.pdf">PDF</a>)</figcaption></figure><figure id="figT3_time_local"><a href="figures/figT3_time_local.png"><img src="figures/figT3_time_local.png" alt="figT3_time_local" loading="lazy"></a><figcaption><b>figT3_time_local</b> — Density and momentum responses against the prediction from a stress local in time. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figT3_time_local.pdf">PDF</a>)</figcaption></figure><figure id="figM3_patch_anisotropy_tl_full"><a href="figures/figM3_patch_anisotropy_tl_full.png"><img src="figures/figM3_patch_anisotropy_tl_full.png" alt="figM3_patch_anisotropy_tl_full" loading="lazy"></a><figcaption><b>figM3_patch_anisotropy_tl_full</b> — ln V of Lagrangian patches at fixed δ_L against spherical collapse, and the scatter at fixed δ_L. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM3_patch_anisotropy_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="figM4_lnV_pdf_tl_div"><a href="figures/figM4_lnV_pdf_tl_div.png"><img src="figures/figM4_lnV_pdf_tl_div.png" alt="figM4_lnV_pdf_tl_div" loading="lazy"></a><figcaption><b>figM4_lnV_pdf_tl_div</b> — The same in the UV-divergent spectrum. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM4_lnV_pdf_tl_div.pdf">PDF</a>)</figcaption></figure><figure id="figM4_lnV_pdf_tl_full"><a href="figures/figM4_lnV_pdf_tl_full.png"><img src="figures/figM4_lnV_pdf_tl_full.png" alt="figM4_lnV_pdf_tl_full" loading="lazy"></a><figcaption><b>figM4_lnV_pdf_tl_full</b> — Distribution of ln V at fixed mass, D = 1: PM, Gaussian δ_L through spherical collapse, and a plain Gaussian. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM4_lnV_pdf_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="fig4_lpt_convergence"><a href="figures/fig4_lpt_convergence.png"><img src="figures/fig4_lpt_convergence.png" alt="fig4_lpt_convergence" loading="lazy"></a><figcaption><b>fig4_lpt_convergence</b> — |PM − LPT_n| for n = 1, 3, 5, 7 and LPT∞ vs D, and the convergence ratio of the odd LPT series. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig4_lpt_convergence.pdf">PDF</a>)</figcaption></figure><figure id="figM5_k_of_R_tl_full"><a href="figures/figM5_k_of_R_tl_full.png"><img src="figures/figM5_k_of_R_tl_full.png" alt="figM5_k_of_R_tl_full" loading="lazy"></a><figcaption><b>figM5_k_of_R_tl_full</b> — Scale mapping from Δ²(k, D) = σ²(R, D): k(R), M(k) and kR(M). Dips in kR are BAO. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM5_k_of_R_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="fig5_kmax_stability"><a href="figures/fig5_kmax_stability.png"><img src="figures/fig5_kmax_stability.png" alt="fig5_kmax_stability" loading="lazy"></a><figcaption><b>fig5_kmax_stability</b> — C₂(k_max) and (C₂, C₄)(k_max) at epochs before, near and after crossing. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig5_kmax_stability.pdf">PDF</a>)</figcaption></figure><figure id="figM6_sigma_lpt_tl_full"><a href="figures/figM6_sigma_lpt_tl_full.png"><img src="figures/figM6_sigma_lpt_tl_full.png" alt="figM6_sigma_lpt_tl_full" loading="lazy"></a><figcaption><b>figM6_sigma_lpt_tl_full</b> — nLPT/PM for each σ(M) statistic, ±5 % band. Patch curves above the axis are 5LPT and 7LPT, dominated by inverted patches. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM6_sigma_lpt_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="figM6_sigma_lpt_tl_div"><a href="figures/figM6_sigma_lpt_tl_div.png"><img src="figures/figM6_sigma_lpt_tl_div.png" alt="figM6_sigma_lpt_tl_div" loading="lazy"></a><figcaption><b>figM6_sigma_lpt_tl_div</b> — The same in the UV-divergent spectrum (1, 3, 7LPT). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM6_sigma_lpt_tl_div.pdf">PDF</a>)</figcaption></figure><figure id="fig6_deterministic_vs_stochastic"><a href="figures/fig6_deterministic_vs_stochastic.png"><img src="figures/fig6_deterministic_vs_stochastic.png" alt="fig6_deterministic_vs_stochastic" loading="lazy"></a><figcaption><b>fig6_deterministic_vs_stochastic</b> — Deterministic R²P_L vs stochastic (conditional) P_ε for displacement and density; P_ε ∝ k² and k⁴. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig6_deterministic_vs_stochastic.pdf">PDF</a>)</figcaption></figure><figure id="figM7_sigma_sc_reach_tl_div"><a href="figures/figM7_sigma_sc_reach_tl_div.png"><img src="figures/figM7_sigma_sc_reach_tl_div.png" alt="figM7_sigma_sc_reach_tl_div" loading="lazy"></a><figcaption><b>figM7_sigma_sc_reach_tl_div</b> — The same in the UV-divergent spectrum. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM7_sigma_sc_reach_tl_div.pdf">PDF</a>)</figcaption></figure><figure id="figM7_sigma_sc_reach_tl_full"><a href="figures/figM7_sigma_sc_reach_tl_full.png"><img src="figures/figM7_sigma_sc_reach_tl_full.png" alt="figM7_sigma_sc_reach_tl_full" loading="lazy"></a><figcaption><b>figM7_sigma_sc_reach_tl_full</b> — Spherical collapse/PM for each statistic, ±5 % band. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM7_sigma_sc_reach_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="fig7_pm_vs_lpt"><a href="figures/fig7_pm_vs_lpt.png"><img src="figures/fig7_pm_vs_lpt.png" alt="fig7_pm_vs_lpt" loading="lazy"></a><figcaption><b>fig7_pm_vs_lpt</b> — R(k) of PM, 4LPT, 7LPT across crossing, and the realization-level departure (R_PM − R_7LPT)/k² (flat ⇒ pure k²). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig7_pm_vs_lpt.pdf">PDF</a>)</figcaption></figure><figure id="fig8_density_vs_displacement"><a href="figures/fig8_density_vs_displacement.png"><img src="figures/fig8_density_vs_displacement.png" alt="fig8_density_vs_displacement" loading="lazy"></a><figcaption><b>fig8_density_vs_displacement</b> — Density vs displacement response: the density is dominated by kinematic smearing σ²_ψ/6. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig8_density_vs_displacement.pdf">PDF</a>)</figcaption></figure><figure id="figM8_sigma_reach_tl_div"><a href="figures/figM8_sigma_reach_tl_div.png"><img src="figures/figM8_sigma_reach_tl_div.png" alt="figM8_sigma_reach_tl_div" loading="lazy"></a><figcaption><b>figM8_sigma_reach_tl_div</b> — The same in the UV-divergent spectrum. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM8_sigma_reach_tl_div.pdf">PDF</a>)</figcaption></figure><figure id="figM8_sigma_reach_tl_full"><a href="figures/figM8_sigma_reach_tl_full.png"><img src="figures/figM8_sigma_reach_tl_full.png" alt="figM8_sigma_reach_tl_full" loading="lazy"></a><figcaption><b>figM8_sigma_reach_tl_full</b> — Smallest mass matched to 5 % against D, for nLPT and spherical collapse. Dotted lines are the grid floor; missing points fail at every scale. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figM8_sigma_reach_tl_full.pdf">PDF</a>)</figcaption></figure><figure id="fig9_velocity_response"><a href="figures/fig9_velocity_response.png"><img src="figures/fig9_velocity_response.png" alt="fig9_velocity_response" loading="lazy"></a><figcaption><b>fig9_velocity_response</b> — Velocity response vs d(D C₂)/dD from the displacement (kinematic consistency). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig9_velocity_response.pdf">PDF</a>)</figcaption></figure><figure id="fig10_pm_convergence"><a href="figures/fig10_pm_convergence.png"><img src="figures/fig10_pm_convergence.png" alt="fig10_pm_convergence" loading="lazy"></a><figcaption><b>fig10_pm_convergence</b> — PM numerical convergence: PM − 7LPT for plain CIC at three resolutions, its Richardson limit, and the discreteness-suppressed PM. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig10_pm_convergence.pdf">PDF</a>)</figcaption></figure><figure id="fig11_ic_controls"><a href="figures/fig11_ic_controls.png"><img src="figures/fig11_ic_controls.png" alt="fig11_ic_controls" loading="lazy"></a><figcaption><b>fig11_ic_controls</b> — IC controls: Gaussian-filter pairs (PreCrossedSheet-style) carry a large IC-level 'C₂'; the sharp split and null pair give zero. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig11_ic_controls.pdf">PDF</a>)</figcaption></figure><figure id="fig12_band_variants"><a href="figures/fig12_band_variants.png"><img src="figures/fig12_band_variants.png" alt="fig12_band_variants" loading="lazy"></a><figcaption><b>fig12_band_variants</b> — Band variants (amplitude ×0.7, band 0.2–0.6): the fractional departure collapses onto one function of the crossed mass. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig12_band_variants.pdf">PDF</a>)</figcaption></figure><figure id="fig13_kinetic_stress"><a href="figures/fig13_kinetic_stress.png"><img src="figures/fig13_kinetic_stress.png" alt="fig13_kinetic_stress" loading="lazy"></a><figcaption><b>fig13_kinetic_stress</b> — Experiment 2: response implied by PM's own multistream velocity-dispersion stress vs the measured departure. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig13_kinetic_stress.pdf">PDF</a>)</figcaption></figure><figure id="fig14_pk_convergence"><a href="figures/fig14_pk_convergence.png"><img src="figures/fig14_pk_convergence.png" alt="fig14_pk_convergence" loading="lazy"></a><figcaption><b>fig14_pk_convergence</b> — Small-scale power-spectrum convergence of the PM runs (density and displacement). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/fig14_pk_convergence.pdf">PDF</a>)</figcaption></figure><figure id="figR1_chs_fig3_comparison"><a href="figures/figR1_chs_fig3_comparison.png"><img src="figures/figR1_chs_fig3_comparison.png" alt="figR1_chs_fig3_comparison" loading="lazy"></a><figcaption><b>figR1_chs_fig3_comparison</b> — Cutoff running vs CHS (2012) Fig. 3 (reconstructed and digitized) in response units: PM, 3LPT, 4LPT, one-loop PT. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR1_chs_fig3_comparison.pdf">PDF</a>)</figcaption></figure><figure id="figR1_chs_fig3_comparison_c2units"><a href="figures/figR1_chs_fig3_comparison_c2units.png"><img src="figures/figR1_chs_fig3_comparison_c2units.png" alt="figR1_chs_fig3_comparison_c2units" loading="lazy"></a><figcaption><b>figR1_chs_fig3_comparison_c2units</b> — The same comparison in c² units (normalisation carries f₀²). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR1_chs_fig3_comparison_c2units.pdf">PDF</a>)</figcaption></figure><figure id="figR2_running_shape"><a href="figures/figR2_running_shape.png"><img src="figures/figR2_running_shape.png" alt="figR2_running_shape" loading="lazy"></a><figcaption><b>figR2_running_shape</b> — Normalization-free running C₂(k_split) − C₂(0.5) at D = 0.3, 0.5, 1. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR2_running_shape.pdf">PDF</a>)</figcaption></figure><figure id="figR3_c2_map"><a href="figures/figR3_c2_map.png"><img src="figures/figR3_c2_map.png" alt="figR3_c2_map" loading="lazy"></a><figcaption><b>figR3_c2_map</b> — C₂,δ(k_split, D)/D² for PM and 4LPT and their difference, with the IR members' shell-crossing contours. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR3_c2_map.pdf">PDF</a>)</figcaption></figure><figure id="figR4_band_contribution"><a href="figures/figR4_band_contribution.png"><img src="figures/figR4_band_contribution.png" alt="figR4_band_contribution" loading="lazy"></a><figcaption><b>figR4_band_contribution</b> — Contribution of each k-shell to C₂ and its ratio to one-loop PT vs k/k_NL (decoupling beyond the nonlinear scale). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR4_band_contribution.pdf">PDF</a>)</figcaption></figure><figure id="figR5_bao_consequence"><a href="figures/figR5_bao_consequence.png"><img src="figures/figR5_bao_consequence.png" alt="figR5_bao_consequence" loading="lazy"></a><figcaption><b>figR5_bao_consequence</b> — Coherent ΔP/P and stochastic P_ε/P_L at BAO wavenumbers vs k_split. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR5_bao_consequence.pdf">PDF</a>)</figcaption></figure><figure id="figR6_counts_in_spheres"><a href="figures/figR6_counts_in_spheres.png"><img src="figures/figR6_counts_in_spheres.png" alt="figR6_counts_in_spheres" loading="lazy"></a><figcaption><b>figR6_counts_in_spheres</b> — Counts in spheres: variance decomposition, real-space EFT slope vs weighted Fourier prediction, Δδ_R vs ∇²δ_R scatter. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR6_counts_in_spheres.pdf">PDF</a>)</figcaption></figure><figure id="figR7_flux_decomposition"><a href="figures/figR7_flux_decomposition.png"><img src="figures/figR7_flux_decomposition.png" alt="figR7_flux_decomposition" loading="lazy"></a><figcaption><b>figR7_flux_decomposition</b> — Mass flux across the sphere boundary: diffusion (1LPT), + infall (3LPT/7LPT), + multistream (PM). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figR7_flux_decomposition.pdf">PDF</a>)</figcaption></figure><figure id="figP1_cs_vs_time"><a href="figures/figP1_cs_vs_time.png"><img src="figures/figP1_cs_vs_time.png" alt="figP1_cs_vs_time" loading="lazy"></a><figcaption><b>figP1_cs_vs_time</b> — Plane-wave (ε → 0) coefficient vs D at k_split = 0.2: LPT orders, LPT∞, PM, PM on a long background (a = 0.5, 1) and the random-long-field ensemble of §6; (b) departure PM − 7LPT and the crossed mass. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP1_cs_vs_time.pdf">PDF</a>)</figcaption></figure><figure id="figP2_cs_running"><a href="figures/figP2_cs_running.png"><img src="figures/figP2_cs_running.png" alt="figP2_cs_running" loading="lazy"></a><figcaption><b>figP2_cs_running</b> — ε → 0 coefficient vs the cutoff k_split (PM solid, one loop dashed) and the departure from the pressureless series, at D = 0.3–1. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP2_cs_running.pdf">PDF</a>)</figcaption></figure><figure id="figP3_loop_ladder"><a href="figures/figP3_loop_ladder.png"><img src="figures/figP3_loop_ladder.png" alt="figP3_loop_ladder" loading="lazy"></a><figcaption><b>figP3_loop_ladder</b> — Every contribution to the k² response at k_split = 0.2, isolated by construction: one loop, two-loop and higher short×short, long×short (perturbative and beyond PT), and the beyond-PT counterterm. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP3_loop_ladder.pdf">PDF</a>)</figcaption></figure><figure id="figP4_background_scan"><a href="figures/figP4_background_scan.png"><img src="figures/figP4_background_scan.png" alt="figP4_background_scan" loading="lazy"></a><figcaption><b>figP4_background_scan</b> — Response vs long-background power a²: one loop is independent of the long modes; PM departs from the two-loop a² scaling after D ≈ 0.6 and reaches the random-ensemble value at a = 1. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP4_background_scan.pdf">PDF</a>)</figcaption></figure><figure id="figP5_second_order_kernel"><a href="figures/figP5_second_order_kernel.png"><img src="figures/figP5_second_order_kernel.png" alt="figP5_second_order_kernel" loading="lazy"></a><figcaption><b>figP5_second_order_kernel</b> — Second-order (A×B) plane-wave kernel relative to the 2LPT tree: pressureless enhancement vs PM's suppressive counterterm, mean over 70 pairs and per pair. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP5_second_order_kernel.pdf">PDF</a>)</figcaption></figure><figure id="figP6_per_wave_fits"><a href="figures/figP6_per_wave_fits.png"><img src="figures/figP6_per_wave_fits.png" alt="figP6_per_wave_fits" loading="lazy"></a><figcaption><b>figP6_per_wave_fits</b> — Per-wave −R/k² with the two- and three-term fits (k_split = 0.2, 0.5): fit adequacy, and the low-k PM floor R₀ at k_split = 0.5 (§14.2). (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP6_per_wave_fits.pdf">PDF</a>)</figcaption></figure><figure id="figP7_step_convergence"><a href="figures/figP7_step_convergence.png"><img src="figures/figP7_step_convergence.png" alt="figP7_step_convergence" loading="lazy"></a><figcaption><b>figP7_step_convergence</b> — BullFrog time-step convergence of C₂ against 400 steps, for the early (D = 0.02, 3LPT) and late (D = 0.15, 7LPT) starts. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP7_step_convergence.pdf">PDF</a>)</figcaption></figure><figure id="figP8_density_response"><a href="figures/figP8_density_response.png"><img src="figures/figP8_density_response.png" alt="figP8_density_response" loading="lazy"></a><figcaption><b>figP8_density_response</b> — Eulerian density response: C₂,δ/D² against D (solid corrected, dotted raw, dashed one loop), against k_split with displacement, and density shells relative to one loop. (<a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/figures/figP8_density_response.pdf">PDF</a>)</figcaption></figure></div>
+</main></body></html>

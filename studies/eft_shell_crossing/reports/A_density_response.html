@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report A: the Eulerian density response to short modes — DiscoDJ.jl</title>
+<style>
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b1b1a;margin:0;background:#fcfcfb}
+main{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+h1{font-size:1.75em;line-height:1.25;margin:.2em 0 .6em} h2{margin-top:2.1em;padding-bottom:.25em;border-bottom:1px solid #e4e3df}
+h3{margin-top:1.6em} a{color:#2a78d6;text-decoration:none} a:hover{text-decoration:underline}
+table{border-collapse:collapse;margin:1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid #e4e3df;padding:5px 9px;text-align:left;vertical-align:top} th{background:#f3f2ef}
+code{background:#f1f0ec;padding:1px 4px;border-radius:3px;font-size:.88em} pre{background:#f1f0ec;padding:12px;overflow-x:auto;border-radius:4px}
+pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;margin-left:0;padding-left:14px;color:#52514e}
+.gallery figure{margin:28px 0} .gallery img{max-width:100%;border:1px solid #e4e3df;background:#fff}
+.gallery figcaption{font-size:.88em;color:#52514e;margin-top:4px} .meta{color:#52514e;font-size:.9em}
+ main img{max-width:100%;border:1px solid #e4e3df;background:#fff}</style></head>
+<body><main>
+<p class="meta"><a href="../">EFT / shell-crossing study</a> · <a href="00_synthesis.html">synthesis</a> · <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/reports/A_density_response.md">source on GitHub</a></p>
+<h1 id="report-a-the-eulerian-density-response-to-short-modes">Report A: the Eulerian density response to short modes</h1>
+<p>Full derivation and tables: main <code>README.md</code> §14.11. Scripts: <code>scripts/pw_density.jl</code>, <code>pw_density_exact.jl</code>, <code>pw_waves_only.jl</code>, <code>pw_density_analysis.py</code>, <code>figures_density.py</code>. Results: <code>results/pw_density*.json</code>. Figure: <code>figures/figP8_density_response.png</code>.</p>
+<h2 id="setup">Setup</h2>
+<p>Long field: ±ε Σ cos(k_j·x), ε = 0.01, 12 waves per run. Band: k_split ≤ |k| &lt; 1.2 of each realization's white noise, 7 cutoffs, 4 realizations, 100 BullFrog steps from D = 0.15 with 7LPT ICs. Fits are R = −C₂,δk² on waves with k ≤ 0.1, so C₂,δ &gt; 0 is suppression and ΔP/P = 2R. Errors are jackknife over realizations.</p>
+<h2 id="three-corrections-are-needed">Three corrections are needed</h2>
+<table>
+<thead>
+<tr>
+<th>effect</th>
+<th>size</th>
+<th>how it is removed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CIC deposit bias on near-lattice particles</td>
+<td>+0.06 to +0.15 in C₂ until particles move about a cell; at k_split = 0.7 still +0.028 at D = 1</td>
+<td>direct sum of 7LPT at the waves</td>
+</tr>
+<tr>
+<td>Finite ε: the waves smear each other; odd in ε, so ± keeps it</td>
+<td>0.02–0.04 D²</td>
+<td>direct sum of the waves alone</td>
+</tr>
+<tr>
+<td>Wave × band coupling at k_split ≤ 0.15 (k_j ∓ k_m in the band)</td>
+<td>R ∝ D, realization noise</td>
+<td>drop 2 waves per split</td>
+</tr>
+</tbody>
+</table>
+<p>The finite-ε term passes a falsification test: on the 6-wave ε = 0.01 and 0.02 runs the predicted change in 1LPT C₂ is +0.0063, +0.0124, +0.0253 at D = 0.5, 0.7, 1, against +0.0068, +0.0128, +0.0255 measured. It needs each wave's own Bessel term, −ε²D²/8, which a first estimate had omitted.</p>
+<h2 id="validation">Validation</h2>
+<p>Exact 3LPT with the waves removed, extrapolated to D → 0, against the standard P13 kernel with no free parameters:</p>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>0.12</th>
+<th>0.15</th>
+<th>0.20</th>
+<th>0.25</th>
+<th>0.33</th>
+<th>0.50</th>
+<th>0.70</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>one loop</td>
+<td>2.667</td>
+<td>2.116</td>
+<td>1.537</td>
+<td>1.168</td>
+<td>0.799</td>
+<td>0.408</td>
+<td>0.199</td>
+</tr>
+<tr>
+<td>c₀</td>
+<td>2.653</td>
+<td>2.097</td>
+<td>1.535</td>
+<td>1.162</td>
+<td>0.789</td>
+<td>0.405</td>
+<td>0.198</td>
+</tr>
+</tbody>
+</table>
+<p>Agreement is 0.1–1.2 %. Before the finite-ε correction the same test was off by up to 10 %.</p>
+<h2 id="results">Results</h2>
+<table>
+<thead>
+<tr>
+<th>k_split</th>
+<th>C₂,δ at D = 1</th>
+<th>ΔP/P, k = 0.05</th>
+<th>excess over one loop</th>
+<th>displacement C₂</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.12</td>
+<td>3.304 ± 0.023</td>
+<td>−1.65 %</td>
+<td>+0.64</td>
+<td>−1.215</td>
+</tr>
+<tr>
+<td>0.20</td>
+<td>1.935 ± 0.015</td>
+<td>−0.97 %</td>
+<td>+0.40</td>
+<td>−0.386</td>
+</tr>
+<tr>
+<td>0.33</td>
+<td>1.057 ± 0.006</td>
+<td>−0.53 %</td>
+<td>+0.26</td>
+<td>−0.104</td>
+</tr>
+<tr>
+<td>0.70</td>
+<td>0.314 ± 0.001</td>
+<td>−0.16 %</td>
+<td>+0.12</td>
+<td>−0.111</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Density is suppressed and displacement enhanced at every cutoff.</strong> The README's earlier ΔP/P had used the displacement coefficient; that is corrected and published.</li>
+<li><strong>PM's C₂,δ grows nearly as D² after D ≈ 0.7,</strong> while fixed-order density fails: PM − 3LPT at k_split = 0.2 is −1.33 at D = 1.</li>
+<li><strong>No density decoupling at ε → 0:</strong> every shell stays 1.16–1.58× one loop at D = 1, and modes above k = 0.33 carry about a third of the response. Decoupling in §14.4 is a displacement statement.</li>
+<li><strong>Density barely sees first crossing.</strong> PM − LPT∞ is at most 10⁻³ at D = 0.3, against up to 56 × 10⁻⁴ in displacement. At k_split ≤ 0.33 the density series has no limit at D ≥ 0.4, so the irreducibility statement rests on the displacement channel.</li>
+<li><strong>Long × short does not generalize from one cutoff.</strong> At k_split = 0.2, D = 1 the +1.91 in displacement is about 0 in density, but random-long minus ε → 0 runs from +0.31 at k_split = 0.12 to −0.30 at 0.5, so 0.2 is near a zero crossing. The windows differ between the two.</li>
+<li><strong>a² scaling:</strong> the a = 1 to a = 0.5 shift ratio is 4.12 ± 0.33 at D = 0.5, as two-loop predicts, then 3.43 ± 0.22 at D = 0.7, and it fails at D = 1. The raw estimator disagrees in sign at a = 0.5, D = 0.5, so that first value rests on one estimator.</li>
+</ul>
+<h2 id="limits">Limits</h2>
+<p>PM's particles are not stored in these runs, so its deposit bias is taken from 7LPT; where b/C₂,δ is large (k_split ≥ 0.33 at D = 0.5; 0.5 and 0.7 at D = 0.7; 0.7 at D = 1, b/C₂,δ = 0.09: marked in Table 6) values rest on that. The a &gt; 0 runs have no exact bias calibration. b comes from 1–2 realizations. No Eulerian momentum field is stored for these runs.</p>
+</main></body></html>

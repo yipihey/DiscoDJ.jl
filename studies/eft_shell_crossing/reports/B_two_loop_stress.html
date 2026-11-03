@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report B: measuring the two-loop effective stress — DiscoDJ.jl</title>
+<style>
+body{font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#1b1b1a;margin:0;background:#fcfcfb}
+main{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+h1{font-size:1.75em;line-height:1.25;margin:.2em 0 .6em} h2{margin-top:2.1em;padding-bottom:.25em;border-bottom:1px solid #e4e3df}
+h3{margin-top:1.6em} a{color:#2a78d6;text-decoration:none} a:hover{text-decoration:underline}
+table{border-collapse:collapse;margin:1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid #e4e3df;padding:5px 9px;text-align:left;vertical-align:top} th{background:#f3f2ef}
+code{background:#f1f0ec;padding:1px 4px;border-radius:3px;font-size:.88em} pre{background:#f1f0ec;padding:12px;overflow-x:auto;border-radius:4px}
+pre code{background:none;padding:0} blockquote{border-left:3px solid #e4e3df;margin-left:0;padding-left:14px;color:#52514e}
+.gallery figure{margin:28px 0} .gallery img{max-width:100%;border:1px solid #e4e3df;background:#fff}
+.gallery figcaption{font-size:.88em;color:#52514e;margin-top:4px} .meta{color:#52514e;font-size:.9em}
+ main img{max-width:100%;border:1px solid #e4e3df;background:#fff}</style></head>
+<body><main>
+<p class="meta"><a href="../">EFT / shell-crossing study</a> · <a href="00_synthesis.html">synthesis</a> · <a href="https://github.com/yipihey/DiscoDJ.jl/blob/main/studies/eft_shell_crossing/reports/B_two_loop_stress.md">source on GitHub</a></p>
+<h1 id="report-b-measuring-the-two-loop-effective-stress">Report B: measuring the two-loop effective stress</h1>
+<p>Reference: Anastasiou, Favorito, Lewandowski, Senatore &amp; Zheng, arXiv:2509.05187. Design and equation mapping: <code>twoloop/README.md</code>. Scripts: <code>twoloop/tl_measure.jl</code>, <code>tl_fit3.py</code> (with <code>test_tl_fit3.py</code>), <code>tl_closure.py</code>, <code>time_local_closure.py</code>, <code>tl_even_test.py</code>, <code>stage7_analysis.py</code>, <code>final_figures.py</code>. Results: <code>results/tl_fit3_*</code>, <code>tl_closure_*</code>, <code>time_local_closure.json</code>, <code>stage7_summary.json</code>. Figures: <code>figT1_running</code>, <code>figT2_stress_time</code>, <code>figT3_time_local</code>.</p>
+<h2 id="setup">Setup</h2>
+<p>EdS, 4 seeds × ±L, fixed amplitudes. Spectra sharing all modes below k = 0.3: k &lt; 1.6, 1.0, 0.6, and a UV-divergent spectrum (P ∝ k⁻¹ above k = 0.3) with k &lt; 1.6 and 1.0. IR members cut at Λ = 0.1, 0.15, 0.2, 0.3. Stress τ̂ = kinetic + gravitational from 2³-resampled particles, CIC on 384³, sharp coarse-graining. The estimator is τ̂[full] − τ̂[IR cut at Λ], which removes the tree-level coarse-graining of long modes.</p>
+<p><strong>Deposit.</strong> Direct particle sums against the deposit (seed 1, s = +1, D = 0.1–1; tl_full, tl_ir020, tl_ir010): every moment agrees to ≤ 1.1 × 10⁻⁴; full − IR is good to ≤ 2.5 × 10⁻⁴ with tl_ir010, and with tl_ir020 to ≤ 1.5 × 10⁻³ except density at D = 0.1 (3.7 %) and 0.3 (0.9 %). tl_ir015, tl_ir030, composite stress and gravitational stress were not checked directly.</p>
+<h2 id="results">Results</h2>
+<p><strong>UV test of the linear coefficient.</strong> At D = 0.1, c̄/I from band differences, far from Λ, over Λ = 0.1–0.3, against 61/70 = 0.871:</p>
+<table>
+<thead>
+<tr>
+<th>band</th>
+<th>I</th>
+<th>stress: PM</th>
+<th>stress: 3LPT</th>
+<th>stress: 7LPT</th>
+<th>density, PM</th>
+<th>momentum, PM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>k = 0.6–1.6</td>
+<td>3.58</td>
+<td>0.863–0.871</td>
+<td>0.833–0.843</td>
+<td>0.861–0.869</td>
+<td>0.878–0.946</td>
+<td>0.906–0.913</td>
+</tr>
+<tr>
+<td>k = 1.0–1.6</td>
+<td>1.18</td>
+<td>0.879–0.888</td>
+<td>0.835–0.846</td>
+<td>0.874–0.883</td>
+<td>0.926–0.981</td>
+<td>0.925–0.933</td>
+</tr>
+<tr>
+<td>divergent, k = 1.0–1.6</td>
+<td>6.21</td>
+<td>1.040–1.047</td>
+<td>0.930–0.939</td>
+<td>1.054–1.062</td>
+<td>0.959–1.000</td>
+<td>1.059–1.074</td>
+</tr>
+</tbody>
+</table>
+<p>For the Planck-shape bands PM's stress is within 1–2 % of 61/70. Density and momentum sit 1–13 % higher, so the channels differ even here. In the divergent band stress is 20 % high, and 7LPT shows the same, so the excess is in single-stream dynamics; at D = 0.1 that spectrum may already be beyond the leading term (not tested). One epoch.</p>
+<p><strong>Running across Λ is not a UV test</strong> (figT1). dc̄/dI over Λ = 0.1–0.3 is 0.844–0.846 in the stress (density 0.89–0.92) in all five spectra, against 0.871. But I(Λ) differences are identical across spectra and the stress differences nearly so, because those modes (k = 0.1–0.3) are shared. So this agreement is built in. It is one measurement, of modes that are not far above Λ, and it is 3 % below 61/70.</p>
+<p><strong>PM against LPT</strong> (figT2). c̄/I at Λ = 0.1, k &lt; 1.6: PM 0.851, 0.918, 1.009, 1.066, 1.088, 1.088 at D = 0.1–0.6; 7LPT 0.850, 0.922, 1.152, 2.16, 5.90, 12.1. They agree to D ≈ 0.2, then PM levels off. In the divergent spectrum PM peaks at D ≈ 0.2 (0.957) and falls to 0.80 by D = 0.6. In the far-UV band k = 0.6–1.6, PM's coefficient falls to about 0.06 by D = 0.5, though the linear fit explains only 11 % of the variance there.</p>
+<p><strong>Closure with a power series.</strong> With c(D) = c₀ + c₂D²: c₀ agrees across stress, density and momentum to 0–6 %, c₂ to 16–27 %, for k &lt; 1.6. c₀ is 0.80–0.88. It fails for the divergent spectrum, where stress gives c₂ ≈ 0 against 5.9–11.8 in density.</p>
+<p><strong>Is the stress local in time?</strong> (figT3). This is the better closure. The measured c(D) passes through y″ + (3/2D)y′ − (3/2D²)y = D c(D); a stress local in time and linear then fixes the density and momentum responses, with no free parameter:</p>
+<table>
+<thead>
+<tr>
+<th>Λ = 0.15</th>
+<th>D</th>
+<th>stress</th>
+<th>density: predicted, measured</th>
+<th>momentum: predicted, measured</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>k &lt; 1.6</td>
+<td>0.3</td>
+<td>1.091</td>
+<td>0.935, 0.947</td>
+<td>0.992, 1.016</td>
+</tr>
+<tr>
+<td></td>
+<td>0.5</td>
+<td>1.202</td>
+<td>1.043, 1.087</td>
+<td>1.119, 1.169</td>
+</tr>
+<tr>
+<td>k &lt; 0.6</td>
+<td>0.3</td>
+<td>1.057</td>
+<td>0.913, 0.897</td>
+<td>0.963, 0.932</td>
+</tr>
+<tr>
+<td></td>
+<td>0.5</td>
+<td>1.413</td>
+<td>1.056, 1.033</td>
+<td>1.195, 1.165</td>
+</tr>
+<tr>
+<td>divergent, k &lt; 1.0</td>
+<td>0.3</td>
+<td>1.120</td>
+<td>0.975, 1.007</td>
+<td>1.036, 1.104</td>
+</tr>
+<tr>
+<td></td>
+<td>0.5</td>
+<td>1.005</td>
+<td>1.039, 1.126</td>
+<td>1.046, 1.146</td>
+</tr>
+<tr>
+<td>divergent, k &lt; 1.6</td>
+<td>0.3</td>
+<td>0.919</td>
+<td>0.948, 1.096</td>
+<td>0.950, 1.136</td>
+</tr>
+<tr>
+<td></td>
+<td>0.5</td>
+<td>0.818</td>
+<td>0.916, 1.080</td>
+<td>0.878, 1.007</td>
+</tr>
+</tbody>
+</table>
+<p>(Measured density here is the direct k²-fit coefficient 9C₂/D² at k ≤ 0.08; momentum is tl_fit3's fixed-epoch sum.) Prediction relative to measured, to D = 0.5: Planck-shape spectra ≤ 4.4 % at Λ = 0.15 and ≤ 8.5 % at Λ = 0.1 (mostly a constant offset already at D = 0.1, and larger against fixed-epoch density, up to 7.7 % at Λ = 0.15); divergent k &lt; 1.0, 3–9 %; divergent k &lt; 1.6, 8–13 % at D = 0.2 and 13–17 % from D = 0.3. Either a linear, time-local stress does not describe the regime or the fitted linear coefficient misses what acts on the long modes; <strong>this test cannot separate the two.</strong> It uses linear interpolation between epochs and constant c below D = 0.1.</p>
+<p><strong>Direct cross-check with report A's line.</strong> The k²-fit density coefficient in full − IR at Λ = 0.2 gives C₂ = 0.538 ± 0.003 at D = 0.5 and 1.922 ± 0.020 at D = 1 (4 seeds), against 0.532 ± 0.007 and 1.995 ± 0.015 from the random-long run (k_uv = 1.2) at k ≤ 0.08.</p>
+<p><strong>Stochastic part.</strong> The stress-trace residual is white at k ≲ 0.13: slope −0.2 to +0.07 (odd), 0 to +0.47 (even) for PM. PM and 7LPT agree to D = 0.2, after which 7LPT grows by orders of magnitude and steepens.</p>
+<h2 id="what-could-not-be-measured">What could not be measured</h2>
+<ul>
+<li><strong>Second- and third-order coefficients.</strong> Stress is usable only at D ≤ 0.3 for Λ = 0.2 and D ≤ 0.6 for Λ = 0.1, because 1/n_Λ of a sharp filter is singular beyond. In windows D ≤ 0.3:</li>
+<li>c_δ,1 + c_r,1 is determined.</li>
+<li>c_rδ,1 is measured but scattered: 1.7–2.2 for k &lt; 1.6 at Λ ≥ 0.2 (analytic 2.04), 1.1–2.5 in far-UV bands, −0.9 in the divergent band.</li>
+<li>δ,2 and δ²,1 are separately unconstrained. Their sum drifts through the analytic 3.64 with no plateau (far-UV band, 3LPT: 0.46 ± 0.35, 1.51 ± 0.24, 3.98 ± 0.23 at D = 0.2, 0.3, 0.4), and the even stress is noise-dominated at D ≤ 0.2 and contaminated from D ≈ 0.3.</li>
+<li>δ,3, rδ,2, rδ²,1 are nearly degenerate (condition number ≈ 6 × 10⁶, density-only ≈ 5 × 10¹⁷).</li>
+</ul>
+<p>So those κ are neither confirmed nor refuted, and <strong>the "all eight are needed" test (T7) is undecided</strong>. Windowed jackknife errors understate the uncertainty, because c grows by about 35 % inside the window; they should not be quoted.
+* <strong>T3 through c_O,α/c_O,1:</strong> undetermined for the same reason. The time-local test above is what the data can support.
+* <strong>T4, fluid-element structure, and T8, Λ-independence of the predicted P(k):</strong> not attempted. T8 needs the full two-loop kernels at field level.
+* <strong>T5, vorticity:</strong> rms curl v_Λ against rms k·π_Λ is 0.42, 0.89, 1.48, 2.9 % at D = 0.1–0.4 (Λ = 0.2), with PM and 7LPT together to D = 0.3 for k &lt; 1.6. Above D = 0.4 v_Λ = π_Λ/ρ_Λ is singular and the ratio is not physical. The prediction from τ̃₍₂₎ was not computed.</p>
+<h2 id="recommendations">Recommendations</h2>
+<p>A better second-order measurement needs a filter without the n_Λ singularity (a Gaussian or a mass-weighted velocity) and fits with a measured c(D) rather than constant windows. Near the deposit limit, D = 0.1 even blocks are noise. These would be new measurements on the existing snapshots, about 4 hours of CPU at the current pipeline speed.</p>
+</main></body></html>
