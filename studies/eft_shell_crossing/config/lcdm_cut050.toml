@@ -1,0 +1,48 @@
+# lcdm_cut050: same realizations as lcdm_full, ICs sharply cut at Λ = k_split = 0.50 h/Mpc, σ8 = 0.8105.
+# ΛCDM full-spectrum counterterm calibration: c_s(z) of the one-loop EFT and of the sheet forward model.
+# Planck18EEBAOSN flat ΛCDM (EH with BAO, σ8 = 0.8105).  One member per realization containing every mode
+# |k| < 1.6 h/Mpc (sphere just inside the 256³ Nyquist); fixed amplitudes and ±L pairs (Angulo–Pontzen), so
+# the plain response estimator is the odd-in-δ_L one and the auto-power has no amplitude scatter.
+# The PT / sheet baselines are the LPT runs of this config (Λ = 1.6) and of lcdm_cut*.toml (Λ-cut ICs).
+name = "lcdm_cut050"
+L = 500.0
+N_ic = 256
+k_split = 0.50
+k_uv = 0.5
+fixed_amp = true
+k_store = 0.4        # store Fourier modes |k| ≤ 0.4 (response + mode-by-mode P(k))
+k_exact = 0.3        # PM: exact (direct-sum, window/alias-free) density modes for |k| ≤ 0.3
+z_epochs = [19.0, 9.0, 5.0, 3.0, 2.0, 1.5, 1.0, 0.75, 0.5, 0.25, 0.0]
+
+[cosmology]
+lcdm = true
+sigma8 = 0.8105
+
+[lpt]
+N = 256
+n_max = 7
+mode = "fast"
+
+[pm]
+# discreteness-suppressed BullFrog PM, as in the EdS study (reproduces 7LPT to ~1e-4 before crossing)
+N = 256
+res_pm = 512
+n_steps = 200        # uniform in D from z_ini to z = 0
+z_ini = 49.0
+ic_order = 3
+ic_mode = "fast"
+worder = 4
+grad_kernel_order = 0
+deconvolve = true
+antialias = 1
+n_resample = 2
+
+[pk_full]
+mesh = 512
+nbins = 60
+
+[seeds]
+long = [1, 2, 3, 4]
+short = []
+signs = [1, -1]
+members = ["IR"]

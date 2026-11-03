@@ -99,10 +99,11 @@ end
 """
     pm_ics(cosmo, fphi, K, D_ini; ic_order=3, mode=:fast) -> (Ψ0, Π0)
 
-nLPT initial conditions (EdS growth) for the PM run at D_ini."""
-function pm_ics(c, fphi, K, D_ini; ic_order::Int=3, mode::Symbol=:fast)
+nLPT initial conditions (EdS growth) for the PM run at D_ini (`a_of_D` maps D₊ to the scale factor; identity
+in EdS)."""
+function pm_ics(c, fphi, K, D_ini; ic_order::Int=3, mode::Symbol=:fast, a_of_D=identity)
     sh = compute_core(fphi, K; n_order=ic_order, mode=mode)
-    Ψ0, Π0 = nbody_ics_lpt(c, sh, D_ini; n_order=ic_order)
+    Ψ0, Π0 = nbody_ics_lpt(c, sh, a_of_D(D_ini); n_order=ic_order)
     return Ψ0, Π0
 end
 
@@ -117,7 +118,8 @@ grid and the wall time.  With `band = (ms_band, epochs_band)` the displacement i
 second (typically larger) mode set at a few epochs (band-growth diagnostics)."""
 function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini::Real, n_steps::Int,
                 res_pm::Int, stepper::Symbol=:bullfrog, band=nothing, cis=nothing, cis_epochs=Float64[], rsd::Bool=false,
-                stress=nothing, pkplan=nothing, fm=nothing, fm_epochs=Float64[], fm_sink=nothing, fm_done=(e, o) -> false, settings...)
+                stress=nothing, pkplan=nothing, a_of_D=identity, exact=nothing, snapshots=nothing,
+                fm=nothing, fm_epochs=Float64[], fm_sink=nothing, fm_done=(e, o) -> false, settings...)
     T = eltype(Ψ0); N = size(Ψ0, 1); M = length(ms)
     ep = [D for D in epochs if D > D_ini]
     E = length(epochs)
@@ -129,14 +131,16 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
     dens_s = rsd ? zeros(ComplexF64, E, M) : nothing; inv_s = rsd ? fill(NaN, E) : nothing
     st = stress === nothing ? nothing : zeros(ComplexF64, E, length(stress), 4, M, 6)
     stsc = stress === nothing ? nothing : fill(NaN, E, length(stress), 7)
+    densx = exact === nothing ? nothing : zeros(ComplexF64, E, length(exact))
     pkd = pkplan === nothing ? nothing : fill(NaN, E, length(pkplan.edges) - 1)
     pkp = pkplan === nothing ? nothing : fill(NaN, E, length(pkplan.edges) - 1)
     q = lattice_q(Ψ0, N, L)
     mesh = similar(Ψ0, T, N, N, N); Xb = similar(Ψ0); cnt = similar(Ψ0, Int32, N, N, N); Ψ = similar(Ψ0)
     grid = d_grid(D_ini, maximum(epochs), n_steps, vcat(ep, band === nothing ? Float64[] : band[2]))
-    snap = Dict(round(D, digits=10) => findfirst(==(D), epochs) for D in ep)
+    agrid = a_of_D.(grid)                      # run_nbody takes an explicit time grid as scale factors
+    snap = Dict(round(a_of_D(D), digits=10) => findfirst(==(D), epochs) for D in ep)
     fmres = []
-    bsnap = band === nothing ? Dict() : Dict(round(D, digits=10) => i for (i, D) in enumerate(band[2]))
+    bsnap = band === nothing ? Dict() : Dict(round(a_of_D(D), digits=10) => i for (i, D) in enumerate(band[2]))
     function cb(k, a, X, P)
         e = get(snap, round(a, digits=10), nothing); b = get(bsnap, round(a, digits=10), nothing)
         (e === nothing && b === nothing) && return
@@ -146,14 +150,18 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
         b === nothing || (bpsi[b, :, :] .= vector_modes(band[1], Ψ))
         e === nothing && return
         psi[e, :, :] .= vector_modes(ms, Ψ)
+        exact === nothing || (densx[e, :] .= exact_density_modes(exact, Ψ, q, L))
+        if snapshots !== nothing && any(isapprox(epochs[e], x; atol=1e-9) for x in snapshots.epochs)
+            snapshots.write(epochs[e], Array(Ψ), Array(P ./ T(DJ.Fplus(c, a))))   # (Ψ, Π = dΨ/dD) on the host
+        end
         if pkplan !== nothing
             _, pd_, pp_ = pk_full(pkplan, Ψ, q); pkd[e, :] .= pd_; pkp[e, :] .= pp_
         end
         Π = P ./ T(DJ.Fplus(c, a))
         vel[e, :, :] .= vector_modes(ms, Π)
-        if fm !== nothing && any(isapprox(a, x; atol=1e-9) for x in fm_epochs) && !fm_done(e, 0)
+        if fm !== nothing && any(isapprox(epochs[e], x; atol=1e-9) for x in fm_epochs) && !fm_done(e, 0)    # epochs are D, a differs in ΛCDM
             tf = @elapsed begin
-                x = (e=e, D=a, order=0, r=fixedmass_snapshot(fm, Ψ, Π))
+                x = (e=e, D=epochs[e], order=0, r=fixedmass_snapshot(fm, Ψ, Π))
                 fm_sink === nothing ? push!(fmres, x) : fm_sink(x)
             end
             @printf "    fixed-mass PM D=%.3f  %.1f s\n" a tf; flush(stdout)
@@ -189,11 +197,11 @@ function run_pm(c, Ψ0, Π0, ms::ModeSet, L::Real, epochs::AbstractVector; D_ini
             mom[e, d] = sum(view(P, :, :, :, d)) / N^3 / prms
         end
     end
-    t = @elapsed run_nbody(c, Ψ0, Π0; boxsize=L, a_ini=D_ini, a_end=grid[end], n_steps=nothing,
-                           time_var=grid, res_pm=res_pm, stepper=stepper,
+    t = @elapsed run_nbody(c, Ψ0, Π0; boxsize=L, a_ini=agrid[1], a_end=agrid[end], n_steps=nothing,
+                           time_var=agrid, res_pm=res_pm, stepper=stepper,
                            return_displacement=true, step_callback=cb,
                            callback_when=(k, a) -> haskey(snap, round(a, digits=10)) || haskey(bsnap, round(a, digits=10)),
                            settings...)
     return (psi=psi, vel=vel, dens=dens, inv=invf, rms=rms, mom=mom, grid=grid, seconds=t, band=bpsi, cis=cisd, dens_s=dens_s, inv_s=inv_s,
-            stress=st, stress_scalars=stsc, pk_dens=pkd, pk_disp=pkp, fm=fmres)
+            stress=st, stress_scalars=stsc, pk_dens=pkd, pk_disp=pkp, dens_x=densx, fm=fmres)
 end
