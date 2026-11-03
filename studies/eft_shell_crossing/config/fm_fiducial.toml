@@ -1,0 +1,26 @@
+# Fixed-mass sheet statistics (src/fixedmass.jl) on the fiducial pair: F(R, M), its R/D derivatives and
+# the exact real-space mass budget of spheres, for 3LPT, 7LPT and PM, UV and IR members.
+#   julia --project=. scripts/run_fixedmass.jl config/fm_fiducial.toml [lpt|pm|all]
+name = "fm_fiducial"
+base = "fiducial.toml"            # cosmology, ICs, solver settings and epoch list (relative to this file)
+
+[fixedmass]
+mesh = 512                        # node mesh = the PM force mesh (2 nodes per Lagrangian spacing)
+epochs = [0.1, 0.15, 0.2, 0.225, 0.25, 0.3, 0.4, 0.5, 0.7, 1.0]   # first crossing at D ≈ 0.225
+R_min = 3.0                       # h⁻¹Mpc (≈ 3 nodes)
+R_max = 150.0
+n_R = 40                          # log-spaced
+nbins = 256                       # log μ bins per (D, R)
+stride = 8                        # per-point values on the 64³ sub-lattice ...
+sub = [1, 5, 9, 13, 17, 20, 23, 26, 29, 32, 36, 40]   # ... for these radius indices
+level = 1                         # tracers per tetrahedron: binomial(level+3, 3) = 4
+lpt_orders = [3, 7]
+# per-order last epoch: 7LPT diverges beyond D ≈ 0.5 (study §12); at D = 1 its stretched UV sheet makes the
+# point-sampled moments kernel visit ~all nodes per tetrahedron (did not finish in > 30 min on 96 CPU threads)
+lpt_max_D = {7 = 0.7}
+T_acc = "Float32"
+
+[seeds]
+long = [1]
+short = [1001]
+signs = [1]
