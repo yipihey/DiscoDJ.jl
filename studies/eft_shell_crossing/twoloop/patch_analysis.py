@@ -40,7 +40,7 @@ def one(f):
     return D, out
 
 R = {}
-for f in sorted(glob.glob(os.path.join(D0, "patchaniso", f"{cfg}_L*_s*_D*.h5"))):
+for f in sorted(glob.glob(os.path.join(D0, os.environ.get("PATCH_DIR", "patchaniso"), f"{cfg}_L*_s*_D*.h5"))):
     m = re.search(r"_L(\d+)_s([+-]\d)_D", f); D, o_ = one(f); R[(int(m[1]), int(m[2]), D)] = o_
 seeds = sorted({k[0] for k in R}); Ds = sorted({k[2] for k in R}); R0s = sorted(k for k in next(iter(R.values())) if k != "J")
 def agg(D, R0, key):

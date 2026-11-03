@@ -18,9 +18,12 @@ r = json.load(open(os.path.join(here, f"sigmaM_{cfg}.json")))
 RL = np.array(r["RL"]); RE = np.array(r["RE"]); QS = (np.arange(800) + 0.5) / 800
 with h5py.File(os.path.join(D0, "tl_full", "tl", "ops_sharp_L1.h5")) as h:
     pk, pP = h["pk_k"][()], h["pk_P"][()]
-KUV = {"tl_full": 1.6, "tl_ir020": 0.2, "tl_uv06": 0.6}[cfg]
+KUV = {"tl_full": 1.6, "tl_ir020": 0.2, "tl_uv06": 0.6, "tl_uv10": 1.0, "tl_div": 1.6, "tl_div10": 1.0}[cfg]
+MOD = (0.3, -1.0) if "div" in cfg else None
 n = np.arange(-256, 257); n2 = (n[:, None, None] ** 2 + n[None, :, None] ** 2 + n[None, None, :] ** 2).ravel(); KF = 2 * np.pi / 500.
 n2 = n2[(n2 > 0) & (KF * np.sqrt(n2) < KUV)]; u2, c2 = np.unique(n2, return_counts=True); qk = KF * np.sqrt(u2); qP = np.exp(np.interp(np.log(qk), np.log(pk), np.log(pP)))
+if MOD:
+    qP = np.where(qk > MOD[0], np.exp(np.interp(np.log(MOD[0]), np.log(pk), np.log(pP))) * (qk / MOD[0]) ** MOD[1], qP)
 tophat = lambda x: 3 * (np.sin(x) - x * np.cos(x)) / x ** 3
 grid = np.exp(np.linspace(np.log(1.5), np.log(400), 400)); sl = np.array([np.sqrt((c2 * qP * tophat(qk * R) ** 2).sum() / 500. ** 3) for R in grid])
 sig_lin = lambda R: np.exp(np.interp(np.log(R), np.log(grid), np.log(sl)))

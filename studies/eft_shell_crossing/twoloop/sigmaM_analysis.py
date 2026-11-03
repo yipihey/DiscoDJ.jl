@@ -21,7 +21,8 @@ cfg = sys.argv[1]
 figdir = sys.argv[2] if len(sys.argv) > 2 else None
 D0 = os.environ.get("EFTSC_SCRATCH", "/zpool/nvme/data/tabel_scratch/eft_shell_crossing")
 here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "results")
-KUV = {"tl_full": 1.6, "tl_uv10": 1.0, "tl_uv06": 0.6, "tl_ir010": 0.1, "tl_ir015": 0.15, "tl_ir020": 0.2, "tl_ir030": 0.3}[cfg]
+KUV = {"tl_full": 1.6, "tl_uv10": 1.0, "tl_uv06": 0.6, "tl_div": 1.6, "tl_div10": 1.0, "tl_ir010": 0.1, "tl_ir015": 0.15, "tl_ir020": 0.2, "tl_ir030": 0.3}[cfg]
+MOD = (0.3, -1.0) if "div" in cfg else None
 
 
 def tophat(x):
@@ -39,6 +40,8 @@ n2 = n2[(n2 > 0) & (KF * np.sqrt(n2) < KUV)]
 u2, cnt2 = np.unique(n2, return_counts=True)
 qk = KF * np.sqrt(u2)
 qP = np.exp(np.interp(np.log(qk), np.log(pk), np.log(pP)))
+if MOD:                                          # UV-divergent spectra: P proportional to k^-1 above k = 0.3
+    qP = np.where(qk > MOD[0], np.exp(np.interp(np.log(MOD[0]), np.log(pk), np.log(pP))) * (qk / MOD[0]) ** MOD[1], qP)
 
 
 def sig_lin(R):
