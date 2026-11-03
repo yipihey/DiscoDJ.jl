@@ -12,8 +12,8 @@ Stored per radius: every sampled point's (nu, lnV, a3/a1, a2/a1, e_abs, p_abs, d
 import os, sys, numpy as np, h5py, scipy.fft as sf
 cfg, seeds, signs, Ds = sys.argv[1], [int(x) for x in sys.argv[2].split(",")], [int(x) for x in sys.argv[3].split(",")], [float(x) for x in sys.argv[4].split(",")]
 W = int(sys.argv[5]) if len(sys.argv) > 5 else 16
-D0 = os.environ.get("EFTSC_SCRATCH", "/zpool/nvme/data/tabel_scratch/eft_shell_crossing"); OD = os.path.join(D0, "patchaniso"); os.makedirs(OD, exist_ok=True)
-L = 500.0; N = 256; dq = L / N; R0S = np.array([10.5, 14.8, 20.7, 29.0, 51.0]); ST = 4
+D0 = os.environ.get("EFTSC_SCRATCH", "/zpool/nvme/data/tabel_scratch/eft_shell_crossing"); OD = os.path.join(D0, os.environ.get("PATCH_OUT", "patchaniso")); os.makedirs(OD, exist_ok=True)
+L = 500.0; N = 256; dq = L / N; R0S = np.array([float(x) for x in os.environ.get("PATCH_R0S", "10.5,14.8,20.7,29.0,51.0").split(",")]); ST = 4
 kf = 2 * np.pi / L * np.fft.fftfreq(N, 1 / N); kh = 2 * np.pi / L * np.arange(N // 2 + 1)
 KZ, KY, KX = np.meshgrid(kf, kf, kh, indexing="ij"); KV = (KX, KY, KZ); K2 = KZ ** 2 + KY ** 2 + KX ** 2; KM = np.sqrt(K2); K2s = np.where(K2 == 0, 1, K2)
 def tophat(x):
